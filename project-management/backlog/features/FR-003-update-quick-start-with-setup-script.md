@@ -7,12 +7,12 @@ requires: [markdown-support]
 
 # Feature Request: FR-003 - Update Quick Start Guide to Use Setup Script
 
-**Status**: ⭕ Not Started  
+**Status**: ⏳ In Progress  
 **Priority**: 🟠 High  
 **Story Points**: 3 (Fibonacci: 1, 2, 3, 5, 8, 13)  
 **Created**: 2026-01-01  
-**Updated**: 2026-01-01  
-**Assigned Sprint**: -
+**Updated**: 2025-01-27  
+**Assigned Sprint**: Sprint 3
 
 ## Description
 
@@ -81,5 +81,6 @@ This feature improves user onboarding by:
 ## History
 
 - 2026-01-01 - Created
+- 2025-01-27 - Status changed to ⏳ In Progress, Assigned to Sprint 3
 
 
