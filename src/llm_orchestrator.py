@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from src.llm_providers import registry as provider_registry
 from config import LLM_PROVIDER
+from src.logging_service import LoggingService, LLMInteraction
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class LLMOrchestrator:
     def __init__(self, provider_name: str = None):
         self.provider_name = provider_name or LLM_PROVIDER
         self.provider = provider_registry.get_provider(self.provider_name)
+        self.logging_service = LoggingService()
 
         if not self.provider:
             logger.warning(f"Provider '{self.provider_name}' not found, falling back to available provider")

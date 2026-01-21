@@ -11,6 +11,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
 from src.state_manager import StateManager
+from src.logging_service import LoggingService, TelegramMessage, Decision
 from src.security_utils import (
     check_whitelist, validate_message_text, ping_joplin_api,
     handle_api_error, format_error_message, format_success_message
@@ -26,6 +27,7 @@ class TelegramOrchestrator:
         self.joplin_client = JoplinClient()
         self.llm_orchestrator = LLMOrchestrator()
         self.state_manager = StateManager()
+        self.logging_service = LoggingService()
 
         # Check Joplin connectivity on startup
         if not ping_joplin_api():
@@ -108,6 +110,10 @@ class TelegramOrchestrator:
         try:
             logger.info(f"📨 Processing message from user {user_id}: '{validated_text[:50]}{'...' if len(validated_text) > 50 else ''}'")
 
+            # Log the incoming message
+            telegram_msg = TelegramMessage(user_id=user_id, message_text=validated_text)
+            telegram_message_id = self.logging_service.log_telegram_message(telegram_msg)
+
             # Check if user has pending state (previous clarification)
             pending_state = self.state_manager.get_state(user_id)
 
@@ -118,14 +124,14 @@ class TelegramOrchestrator:
             else:
                 logger.info(f"🆕 Processing new request for user {user_id}")
                 # This is a new request
-                await self._handle_new_request(user_id, validated_text, message)
+                await self._handle_new_request(user_id, validated_text, message, telegram_message_id)
 
         except Exception as e:
             logger.error(f"Error handling message from user {user_id}: {e}")
             error_msg = handle_api_error(e, "message handling")
             await message.reply_text(format_error_message(error_msg))
 
-    async def _handle_new_request(self, user_id: int, text: str, message) -> None:
+    async def _handle_new_request(self, user_id: int, text: str, message, telegram_message_id: int) -> None:
         """Handle a new note creation request"""
         # Check Joplin connectivity
         if not ping_joplin_api():
@@ -150,7 +156,7 @@ class TelegramOrchestrator:
         context = {"existing_tags": existing_tags, "folders": folders}
         llm_response = self.llm_orchestrator.process_message(text, context)
 
-        await self._process_llm_response(user_id, llm_response, message)
+        await self._process_llm_response(user_id, llm_response, message, telegram_message_id)
 
     async def _handle_clarification_reply(self, user_id: int, text: str, message) -> None:
         """Handle reply to clarification question"""
@@ -176,18 +182,31 @@ class TelegramOrchestrator:
 
         await self._process_llm_response(user_id, llm_response, message, clear_state=True)
 
-    async def _process_llm_response(self, user_id: int, llm_response, message, clear_state: bool = False) -> None:
+    async def _process_llm_response(self, user_id: int, llm_response, message, telegram_message_id: Optional[int] = None, clear_state: bool = False) -> None:
         """Process the LLM response and take appropriate action"""
         if llm_response.status == "SUCCESS" and llm_response.note:
             # Create the note in Joplin
-            success = await self._create_note_in_joplin(llm_response.note)
+            note_id = await self._create_note_in_joplin(llm_response.note)
 
-            if success:
+            if note_id:
                 # Log the decision
                 try:
                     self.joplin_client.append_log(llm_response.log_entry)
                 except Exception as e:
                     logger.warning(f"Failed to append to log: {e}")
+
+                # Log to database
+                decision = Decision(
+                    user_id=user_id,
+                    telegram_message_id=telegram_message_id,
+                    status=llm_response.status,
+                    folder_chosen=llm_response.note.get('parent_id'),
+                    note_title=llm_response.note.get('title'),
+                    note_body=llm_response.note.get('body'),
+                    tags=llm_response.note.get('tags', []),
+                    joplin_note_id=note_id
+                )
+                self.logging_service.log_decision(decision)
 
                 # Clear state and respond
                 if clear_state:
@@ -226,7 +245,7 @@ class TelegramOrchestrator:
                 format_error_message("I had trouble understanding your request. Please try rephrasing.")
             )
 
-    async def _create_note_in_joplin(self, note_data: Dict[str, Any]) -> bool:
+    async def _create_note_in_joplin(self, note_data: Dict[str, Any]) -> Optional[str]:
         """Create a note in Joplin with the provided data"""
         try:
             logger.info(f"📝 Creating note in Joplin: '{note_data.get('title', 'Untitled')}'")
@@ -236,7 +255,7 @@ class TelegramOrchestrator:
             errors = validate_note_data(note_data)
             if errors:
                 logger.error(f"❌ Note validation failed: {errors}")
-                return False
+                return None
 
             # Create the note
             logger.debug(f"📁 Creating note in folder: {note_data['parent_id']}")
@@ -249,7 +268,7 @@ class TelegramOrchestrator:
 
             if not note_id:
                 logger.error("❌ Failed to create note - no ID returned")
-                return False
+                return None
 
             logger.info(f"✅ Note created successfully with ID: {note_id}")
 
@@ -260,12 +279,12 @@ class TelegramOrchestrator:
                 self.joplin_client.apply_tags(note_id, tags)
                 logger.info(f"✅ Applied {len(tags)} tag(s) to note")
 
-            return True
+            return note_id
 
         except Exception as e:
             logger.error(f"💥 Error creating note in Joplin: {e}")
             logger.debug(f"Note data: {note_data}", exc_info=True)
-            return False
+            return None
 
 def main():
     """Main function to run the bot"""

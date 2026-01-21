@@ -17,11 +17,11 @@ A Telegram bot that intelligently creates notes in Joplin using AI.
    ./setup.sh
    ```
 
-   This will:
-   - Create a Python virtual environment
-   - Install all required dependencies
-   - Set up configuration files
-   - Create helper scripts
+    This will:
+    - Create a Python virtual environment
+    - Install all required dependencies
+    - Set up configuration files
+    - Create helper scripts (including start.sh for easy launching)
 
 3. **Configure your API keys**
    The setup script creates a `.env` file pre-configured for DeepSeek. Edit it with your credentials:
@@ -43,9 +43,15 @@ A Telegram bot that intelligently creates notes in Joplin using AI.
    ```
 
 6. **Run the bot**
-   ```bash
-   python main.py
-   ```
+    ```bash
+    ./start.sh
+    ```
+
+    Or manually:
+    ```bash
+    source activate.sh
+    python main.py
+    ```
 
 ### Manual Setup
 

@@ -49,7 +49,11 @@ class JoplinClient:
     def fetch_tags(self) -> List[Dict[str, Any]]:
         """Fetch all existing tags from Joplin"""
         result = self._make_request('GET', '/tags')
-        if result and isinstance(result, list):
+        if result and isinstance(result, dict) and 'items' in result:
+            tags = result['items']
+            logger.info(f"Fetched {len(tags)} tags from Joplin")
+            return tags
+        elif result and isinstance(result, list):
             logger.info(f"Fetched {len(result)} tags from Joplin")
             return result
         logger.warning("Failed to fetch tags or no tags found")
@@ -132,8 +136,8 @@ class JoplinClient:
 
     def _link_tag_to_note(self, tag_id: str, note_id: str) -> bool:
         """Link a tag to a note"""
-        link_data = {"id": tag_id}
-        result = self._make_request('POST', f'/notes/{note_id}/tags', json=link_data)
+        link_data = {"id": note_id}
+        result = self._make_request('POST', f'/tags/{tag_id}/notes', json=link_data)
         if result:
             logger.info(f"Linked tag {tag_id} to note {note_id}")
             return True
