@@ -1,0 +1,11 @@
+# <FR-XXX or BF-XXX>: <Short business description (50-72 characters)>
+#
+# <Business description paragraph explaining what changed and why from a business/user perspective. This should be 1-3 sentences describing the impact, value, or problem solved.>
+#
+# Technical changes for developers:
+# - <Specific technical change 1>
+# - <Specific technical change 2>
+# - <Specific technical change 3>
+#
+# Refs <FR-XXX or BF-XXX> (optional)
+
