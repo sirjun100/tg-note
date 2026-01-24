@@ -19,9 +19,9 @@ class JoplinNoteSchema(BaseModel):
     """Pydantic schema for LLM-generated note data"""
     status: str = Field(description="Either 'SUCCESS' or 'NEED_INFO'")
     confidence_score: float = Field(description="Confidence score between 0.0 and 1.0")
-    question: Optional[str] = Field(description="Clarification question if status is NEED_INFO")
+    question: Optional[str] = Field(default=None, description="Clarification question if status is NEED_INFO")
     log_entry: str = Field(description="Log entry describing the AI decision")
-    note: Optional[Dict[str, Any]] = Field(description="Note data with title, body, parent_id, tags")
+    note: Optional[Dict[str, Any]] = Field(default=None, description="Note data with title, body, parent_id, tags")
 
 class LLMOrchestrator:
     """Orchestrates LLM interactions for note generation"""
