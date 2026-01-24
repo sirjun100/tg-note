@@ -292,6 +292,67 @@ class LLMOrchestrator:
             logger.debug(f"Error details: {type(e).__name__}: {str(e)}", exc_info=True)
             return self._create_error_response(f"Unexpected error: {str(e)}")
 
+    async def classify_note(self, note_title: str, note_content: str, folder_list: str) -> Dict[str, Any]:
+        """Classify a note into PARA structure using LLM"""
+        system_prompt = self._get_persona_prompt("para_classifier")
+        system_prompt = system_prompt.replace("{folder_list}", folder_list)
+        
+        user_message = f"Title: {note_title}\n\nContent:\n{note_content[:1000]}"
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ]
+        
+        logger.info(f"🏷️ Classifying note: '{note_title}'")
+        
+        response = self.provider.generate_response(
+            messages=messages,
+            temperature=0.1,
+            max_tokens=500
+        )
+        
+        content = response.get("content", "").strip()
+        try:
+            # Extract JSON
+            json_start = content.find('{')
+            json_end = content.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                return json.loads(content[json_start:json_end])
+        except Exception as e:
+            logger.error(f"Failed to parse classification response: {e}")
+            
+        return {"suggested_folder_id": None, "reasoning": "Failed to parse LLM response", "confidence": 0.0}
+
+    async def enrich_note(self, note_title: str, note_content: str) -> Dict[str, Any]:
+        """Enrich a note with metadata using LLM"""
+        system_prompt = self._get_persona_prompt("note_enricher")
+        
+        user_message = f"Title: {note_title}\n\nContent:\n{note_content[:2000]}"
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ]
+        
+        logger.info(f"✨ Enriching note: '{note_title}'")
+        
+        response = self.provider.generate_response(
+            messages=messages,
+            temperature=0.3,
+            max_tokens=1000
+        )
+        
+        content = response.get("content", "").strip()
+        try:
+            json_start = content.find('{')
+            json_end = content.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                return json.loads(content[json_start:json_end])
+        except Exception as e:
+            logger.error(f"Failed to parse enrichment response: {e}")
+            
+        return {"metadata": None}
     def _build_system_prompt(self, context: Dict[str, Any] = None) -> str:
         """Build the system prompt for the LLM"""
         context = context or {}

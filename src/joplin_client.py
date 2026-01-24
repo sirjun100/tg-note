@@ -59,6 +59,13 @@ class JoplinClient:
         logger.warning("Failed to fetch tags or no tags found")
         return []
 
+    def get_notes_with_tag(self, tag_id: str) -> List[Dict[str, Any]]:
+        """Get all notes associated with a specific tag"""
+        response = self._make_request("GET", f"/tags/{tag_id}/notes")
+        if response and isinstance(response, dict) and 'items' in response:
+            return response['items']
+        return response if response is not None else []
+
     def create_note(self, folder_id: str, title: str, body: str) -> Optional[str]:
         """Create a new note in Joplin"""
         note_data = {
@@ -178,14 +185,13 @@ class JoplinClient:
 
     def _link_tag_to_note(self, tag_id: str, note_id: str) -> bool:
         """Link a tag to a note"""
-        link_data = {"id": note_id}
-        result = self._make_request('POST', f'/tags/{tag_id}/notes', json=link_data)
-        if result:
-            logger.info(f"Linked tag {tag_id} to note {note_id}")
-            return True
+        response = self._make_request("POST", f"tags/{tag_id}/notes", json={"id": note_id})
+        return response is not None
 
-        logger.error(f"Failed to link tag {tag_id} to note {note_id}")
-        return False
+    def rename_tag(self, tag_id: str, new_name: str) -> bool:
+        """Rename an existing tag"""
+        response = self._make_request("PUT", f"tags/{tag_id}", json={"title": new_name})
+        return response is not None
 
     def append_log(self, log_entry: str) -> bool:
         """Append an entry to the AI-Decision-Log note"""
@@ -231,8 +237,56 @@ class JoplinClient:
 
     def get_notes_in_folder(self, folder_id: str) -> List[Dict[str, Any]]:
         """Get all notes in a specific folder"""
-        # Note: This might require pagination in a real implementation
-        result = self._make_request('GET', f'/folders/{folder_id}/notes')
-        if result and isinstance(result, list):
-            return result
-        return []
+        response = self._make_request("GET", f"folders/{folder_id}/notes")
+        return response if response is not None else []
+
+    def get_all_notes(self) -> List[Dict[str, Any]]:
+        """Get all notes in the database (paginated fetch if needed)"""
+        # Note: Depending on database size, this might need pagination.
+        response = self._make_request("GET", "/notes", params={"limit": 1000})
+        if response and isinstance(response, dict) and 'items' in response:
+            return response['items']
+        return response if response is not None else []
+
+    def create_folder(self, title: str, parent_id: str = None) -> Optional[Dict[str, Any]]:
+        """Create a new folder"""
+        payload = {"title": title}
+        if parent_id:
+            payload["parent_id"] = parent_id
+        
+        response = self._make_request("POST", "/folders", json=payload)
+        return response
+
+    def move_note(self, note_id: str, parent_id: str) -> bool:
+        """Move a note to a different folder"""
+        response = self._make_request("PUT", f"/notes/{note_id}", json={"parent_id": parent_id})
+        return response is not None
+
+    def get_or_create_folder_by_path(self, path_parts: List[str]) -> Optional[str]:
+        """
+        Get folder ID for a path, creating folders as needed.
+        Example: ["Areas", "Finance"]
+        """
+        current_parent_id = ""
+        
+        for part in path_parts:
+            # Check if folder exists at this level
+            folders = self.get_folders()
+            target_folder = None
+            
+            for f in folders:
+                if f.get('title') == part and f.get('parent_id', '') == current_parent_id:
+                    target_folder = f
+                    break
+            
+            if target_folder:
+                current_parent_id = target_folder['id']
+            else:
+                # Create it
+                new_folder = self.create_folder(part, parent_id=current_parent_id if current_parent_id else None)
+                if not new_folder:
+                    logger.error(f"Failed to create folder '{part}' during path resolution")
+                    return None
+                current_parent_id = new_folder['id']
+                
+        return current_parent_id
