@@ -1225,7 +1225,8 @@ class TelegramOrchestrator:
                     await message.reply_text("📊 Generating summary of your session...")
                     llm_response = self.llm_orchestrator.process_message(
                         user_message="Please summarize everything we've talked about so far into an organized list.",
-                        persona="gtd_expert"
+                        persona="gtd_expert",
+                        history=history
                     )
                     if llm_response.status == "SUCCESS":
                         final_note = llm_response.note

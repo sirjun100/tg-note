@@ -128,7 +128,8 @@ class LLMOrchestrator:
                         return self._create_error_response("Invalid function call format from LLM")
                 else:
                     # Try to parse JSON directly from content (fallback for models that don't use function calling)
-                    content = response.get("content", "").strip()
+                    content = response.get("content") or ""
+                    content = content.strip()
                     if content:
                         try:
                             # Try to extract JSON from content
