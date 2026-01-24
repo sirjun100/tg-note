@@ -17,6 +17,12 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 
+def get_llm_orchestrator():
+    """Lazy import to avoid circular dependencies"""
+    from src.llm_orchestrator import LLMOrchestrator
+    return LLMOrchestrator()
+
+
 class PriorityLevel(Enum):
     """Priority levels for report items"""
     CRITICAL = 5
@@ -174,6 +180,81 @@ class ReportGenerator:
 
         return highest_priority
 
+    def analyze_importance_with_ai(
+        self, title: str, body: str, current_priority: PriorityLevel
+    ) -> PriorityLevel:
+        """
+        Use AI to analyze note/task importance based on content
+
+        Args:
+            title: Item title
+            body: Item description/body
+            current_priority: Current priority based on tags/metadata
+
+        Returns:
+            Updated priority level based on AI analysis
+        """
+        try:
+            # Skip AI analysis if content is very short or already high priority
+            if len(title) < 5 or current_priority in [
+                PriorityLevel.CRITICAL,
+                PriorityLevel.HIGH,
+            ]:
+                return current_priority
+
+            llm = get_llm_orchestrator()
+            content = f"Title: {title}\n\nContent: {body[:500]}"
+
+            prompt = f"""Analyze this task/note and determine its importance/priority.
+
+Content:
+{content}
+
+Determine the priority level based on:
+1. Action urgency (keywords: must, urgent, asap, critical, blocking, etc.)
+2. Impact scope (affects others, blocking work, customer-facing, etc.)
+3. Time sensitivity (deadlines, recurring, time-dependent, etc.)
+4. Complexity (requires deep thinking, risky if wrong, etc.)
+
+Respond with ONLY one of these words:
+- CRITICAL (must do immediately, blocking other work)
+- HIGH (important, should do soon)
+- MEDIUM (important but not urgent)
+- LOW (nice to have, can defer)
+
+Response:"""
+
+            try:
+                response = llm.get_response(prompt).strip().upper()
+
+                # Map response to priority level
+                priority_map = {
+                    "CRITICAL": PriorityLevel.CRITICAL,
+                    "HIGH": PriorityLevel.HIGH,
+                    "MEDIUM": PriorityLevel.MEDIUM,
+                    "LOW": PriorityLevel.LOW,
+                }
+
+                ai_priority = priority_map.get(response, current_priority)
+
+                # Use AI priority if it's higher than current, otherwise keep current
+                # This ensures AI analysis enhances but doesn't override explicit tagging
+                if ai_priority.value > current_priority.value:
+                    self.logger.debug(
+                        f"AI upgraded priority {current_priority.name} -> {ai_priority.name}: {title[:50]}"
+                    )
+                    return ai_priority
+                else:
+                    return current_priority
+
+            except Exception as e:
+                self.logger.debug(f"AI importance analysis failed: {e}, keeping current priority")
+                return current_priority
+
+        except Exception as e:
+            self.logger.debug(f"Error in analyze_importance_with_ai: {e}")
+            return current_priority
+
     def calculate_impact(self, item_dict: Dict[str, Any], source: ItemSource) -> float:
         """
         Calculate impact score for an item (1-3 scale)
@@ -218,6 +299,15 @@ class ReportGenerator:
                 tags = [t.strip() for t in tags.split(",")]
 
             priority_level = self.extract_priority_from_tags(tags)
+
+            # Enhance priority with AI analysis of note content if no explicit tags
+            if not tags or priority_level == PriorityLevel.MEDIUM:
+                title = note.get("title", "")
+                body = note.get("body", "")
+                if title and body:  # Only analyze if we have content
+                    priority_level = self.analyze_importance_with_ai(
+                        title, body, priority_level
+                    )
 
             # Extract due date if present (look for date patterns in body or metadata)
             due_date = self._extract_due_date_from_note(note)
