@@ -22,10 +22,13 @@ Usage:
 
 import os
 import json
+import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import requests
 from requests_oauthlib import OAuth2Session
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleTasksClient:
@@ -110,7 +113,7 @@ class GoogleTasksClient:
             self.token = token
             return token
         except Exception as e:
-            print(f"Token refresh failed: {e}")
+            logger.debug(f"Token refresh failed: {e}")
             return None
 
     def get_task_lists(self) -> List[Dict[str, Any]]:
@@ -126,7 +129,7 @@ class GoogleTasksClient:
             error_str = str(e).lower()
             # Handle token expiration (can be ValueError, HTTPError, or other)
             if "token_expired" in error_str or "401" in error_str:
-                print(f"Token expired, attempting refresh...")
+                logger.debug("Token expired, attempting refresh...")
                 if self.refresh_token():
                     # Retry after refresh
                     try:
@@ -134,13 +137,13 @@ class GoogleTasksClient:
                         response.raise_for_status()
                         return response.json().get("items", [])
                     except Exception as retry_error:
-                        print(f"Failed to get task lists after refresh: {retry_error}")
+                        logger.debug(f"Failed to get task lists after refresh: {retry_error}")
                         return []
                 else:
-                    print("Token refresh failed")
+                    logger.debug("Token refresh failed")
                     return []
             else:
-                print(f"Failed to get task lists: {e}")
+                logger.debug(f"Failed to get task lists: {e}")
                 return []
 
     def get_default_task_list(self) -> str:
@@ -178,7 +181,7 @@ class GoogleTasksClient:
             error_str = str(e).lower()
             # Handle token expiration
             if "token_expired" in error_str or "401" in error_str:
-                print(f"Token expired, attempting refresh...")
+                logger.debug("Token expired, attempting refresh...")
                 if self.refresh_token():
                     # Retry after refresh
                     try:
@@ -186,13 +189,13 @@ class GoogleTasksClient:
                         response.raise_for_status()
                         return response.json()
                     except Exception as retry_error:
-                        print(f"Failed to create task after refresh: {retry_error}")
+                        logger.debug(f"Failed to create task after refresh: {retry_error}")
                         return None
                 else:
-                    print("Token refresh failed")
+                    logger.debug("Token refresh failed")
                     return None
             else:
-                print(f"Failed to create task: {e}")
+                logger.debug(f"Failed to create task: {e}")
                 return None
 
     def update_task(self, task_id: str, task_list_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -209,7 +212,7 @@ class GoogleTasksClient:
             error_str = str(e).lower()
             # Handle token expiration
             if "token_expired" in error_str or "401" in error_str:
-                print(f"Token expired, attempting refresh...")
+                logger.debug("Token expired, attempting refresh...")
                 if self.refresh_token():
                     # Retry after refresh
                     try:
@@ -217,13 +220,13 @@ class GoogleTasksClient:
                         response.raise_for_status()
                         return response.json()
                     except Exception as retry_error:
-                        print(f"Failed to update task after refresh: {retry_error}")
+                        logger.debug(f"Failed to update task after refresh: {retry_error}")
                         return None
                 else:
-                    print("Token refresh failed")
+                    logger.debug("Token refresh failed")
                     return None
             else:
-                print(f"Failed to update task: {e}")
+                logger.debug(f"Failed to update task: {e}")
                 return None
 
     def delete_task(self, task_id: str, task_list_id: str) -> bool:
@@ -240,7 +243,7 @@ class GoogleTasksClient:
             error_str = str(e).lower()
             # Handle token expiration
             if "token_expired" in error_str or "401" in error_str:
-                print(f"Token expired, attempting refresh...")
+                logger.debug("Token expired, attempting refresh...")
                 if self.refresh_token():
                     # Retry after refresh
                     try:
@@ -249,16 +252,16 @@ class GoogleTasksClient:
                         response.raise_for_status()
                         return True
                     except Exception as retry_error:
-                        print(f"Failed to delete task after refresh: {retry_error}")
+                        logger.debug(f"Failed to delete task after refresh: {retry_error}")
                         return False
                 else:
-                    print("Token refresh failed")
+                    logger.debug("Token refresh failed")
                     return False
             else:
-                print(f"Failed to delete task: {e}")
+                logger.debug(f"Failed to delete task: {e}")
                 return False
         except Exception as e:
-            print(f"Failed to delete task: {e}")
+            logger.debug(f"Failed to delete task: {e}")
             return False
 
     def get_tasks(self, task_list_id: str, show_completed: bool = False, max_results: int = 100) -> List[Dict[str, Any]]:
@@ -280,7 +283,7 @@ class GoogleTasksClient:
             error_str = str(e).lower()
             # Handle token expiration
             if "token_expired" in error_str or "401" in error_str:
-                print(f"Token expired, attempting refresh...")
+                logger.debug("Token expired, attempting refresh...")
                 if self.refresh_token():
                     # Retry after refresh
                     try:
@@ -288,13 +291,13 @@ class GoogleTasksClient:
                         response.raise_for_status()
                         return response.json().get("items", [])
                     except Exception as retry_error:
-                        print(f"Failed to get tasks after refresh: {retry_error}")
+                        logger.debug(f"Failed to get tasks after refresh: {retry_error}")
                         return []
                 else:
-                    print("Token refresh failed")
+                    logger.debug("Token refresh failed")
                     return []
             else:
-                print(f"Failed to get tasks: {e}")
+                logger.debug(f"Failed to get tasks: {e}")
                 return []
 
 
