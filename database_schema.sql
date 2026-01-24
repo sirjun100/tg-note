@@ -157,3 +157,49 @@ CREATE TABLE IF NOT EXISTS tag_creation_history (
 CREATE INDEX IF NOT EXISTS idx_tag_creation_user_date ON tag_creation_history(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_tag_creation_note ON tag_creation_history(joplin_note_id);
 CREATE INDEX IF NOT EXISTS idx_tag_creation_is_new ON tag_creation_history(is_new_tag);
+
+-- Report Configurations table for user settings
+CREATE TABLE IF NOT EXISTS report_configurations (
+    user_id INTEGER PRIMARY KEY,
+    enabled BOOLEAN DEFAULT TRUE,
+    delivery_time TIME DEFAULT '08:00',
+    timezone VARCHAR(100) DEFAULT 'UTC',
+    include_critical BOOLEAN DEFAULT TRUE,
+    include_high BOOLEAN DEFAULT TRUE,
+    include_medium BOOLEAN DEFAULT FALSE,
+    include_low BOOLEAN DEFAULT FALSE,
+    include_google_tasks BOOLEAN DEFAULT TRUE,
+    include_clarification_pending BOOLEAN DEFAULT TRUE,
+    detail_level VARCHAR(20) DEFAULT 'detailed',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES telegram_users(user_id)
+);
+
+-- Daily Reports table for logging report generation
+CREATE TABLE IF NOT EXISTS daily_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    report_date DATE NOT NULL,
+    joplin_items_count INTEGER DEFAULT 0,
+    google_tasks_count INTEGER DEFAULT 0,
+    clarification_items_count INTEGER DEFAULT 0,
+    critical_items INTEGER DEFAULT 0,
+    high_items INTEGER DEFAULT 0,
+    medium_items INTEGER DEFAULT 0,
+    low_items INTEGER DEFAULT 0,
+    completed_since_last INTEGER DEFAULT 0,
+    telegram_message_id INTEGER,
+    generated_by VARCHAR(20) DEFAULT 'scheduled',
+    user_action VARCHAR(50),
+    action_timestamp DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES telegram_users(user_id),
+    UNIQUE(user_id, report_date)
+);
+
+-- Indexes for report tables
+CREATE INDEX IF NOT EXISTS idx_report_configs_user ON report_configurations(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_reports_user_date ON daily_reports(user_id, report_date);
+CREATE INDEX IF NOT EXISTS idx_daily_reports_date ON daily_reports(report_date);
+CREATE INDEX IF NOT EXISTS idx_daily_reports_created ON daily_reports(created_at);
