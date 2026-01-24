@@ -1932,7 +1932,7 @@ class TelegramOrchestrator:
                 await update.message.reply_text("📋 No migration history yet.\nRun /reorg_execute to reorganize your notes.")
                 return
 
-            response = "📋 *Migration History (Last 5)*\n\n"
+            response = "📋 Migration History (Last 5)\n\n"
             for i, entry in enumerate(history, 1):
                 timestamp = entry['timestamp'].split('T')[1].split('.')[0]  # Extract HH:MM:SS
                 status_icon = "✅" if entry['status'] == 'success' else "⚠️"
@@ -1943,7 +1943,7 @@ class TelegramOrchestrator:
                     f"   Items: {entry['affected_items']}\n\n"
                 )
 
-            await update.message.reply_text(response, parse_mode='Markdown')
+            await update.message.reply_text(response)
             logger.info(f"User {user.id} viewed migration history")
 
         except Exception as e:
@@ -2057,8 +2057,8 @@ class TelegramOrchestrator:
                     notes_by_folder[folder_id] = 0
                 notes_by_folder[folder_id] += 1
 
-            # Build response
-            status_msg = "📊 *Joplin Organization Status*\n\n"
+            # Build response (plain text to avoid markdown parsing issues)
+            status_msg = "📊 Joplin Organization Status\n\n"
             status_msg += f"📝 Notes: {len(all_notes)}\n"
             status_msg += f"📁 Folders: {len(folders)}\n"
             status_msg += f"🏷️ Tags: {len(tags)}\n\n"
@@ -2072,16 +2072,16 @@ class TelegramOrchestrator:
 
                 # Enrichment status
                 enrichment_summary = self.enrichment_service.get_enrichment_summary(all_notes)
-                status_msg += f"\n✨ Enrichment:\n"
+                status_msg += f"\nEnrichment Progress:\n"
                 status_msg += f"  • Enriched: {enrichment_summary['enriched_notes']}/{enrichment_summary['total_notes']}\n"
                 status_msg += f"  • Progress: {enrichment_summary['enrichment_percentage']:.1f}%\n"
             else:
-                status_msg += "⚠️ No notes found in Joplin database\n"
+                status_msg += "No notes found in Joplin database\n"
                 status_msg += "Create some notes first with /start\n"
 
-            status_msg += f"\n💡 Next: /reorg_init status|roles"
+            status_msg += f"\nNext: /reorg_init status\nor /reorg_init roles"
 
-            await update.message.reply_text(status_msg, parse_mode='Markdown')
+            await update.message.reply_text(status_msg)
             logger.info(f"User {user.id} viewed organization status")
 
         except Exception as e:

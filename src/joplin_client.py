@@ -241,12 +241,15 @@ class JoplinClient:
         return response if response is not None else []
 
     def get_all_notes(self) -> List[Dict[str, Any]]:
-        """Get all notes in the database (paginated fetch if needed)"""
-        # Note: Depending on database size, this might need pagination.
-        response = self._make_request("GET", "/notes", params={"limit": 1000})
+        """Get all notes in the database"""
+        # Fetch all notes - Joplin API returns items array
+        response = self._make_request("GET", "/notes")
         if response and isinstance(response, dict) and 'items' in response:
             return response['items']
-        return response if response is not None else []
+        # Fallback: if response is a list, return it
+        if response and isinstance(response, list):
+            return response
+        return []
 
     def create_folder(self, title: str, parent_id: str = None) -> Optional[Dict[str, Any]]:
         """Create a new folder"""
