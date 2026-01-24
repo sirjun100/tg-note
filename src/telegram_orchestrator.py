@@ -1785,30 +1785,53 @@ class TelegramOrchestrator:
             return
 
         try:
-            await update.message.reply_text(
-                "⚠️ *WARNING: This will reorganize your notes*\n\n"
-                "This action will move notes to their suggested folders based on AI analysis.\n"
-                "You can always move them back manually.\n\n"
-                "Continuing in 5 seconds... (press Ctrl+C to cancel)",
-                parse_mode='Markdown'
-            )
+            # Check if dry-run mode requested
+            dry_run = context.args and context.args[0].lower() == 'dry-run'
 
-            # In production, you'd wait for confirmation
-            # For now, we'll generate and execute the plan
+            if dry_run:
+                await update.message.reply_text("🔍 DRY-RUN MODE: Simulating reorganization without making changes...")
+            else:
+                await update.message.reply_text(
+                    "⚠️ *WARNING: This will reorganize your notes*\n\n"
+                    "This action will move notes to their suggested folders.\n"
+                    "You can always move them back manually.\n\n"
+                    "Use /reorg_execute dry-run to preview first!",
+                    parse_mode='Markdown'
+                )
+
+            # Generate and execute plan
             plan = await self.reorg_orchestrator.generate_migration_plan()
             moves = plan.get("moves", [])
 
-            await update.message.reply_text(f"🔄 Executing reorganization of {len(moves)} notes...")
+            if not moves:
+                await update.message.reply_text(
+                    "ℹ️ No notes need reorganization.\n"
+                    "Run /reorg_status to check your notes."
+                )
+                return
 
-            results = self.reorg_orchestrator.execute_migration_plan(moves)
+            action_text = "simulating" if dry_run else "executing"
+            await update.message.reply_text(f"🔄 {action_text.capitalize()} reorganization of {len(moves)} notes...")
 
-            await update.message.reply_text(
-                f"✅ Reorganization Complete!\n\n"
-                f"  ✓ Success: {results.get('success', 0)} notes\n"
-                f"  ✗ Failed: {results.get('failed', 0)} notes\n\n"
-                f"Next: Use `/enrich_notes` to add metadata to your notes"
-            )
-            logger.info(f"User {user.id} executed reorganization: {results}")
+            results = self.reorg_orchestrator.execute_migration_plan(moves, dry_run=dry_run)
+
+            if dry_run:
+                await update.message.reply_text(
+                    f"🔍 DRY-RUN RESULTS:\n\n"
+                    f"  Would move: {results.get('success', 0)} notes\n\n"
+                    f"To actually apply changes, run:\n"
+                    f"/reorg_execute\n\n"
+                    f"Or get more details:\n"
+                    f"/reorg_preview"
+                )
+            else:
+                await update.message.reply_text(
+                    f"✅ Reorganization Complete!\n\n"
+                    f"  ✓ Success: {results.get('success', 0)} notes\n"
+                    f"  ✗ Failed: {results.get('failed', 0)} notes\n\n"
+                    f"Next: Use `/enrich_notes` to add metadata"
+                )
+            logger.info(f"User {user.id} executed reorganization: {results} (dry_run={dry_run})")
 
         except Exception as e:
             await update.message.reply_text("❌ Error executing reorganization.")
@@ -2050,7 +2073,8 @@ class TelegramOrchestrator:
                 "  /reorg_preview - See migration plan without changes\n"
                 "  /reorg_detect_conflicts - Check for potential issues\n\n"
                 "🔄 *Reorganization*:\n"
-                "  /reorg_execute - Execute the reorganization plan\n\n"
+                "  /reorg_execute dry-run - Preview changes without applying\n"
+                "  /reorg_execute - Apply all reorganization changes\n\n"
                 "✨ *Enrichment*:\n"
                 "  /enrich_notes [limit] [--unenriched-only] - Add metadata to notes\n"
                 "    Adds: Status, Priority, Summary, Key Takeaways, Tags\n"

@@ -321,12 +321,13 @@ class ReorgOrchestrator:
             logger.error(f"Failed to resolve conflict: {e}")
             return False
 
-    def execute_migration_plan(self, plan: List[Dict[str, str]]) -> Dict[str, int]:
+    def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False) -> Dict[str, int]:
         """
         Execute a series of note moves with comprehensive error handling.
 
         Args:
             plan: List of moves: {"note_id": "...", "target_folder_id": "..."}
+            dry_run: If True, don't actually move notes, just report what would happen
 
         Returns:
             Results with success/failed counts
@@ -335,6 +336,10 @@ class ReorgOrchestrator:
             if not plan:
                 logger.warning("Migration plan is empty, nothing to execute")
                 return {"success": 0, "failed": 0, "skipped": 0}
+
+            if dry_run:
+                logger.info(f"🔍 DRY RUN MODE: Would move {len(plan)} notes")
+                return {"success": len(plan), "failed": 0, "skipped": 0, "dry_run": True}
 
             results = {"success": 0, "failed": 0, "skipped": 0}
             logger.info(f"🔄 Starting migration execution for {len(plan)} moves")
