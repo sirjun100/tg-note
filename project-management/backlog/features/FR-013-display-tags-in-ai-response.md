@@ -1,11 +1,11 @@
 # Feature Request: FR-013 - Display Tags in AI Response to Telegram
 
-**Status**: ⭕ Not Started
+**Status**: ⏳ In Progress
 **Priority**: 🟡 Medium
 **Story Points**: 5
 **Created**: 2025-01-23
-**Updated**: 2025-01-23
-**Assigned Sprint**: Backlog
+**Updated**: 2025-01-24
+**Assigned Sprint**: Sprint 5
 
 ## Description
 

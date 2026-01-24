@@ -1,15 +1,21 @@
 # Feature Request: FR-014 - Daily Priority Report for Review and Action Items
 
-**Status**: ⭕ Not Started
+**Status**: ⏳ In Progress
 **Priority**: 🟠 High
 **Story Points**: 8
 **Created**: 2025-01-23
-**Updated**: 2025-01-23
-**Assigned Sprint**: Backlog
+**Updated**: 2025-01-24
+**Assigned Sprint**: Sprint 5
 
 ## Description
 
-Generate and deliver a daily report summarizing the most important items that require review or action. This report provides users with a focused, prioritized view of what needs their attention each day, helping them stay organized and ensuring critical tasks don't get missed.
+Generate and deliver a daily report summarizing the most important items that require review or action. The report aggregates data from both Joplin notes (with priority tags) and Google Tasks (if configured) to provide users with a unified, prioritized view of what needs their attention each day. This helps them stay organized and ensures critical tasks and notes don't get missed.
+
+**Key Sources for Report**:
+- High-priority Joplin notes (based on tags: #urgent, #important, #critical)
+- Incomplete Google Tasks (status: needsAction, when configured)
+- Notes pending user clarification (waiting for follow-up response)
+- Recently created items requiring action
 
 ## User Story
 
@@ -75,81 +81,110 @@ Increases productivity and accountability by providing a daily digest of what ma
 
 ### Report Components
 
-The daily report should include:
+The daily report should include data from **both Joplin notes and Google Tasks**:
 
 1. **Critical Items** (if any)
-   - Overdue items
+   - Overdue Joplin notes
+   - Overdue Google Tasks
    - Blocked tasks
-   - High-impact incomplete tasks
+   - High-impact incomplete items
 
 2. **Today's Focus**
-   - High-priority items due today
-   - Items with approaching deadlines
+   - High-priority Joplin notes due today (by tag)
+   - Google Tasks due today
+   - Items with approaching deadlines (from either source)
    - Recently created items needing action
 
 3. **Progress Summary**
-   - Items completed since yesterday
-   - Tasks closed in Google Tasks
+   - Joplin notes completed since yesterday
+   - Google Tasks completed since yesterday
    - Notes archived or completed
+   - Combined completion count
 
-4. **Call to Action**
-   - Most urgent item to tackle first
-   - Any items requiring clarification
+4. **Breakdown by Source**
+   - Count of Joplin items in report
+   - Count of Google Tasks in report
+   - Count of notes pending clarification
+
+5. **Call to Action**
+   - Most urgent item to tackle first (ranked across both sources)
+   - Any notes requiring user clarification
    - Optional: suggestion to review backlog
 
 ### Message Format Example
 
 ```
 📊 Daily Priority Report - Jan 23, 2025
+📊 9 items total (5 from Joplin + 4 from Google Tasks)
 
-🔴 CRITICAL (1 item)
-• Follow up with client - OVERDUE since Jan 20
-  → Reply to Telegram: /update-status task-name
+🔴 CRITICAL (2 items)
+• Follow up with client - OVERDUE since Jan 20 (Google Task)
+  → Status: needsAction | Complete at: /update-status
+• Complete Q1 report - OVERDUE (Joplin note #urgent)
 
-🟠 HIGH PRIORITY (3 items)
-• Prepare project presentation - Due today
-• Review Q1 budget - Due today
-• Schedule team meeting - Due Jan 24
+🟠 HIGH PRIORITY (4 items)
+📝 Joplin Notes (2):
+  • Prepare project presentation - Due today (#important)
+  • Review Q1 budget - Due today (#work)
 
-✅ COMPLETED TODAY (2 items)
-• Design homepage mockup
-• Update project documentation
+✅ Google Tasks (2):
+  • Schedule team meeting - Due today
+  • Finalize contract review - Due Jan 24
+
+⏳ PENDING CLARIFICATION (2 items)
+• Meeting notes from yesterday - awaiting your response
+• Project plan draft - waiting for feedback
+
+✅ COMPLETED TODAY (3 items)
+• Design homepage mockup (Joplin)
+• Update project documentation (Joplin)
+• Approve vendor quote (Google Task)
 
 💡 RECOMMENDATION
-Start with: "Prepare project presentation"
-(2 hours | high impact)
+Start with: "Follow up with client" (OVERDUE + high impact)
+Then: "Complete Q1 report" (OVERDUE + blocking other work)
 
 ---
-React with 📌 to save this report
-Reply /details [item-name] for more info
+🔗 /daily_report - Generate another report now
+⚙️ /show_report_config - View your settings
+📌 React with 📌 to save this report
+💬 Reply /details to see full breakdown
 ```
 
 ### Configuration Options
 
 Users should be able to customize:
-- Report delivery time (e.g., 8:00 AM their timezone)
-- Days to include in report (weekdays only, daily, custom)
-- Items to include (priority levels, tags, folders)
-- Report detail level (compact, detailed, comprehensive)
-- Include Google Tasks (yes/no)
+- **Report delivery time** (e.g., 8:00 AM their timezone)
+- **Timezone** (important for scheduling accurate delivery)
+- **Days to include in report** (weekdays only, daily, custom)
+- **Priority levels to include** (critical, high, medium, low)
+- **Report detail level** (compact, detailed, comprehensive)
+- **Include Google Tasks** (yes/no) - aggregates incomplete tasks
+- **Include Joplin notes** (yes/no) - prioritized by tags
+- **Include clarification items** (yes/no) - notes awaiting response
+- **Custom tags to monitor** (which tags trigger inclusion)
 
 ### Database Schema
 
 ```sql
 CREATE TABLE daily_reports (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   report_date DATE NOT NULL,
   scheduled_time TIME NOT NULL,
-  items_count INTEGER,
+  joplin_items_count INTEGER,
+  google_tasks_count INTEGER,
+  clarification_items_count INTEGER,
   critical_items INTEGER,
   high_items INTEGER,
   completed_since_last INTEGER,
   telegram_message_id INTEGER,
+  generated_by VARCHAR(20) DEFAULT 'scheduled',  -- 'scheduled' or 'manual' (/daily_report command)
   user_action VARCHAR(50),
   action_timestamp DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES telegram_users(user_id)
+  FOREIGN KEY (user_id) REFERENCES telegram_users(user_id),
+  UNIQUE(user_id, report_date)
 );
 
 CREATE TABLE report_configurations (
@@ -161,11 +196,16 @@ CREATE TABLE report_configurations (
   include_high BOOLEAN DEFAULT TRUE,
   include_medium BOOLEAN DEFAULT FALSE,
   include_google_tasks BOOLEAN DEFAULT TRUE,
+  include_clarification_pending BOOLEAN DEFAULT TRUE,
   detail_level VARCHAR(20) DEFAULT 'detailed',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES telegram_users(user_id)
 );
+
+-- Add indexes for performance
+CREATE INDEX idx_daily_reports_user_date ON daily_reports(user_id, report_date);
+CREATE INDEX idx_daily_reports_created ON daily_reports(created_at);
 ```
 
 ### Priority Algorithm
@@ -180,12 +220,54 @@ Impact: High=3, Medium=2, Low=1
 Days_Overdue: number of days past due date
 ```
 
+### Telegram Commands
+
+Users interact with daily reports through these commands:
+
+**Generate Report On-Demand**:
+```
+/daily_report
+  → Immediately generates and sends the daily report
+  → Pulls current Joplin notes and Google Tasks
+  → Respects user configuration settings
+  → Logs the manual trigger in database
+```
+
+**Configuration Commands**:
+```
+/configure_report_time 08:00
+  → Set delivery time for automatic reports
+  → Format: HH:MM (24-hour)
+
+/configure_report_timezone US/Eastern
+  → Set timezone for report scheduling
+  → Examples: US/Eastern, Europe/London, Asia/Tokyo
+
+/configure_report_content high
+  → Set priority filter: critical, high, medium, all
+  → Default: high (includes critical and high items)
+
+/toggle_daily_report on
+  → Enable/disable automatic daily reports
+  → Options: on/off, yes/no, true/false
+
+/show_report_config
+  → Display current configuration
+  → Shows: delivery time, timezone, content level, enabled status
+
+/report_help
+  → Show help for report commands
+  → List all available commands with descriptions
+```
+
 ## Success Metrics
 
 - User engagement: % of reports opened/read
 - Action completion rate: % of report items completed
 - Time saved: User feedback on reduced decision time
 - Report accuracy: % of reported items still relevant next day
+- Feature adoption: % of users with automated reports enabled
+- Google Tasks integration: % of users including Google Tasks in reports
 
 ## Notes
 
@@ -196,3 +278,9 @@ Should be non-intrusive (scheduled, user can disable) but highly visible when de
 ## History
 
 - 2025-01-23 - Created
+- 2025-01-24 - Updated to include Google Tasks aggregation and /daily_report command
+  - Added explicit mention that daily reports include Google Tasks (incomplete tasks)
+  - Added /daily_report command for on-demand report generation
+  - Enhanced message format examples to show both Joplin notes and Google Tasks
+  - Added timezone configuration for accurate scheduled delivery
+  - Added command documentation section
