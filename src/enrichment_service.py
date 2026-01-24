@@ -101,9 +101,24 @@ class EnrichmentService:
                 logger.error(f"Failed to construct metadata header for note '{title}': {e}")
                 return False
 
-            # Update note with metadata
+            # Generate and append augmented information
+            final_body = new_body
             try:
-                success = self.joplin_client.update_note(note_id, {"body": new_body})
+                augmented_content = await self.llm_orchestrator.augment_note_with_research(title, body)
+                if augmented_content:
+                    # Add augmented section at the end
+                    augmented_section = f"\n\n---\n\n## AI Augmented Information\n\n{augmented_content}"
+                    final_body = new_body + augmented_section
+                    logger.debug(f"✓ Generated augmented information for note '{title}'")
+                else:
+                    logger.debug(f"No augmented content generated for note '{title}'")
+            except Exception as e:
+                logger.warning(f"Failed to augment note '{title}': {e}")
+                # Continue with just metadata if augmentation fails
+
+            # Update note with metadata and augmented content
+            try:
+                success = self.joplin_client.update_note(note_id, {"body": final_body})
                 if not success:
                     logger.warning(f"Failed to update note body for '{title}'")
                     return False

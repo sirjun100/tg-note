@@ -351,8 +351,36 @@ class LLMOrchestrator:
                 return json.loads(content[json_start:json_end])
         except Exception as e:
             logger.error(f"Failed to parse enrichment response: {e}")
-            
+
         return {"metadata": None}
+
+    async def augment_note_with_research(self, note_title: str, note_content: str) -> str:
+        """Generate augmented information by researching the note's topic"""
+        system_prompt = self._get_persona_prompt("note_augmentor")
+
+        user_message = f"Note Title: {note_title}\n\nNote Content:\n{note_content[:3000]}"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ]
+
+        logger.info(f"🔬 Augmenting note with research: '{note_title}'")
+
+        response = self.provider.generate_response(
+            messages=messages,
+            temperature=0.5,
+            max_tokens=800
+        )
+
+        content = response.get("content", "").strip()
+        if content:
+            logger.info(f"✨ Generated augmented content for '{note_title}'")
+            return content
+
+        logger.warning(f"No augmented content generated for '{note_title}'")
+        return ""
+
     def _build_system_prompt(self, context: Dict[str, Any] = None) -> str:
         """Build the system prompt for the LLM"""
         context = context or {}
