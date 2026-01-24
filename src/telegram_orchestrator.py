@@ -1816,48 +1816,82 @@ class TelegramOrchestrator:
             logger.error(f"Error in handle_reorg_execute: {e}")
 
     async def handle_enrich_notes(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /enrich_notes command - Enrich notes with metadata"""
+        """Handle /enrich_notes command - Enrich notes with AI-generated metadata"""
         user = update.effective_user
         if not user or not check_whitelist(user.id):
             return
 
         try:
             limit = 10
+            filter_unenriched = False
+
+            # Parse arguments: /enrich_notes [limit] [--unenriched-only]
             if context.args:
-                try:
-                    limit = int(context.args[0])
-                except ValueError:
-                    pass
+                for arg in context.args:
+                    if arg == '--unenriched-only':
+                        filter_unenriched = True
+                    elif arg.isdigit():
+                        limit = int(arg)
 
-            await update.message.reply_text(
-                f"✨ Enriching up to {limit} notes with metadata...\n"
-                f"This may take a few minutes..."
+            # Show enrichment status first
+            summary = self.enrichment_service.get_enrichment_summary()
+            status_msg = (
+                f"📊 *Enrichment Status*\n"
+                f"Total notes: {summary['total_notes']}\n"
+                f"Already enriched: {summary['enriched_notes']}\n"
+                f"Awaiting enrichment: {summary['unenriched_notes']}\n"
+                f"Enrichment: {summary['enrichment_percentage']:.1f}%\n\n"
             )
 
+            await update.message.reply_text(status_msg, parse_mode='Markdown')
+
+            # Prepare enrichment parameters
             notes = self.joplin_client.get_all_notes()
-            notes_to_enrich = notes[:limit] if notes else []
 
-            enriched = 0
-            failed = 0
+            if not notes:
+                await update.message.reply_text("ℹ️ No notes found to enrich.")
+                return
 
-            for note in notes_to_enrich:
-                try:
-                    success = await self.enrichment_service.enrich_note(note.get('id'))
-                    if success:
-                        enriched += 1
-                    else:
-                        failed += 1
-                except Exception as e:
-                    logger.debug(f"Failed to enrich note {note.get('id')}: {e}")
-                    failed += 1
+            filter_func = None
+            if filter_unenriched:
+                filter_func = self.enrichment_service.get_unenriched_notes_filter()
+                filtered_count = len([n for n in notes if filter_func(n)])
+                await update.message.reply_text(
+                    f"🔍 Found {filtered_count} notes awaiting enrichment...\n"
+                    f"Starting enrichment process..."
+                )
 
-            await update.message.reply_text(
-                f"✅ Enrichment Complete!\n\n"
-                f"  ✓ Enriched: {enriched} notes\n"
-                f"  ✗ Failed: {failed} notes\n\n"
-                f"Metadata added: Status, Priority, Summary, Key Takeaways, Tags"
+            # Use batch enrichment with progress callback
+            async def progress_callback(stats):
+                if stats.enriched % 3 == 1:  # Update every 3 notes
+                    progress = f"⏳ Progress: {stats.enriched + stats.skipped}/{stats.total}"
+                    logger.debug(progress)
+
+            stats = await self.enrichment_service.enrich_notes_batch(
+                notes=notes,
+                limit=limit,
+                filter_func=filter_func,
+                progress_callback=progress_callback
             )
-            logger.info(f"User {user.id} enriched {enriched} notes")
+
+            # Format final report
+            result_msg = (
+                f"✅ *Enrichment Complete!*\n\n"
+                f"📈 Results:\n"
+                f"  ✓ Enriched: {stats.enriched} notes\n"
+                f"  ⊘ Skipped: {stats.skipped} (already enriched)\n"
+                f"  ✗ Failed: {stats.failed} notes\n"
+                f"  Success Rate: {stats.success_rate}\n\n"
+                f"📝 Metadata Added:\n"
+                f"  • Status (Active/Waiting/Someday/Done)\n"
+                f"  • Priority (Critical/High/Medium/Low)\n"
+                f"  • Summary\n"
+                f"  • Key Takeaways\n"
+                f"  • Suggested Tags"
+            )
+
+            await update.message.reply_text(result_msg, parse_mode='Markdown')
+            logger.info(f"User {user.id} completed batch enrichment: {stats.enriched}/{stats.total} notes")
 
         except Exception as e:
             await update.message.reply_text("❌ Error enriching notes.")
