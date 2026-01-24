@@ -76,7 +76,68 @@ CREATE VIEW IF NOT EXISTS old_decisions AS
 SELECT id FROM decisions
 WHERE timestamp < datetime('now', '-30 days');
 
+-- Google OAuth tokens table
+CREATE TABLE IF NOT EXISTS google_tokens (
+    user_id TEXT PRIMARY KEY,
+    token_data TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Retention view: logs older than 30 days
 CREATE VIEW IF NOT EXISTS old_logs AS
 SELECT id FROM system_logs
 WHERE timestamp < datetime('now', '-30 days');
+
+-- Google Tasks Configuration table
+CREATE TABLE IF NOT EXISTS google_tasks_config (
+    user_id INTEGER PRIMARY KEY,
+    enabled BOOLEAN DEFAULT TRUE,
+    auto_create_tasks BOOLEAN DEFAULT TRUE,
+    task_list_id TEXT,
+    task_list_name TEXT,
+    include_only_tagged BOOLEAN DEFAULT FALSE,
+    task_creation_tags TEXT,  -- JSON array of tags that trigger task creation
+    privacy_mode BOOLEAN DEFAULT FALSE,  -- If true, don't create tasks for sensitive notes
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Task links between Joplin notes and Google Tasks
+CREATE TABLE IF NOT EXISTS task_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    joplin_note_id TEXT NOT NULL,
+    google_task_id TEXT NOT NULL,
+    google_task_list_id TEXT NOT NULL,
+    joplin_note_title TEXT,
+    google_task_title TEXT,
+    synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_sync DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES google_tokens(user_id),
+    UNIQUE(user_id, joplin_note_id, google_task_id)
+);
+
+-- Task synchronization history
+CREATE TABLE IF NOT EXISTS task_sync_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    task_link_id INTEGER,
+    google_task_id TEXT,
+    action TEXT NOT NULL,  -- 'created', 'updated', 'completed', 'deleted'
+    old_status TEXT,
+    new_status TEXT,
+    sync_direction TEXT,  -- 'joplin_to_google', 'google_to_joplin', 'manual'
+    sync_result TEXT,  -- 'success', 'failed', 'partial'
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES google_tokens(user_id),
+    FOREIGN KEY (task_link_id) REFERENCES task_links(id)
+);
+
+-- Indexes for task tables
+CREATE INDEX IF NOT EXISTS idx_task_links_user_id ON task_links(user_id);
+CREATE INDEX IF NOT EXISTS idx_task_links_joplin_note ON task_links(joplin_note_id);
+CREATE INDEX IF NOT EXISTS idx_task_links_google_task ON task_links(google_task_id);
+CREATE INDEX IF NOT EXISTS idx_task_sync_user_id ON task_sync_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_task_sync_timestamp ON task_sync_history(created_at);
+CREATE INDEX IF NOT EXISTS idx_google_tasks_config_user ON google_tasks_config(user_id);

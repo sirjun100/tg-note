@@ -53,6 +53,46 @@ A Telegram bot that intelligently creates notes in Joplin using AI.
     python main.py
     ```
 
+## Google Tasks Integration (Optional)
+
+The bot can automatically create Google Tasks from AI-identified action items in your notes.
+
+### Setup Steps
+
+1. **Create Google Cloud Project**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing one
+
+2. **Enable Google Tasks API**
+   - Go to "APIs & Services" → "Library"
+   - Search for "Google Tasks API"
+   - Click "Enable"
+
+3. **Create OAuth2 Credentials**
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth 2.0 Client IDs"
+   - Choose "Desktop application"
+   - Download the JSON file or copy Client ID and Secret
+
+4. **Configure Environment**
+   Add to your `.env` file:
+   ```env
+   GOOGLE_CLIENT_ID=your_client_id
+   GOOGLE_CLIENT_SECRET=your_client_secret
+   ```
+
+5. **Authorize Access**
+   - The bot will provide an OAuth2 authorization link
+   - Follow the link and grant permissions for Google Tasks
+   - Copy the authorization code back to the bot
+
+### Features
+
+- Automatic task creation from notes containing action items
+- Bidirectional sync between Joplin notes and Google Tasks
+- Customizable task lists and due dates
+- Privacy controls for task data
+
 ### Manual Setup
 
 If you prefer manual setup:
