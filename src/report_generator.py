@@ -438,51 +438,45 @@ class ReportGenerator:
         self, user_id: int, min_priority: PriorityLevel = PriorityLevel.LOW
     ) -> List[Dict[str, Any]]:
         """
-        Fetch high-priority Joplin notes
+        Fetch all Joplin notes from all folders for the report
 
         Args:
             user_id: Telegram user ID
             min_priority: Minimum priority level to include
 
         Returns:
-            List of note dictionaries
+            List of note dictionaries with all notes from all folders
         """
         if not self.joplin_client:
             self.logger.warning("Joplin client not configured")
             return []
 
         try:
-            # Get all folders
+            # Get all folders (recursively if needed)
             folders = self.joplin_client.get_folders()
             if not folders:
                 self.logger.info("No Joplin folders found")
                 return []
 
-            # Collect notes from all folders
+            # Collect notes from ALL folders (not just those with priority tags)
             all_notes = []
             for folder in folders:
                 try:
                     notes = self.joplin_client.get_notes_in_folder(folder["id"])
                     if notes:
+                        # Add all notes, let priority scoring algorithm rank them
                         for note in notes:
-                            # Extract tags for priority filtering
-                            tags = note.get("tags", [])
-                            if isinstance(tags, str):
-                                tags = [t.strip().lower() for t in tags.split(",")]
-                            else:
-                                tags = [t.lower() for t in tags]
-
-                            # Check if note has priority tags
-                            has_priority_tag = any(
-                                tag in self.PRIORITY_TAGS for tag in tags
-                            )
-                            if has_priority_tag:
+                            # Ensure note has required fields for report generation
+                            if "title" in note and "id" in note:
+                                # Add folder information for context
+                                note["folder_id"] = folder["id"]
+                                note["folder_name"] = folder.get("title", "Unknown")
                                 all_notes.append(note)
                 except Exception as e:
-                    self.logger.warning(f"Failed to fetch notes from folder {folder['id']}: {e}")
+                    self.logger.warning(f"Failed to fetch notes from folder {folder.get('title', folder['id'])}: {e}")
                     continue
 
-            self.logger.debug(f"Fetched {len(all_notes)} Joplin notes with priority tags")
+            self.logger.debug(f"Fetched {len(all_notes)} total Joplin notes from {len(folders)} folders")
             return all_notes
 
         except Exception as e:
