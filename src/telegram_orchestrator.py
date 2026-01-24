@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any, Optional, TYPE_CHECKING
 from telegram import Update, Message
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from datetime import datetime
 
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
@@ -171,6 +172,10 @@ class TelegramOrchestrator:
             "/show_report_config - View your report settings\n"
             "/configure_report_content LEVEL - Set report detail level\n"
             "/report_help - Show all report commands\n\n"
+
+            "🧠 **GTD Brain Dump**\n"
+            "/braindump - Start an interactive mind sweep session\n"
+            "/braindump_stop - End the session early\n\n"
 
             "⚙️ **How It Works**\n"
             "📝 **For Regular Notes:**\n"
@@ -1089,6 +1094,201 @@ class TelegramOrchestrator:
             await update.message.reply_text("❌ Error retrieving help.")
             logger.error(f"Error in handle_report_help: {e}")
 
+    async def handle_braindump(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /braindump command - Start interactive GTD brain dump session"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        user_id = user.id
+        logger.info(f"User {user_id} starting /braindump session")
+
+        # Check if session already active
+        state = self.state_manager.get_state(user_id)
+        if state and state.get('active_persona') == 'GTD_EXPERT':
+            await update.message.reply_text("💡 You already have an active brain dump session! Just keep typing, or use /braindump_stop to finish.")
+            return
+
+        # Initialize Brain Dump state
+        new_state = {
+            'active_persona': 'GTD_EXPERT',
+            'session_start': datetime.now().isoformat(),
+            'captured_items': [],
+            'conversation_history': []
+        }
+        
+        # Load prompt for first question
+        from pathlib import Path
+        prompt_path = Path(__file__).parent / "prompts" / "gtd_expert.txt"
+        first_question = "Ready to dump your brain? Let's do 15 minutes. First—what is the thing that has been poking at you the most lately? The one that keeps coming back."
+        
+        if prompt_path.exists():
+            try:
+                with open(prompt_path, "r") as f:
+                    content = f.read()
+                    # Extract last line as the first question if it's there
+                    lines = content.strip().split("\n")
+                    if lines:
+                        first_question = lines[-1]
+            except Exception as e:
+                logger.warning(f"Failed to read prompt for first question: {e}")
+
+        self.state_manager.update_state(user_id, new_state)
+        await update.message.reply_text(f"🧠 *GTD MIND SWEEP SESSION STARTED*\n\n{first_question}", parse_mode='Markdown')
+
+    async def handle_braindump_stop(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /braindump_stop command - Finish current session early"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        user_id = user.id
+        state = self.state_manager.get_state(user_id)
+
+        if not state or state.get('active_persona') != 'GTD_EXPERT':
+            await update.message.reply_text("❌ You don't have an active brain dump session. Use /braindump to start one.")
+            return
+
+        logger.info(f"User {user_id} stopping /braindump session via command")
+        await self._finish_braindump_session(user_id, update.message)
+
+    async def _handle_braindump_message(self, user_id: int, text: str, message: Message) -> None:
+        """Handle a message during an active brain dump session"""
+        state = self.state_manager.get_state(user_id)
+        if not state:
+            return
+
+        history = state.get('conversation_history', [])
+        
+        # Prepare context (optional, but good for LLM)
+        context = {
+            "session_start": state.get('session_start'),
+            "item_count": len(state.get('captured_items', []))
+        }
+
+        # Call LLM with GTD_EXPERT persona
+        try:
+            llm_response = self.llm_orchestrator.process_message(
+                user_message=text,
+                context=context,
+                persona="gtd_expert",
+                history=history
+            )
+
+            # Update history with user message
+            history.append({"role": "user", "content": text})
+
+            if llm_response.status == "SUCCESS":
+                # Session is over, LLM provided the final summary
+                logger.info(f"GTD session for user {user_id} completed by LLM")
+                
+                # Update state with the final note data before finishing
+                state['final_note'] = llm_response.note
+                state['conversation_history'] = history # Save full history
+                self.state_manager.update_state(user_id, state)
+                
+                await self._finish_braindump_session(user_id, message, llm_response.note)
+            
+            else:
+                # Session continues, LLM asked a new question
+                next_question = llm_response.question or "Any other thoughts?"
+                
+                # Update history with assistant's response
+                history.append({"role": "assistant", "content": next_question})
+                
+                # Update state
+                state['conversation_history'] = history[-15:] # Keep last 15 for context
+                self.state_manager.update_state(user_id, state)
+                
+                await message.reply_text(next_question)
+
+        except Exception as e:
+            logger.error(f"Error in GTD brain dump processing for user {user_id}: {e}")
+            await message.reply_text("❌ Sorry, I had some trouble processing that. You can continue or use /braindump_stop to finish.")
+
+    async def _finish_braindump_session(self, user_id: int, message: Message, note_data: Optional[Dict[str, Any]] = None) -> None:
+        """Finalize the brain dump session and create the Joplin note"""
+        state = self.state_manager.get_state(user_id)
+        if not state:
+            return
+
+        await message.reply_text("🏁 *FINISHING BRAIN DUMP SESSION...*", parse_mode='Markdown')
+
+        try:
+            final_note = note_data or state.get('final_note')
+            
+            if not final_note:
+                # If we don't have a final note yet (e.g. forced stop), 
+                # we should try to generate one from the history
+                history = state.get('conversation_history', [])
+                if history:
+                    await message.reply_text("📊 Generating summary of your session...")
+                    llm_response = self.llm_orchestrator.process_message(
+                        user_message="Please summarize everything we've talked about so far into an organized list.",
+                        persona="gtd_expert"
+                    )
+                    if llm_response.status == "SUCCESS":
+                        final_note = llm_response.note
+                    else:
+                        await message.reply_text("⚠️ Couldn't generate a structured summary. I'll save our conversation as-is.")
+                        final_note = {
+                            "title": f"Brain Dump Session - {datetime.now().strftime('%Y-%m-%d')}",
+                            "body": "\n".join([f"{h['role']}: {h['content']}" for h in history]),
+                            "parent_id": "Inbox", # Default or fallback
+                            "tags": ["brain-dump", "mindsweep"]
+                        }
+
+            if final_note:
+                # Ensure we have a valid folder ID
+                if not final_note.get('parent_id') or final_note.get('parent_id') == 'Inbox':
+                    # Try to find a 'Brain Dump' or 'Inbox' folder
+                    folders = self.joplin_client.get_folders()
+                    inbox_id = None
+                    for f in folders:
+                        if f['title'].lower() in ['inbox', 'brain dump', 'capture']:
+                            inbox_id = f['id']
+                            break
+                    if inbox_id:
+                        final_note['parent_id'] = inbox_id
+                    elif folders:
+                        final_note['parent_id'] = folders[0]['id']
+
+                # Create the note
+                note_result = await self._create_note_in_joplin(final_note)
+                
+                if note_result:
+                    await message.reply_text(f"✅ *BRAIN DUMP SAVED TO JOPLIN*\n\nNote: {final_note['title']}", parse_mode='Markdown')
+                    
+                    # Log to database
+                    decision = Decision(
+                        user_id=user_id,
+                        status="SUCCESS",
+                        folder_chosen=final_note.get('parent_id'),
+                        note_title=final_note.get('title'),
+                        note_body=final_note.get('body'),
+                        tags=final_note.get('tags', []),
+                        joplin_note_id=note_result['note_id']
+                    )
+                    self.logging_service.log_decision(decision)
+
+                    # Create Google Tasks if applicable
+                    if GOOGLE_TASKS_AVAILABLE and self.task_service:
+                        await message.reply_text("🚀 Extracting action items to Google Tasks...")
+                        created_tasks = self.task_service.create_tasks_from_decision(decision, str(user_id))
+                        if created_tasks:
+                            await message.reply_text(f"✅ Created {len(created_tasks)} task(s) in Google Tasks.")
+                else:
+                    await message.reply_text("❌ Failed to save note to Joplin.")
+            
+            # Clear state
+            self.state_manager.clear_state(user_id)
+            await message.reply_text("✨ Brain dump session closed. Your head should feel lighter now!")
+
+        except Exception as e:
+            logger.error(f"Error finishing brain dump for user {user_id}: {e}", exc_info=True)
+            await message.reply_text("❌ An error occurred while finishing your session. I've cleared the session state.")
+            self.state_manager.clear_state(user_id)
+
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming text messages"""
         user = update.effective_user
@@ -1122,9 +1322,13 @@ class TelegramOrchestrator:
             pending_state = self.state_manager.get_state(user_id)
 
             if pending_state:
-                logger.info(f"🔄 Handling clarification reply for user {user_id}")
-                # This is a reply to a clarification question
-                await self._handle_clarification_reply(user_id, validated_text, message)
+                if pending_state.get('active_persona') == 'GTD_EXPERT':
+                    logger.info(f"🧠 Handling GTD mind sweep message for user {user_id}")
+                    await self._handle_braindump_message(user_id, validated_text, message)
+                else:
+                    logger.info(f"🔄 Handling clarification reply for user {user_id}")
+                    # This is a reply to a clarification question
+                    await self._handle_clarification_reply(user_id, validated_text, message)
             else:
                 logger.info(f"🆕 Processing new request for user {user_id}")
                 # This is a new request
@@ -1494,6 +1698,9 @@ def main():
     application.add_handler(CommandHandler("show_report_config", orchestrator.handle_show_report_config))
     application.add_handler(CommandHandler("configure_report_content", orchestrator.handle_configure_report_content))
     application.add_handler(CommandHandler("report_help", orchestrator.handle_report_help))
+    application.add_handler(CommandHandler("braindump", orchestrator.handle_braindump))
+    application.add_handler(CommandHandler("capture", orchestrator.handle_braindump))  # Alias
+    application.add_handler(CommandHandler("braindump_stop", orchestrator.handle_braindump_stop))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, orchestrator.handle_message))
 
     # Register startup and shutdown callbacks for scheduler

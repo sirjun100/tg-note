@@ -7,12 +7,12 @@ requires: [markdown-support]
 
 # Feature Request: FR-017 - GTD Expert Persona for 15-Minute Brain Dumping
 
-**Status**: ⭕ Not Started  
+**Status**: ⏳ In Progress  
 **Priority**: 🟠 High  
 **Story Points**: 8 (Fibonacci: 1, 2, 3, 5, 8, 13)  
 **Created**: 2026-01-24  
 **Updated**: 2026-01-24  
-**Assigned Sprint**: Backlog
+**Assigned Sprint**: Sprint 7
 
 ## Description
 

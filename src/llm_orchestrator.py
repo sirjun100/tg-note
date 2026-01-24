@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from src.llm_providers import registry as provider_registry
 from config import LLM_PROVIDER
 from src.logging_service import LoggingService, LLMInteraction
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -43,29 +44,43 @@ class LLMOrchestrator:
         if not self.provider.is_available():
             raise RuntimeError(f"LLM provider '{self.provider_name}' is not available")
 
-    def process_message(self, user_message: str, context: Dict[str, Any] = None) -> JoplinNoteSchema:
+        # Persona storage
+        self.prompts_dir = Path(__file__).parent / "prompts"
+        self._personas = {}
+
+    def process_message(self, user_message: str, context: Dict[str, Any] = None, persona: str = None, history: List[Dict[str, str]] = None) -> JoplinNoteSchema:
         """
         Process user message and generate note data using LLM
 
         Args:
             user_message: The message from the user
             context: Additional context (existing tags, conversation history, etc.)
+            persona: Optional persona name to use for the system prompt
+            history: Optional conversation history to include
 
         Returns:
             JoplinNoteSchema with the LLM's response
         """
-        logger.info(f"🔄 Processing message with {self.provider_name}: '{user_message[:100]}{'...' if len(user_message) > 100 else ''}'")
+        logger.info(f"🔄 Processing message with {self.provider_name} (Persona: {persona or 'default'}): '{user_message[:100]}{'...' if len(user_message) > 100 else ''}'")
 
         try:
             # Build the system prompt
-            system_prompt = self._build_system_prompt(context)
+            if persona:
+                system_prompt = self._get_persona_prompt(persona, context)
+            else:
+                system_prompt = self._build_system_prompt(context)
+            
             logger.info(f"📝 System prompt ({len(system_prompt)} chars): {system_prompt[:200]}{'...' if len(system_prompt) > 200 else ''}")
 
             # Prepare messages
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ]
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            # Add history if provided
+            if history:
+                messages.extend(history)
+            
+            # Add current user message
+            messages.append({"role": "user", "content": user_message})
 
             logger.info(f"💬 User message: '{user_message}'")
             logger.info(f"🤖 Calling {self.provider_name} API...")
@@ -322,6 +337,27 @@ Response: {
 Remember: Be helpful, accurate, and ask for clarification when needed rather than making assumptions."""
 
         return prompt
+
+    def _get_persona_prompt(self, persona: str, context: Dict[str, Any] = None) -> str:
+        """Get the system prompt for a specific persona"""
+        # Check cache
+        if persona in self._personas:
+            return self._personas[persona]
+
+        # Load from file
+        prompt_path = self.prompts_dir / f"{persona}.txt"
+        if not prompt_path.exists():
+            logger.warning(f"Persona file not found: {prompt_path}, falling back to default")
+            return self._build_system_prompt(context)
+
+        try:
+            with open(prompt_path, "r") as f:
+                prompt_content = f.read()
+                self._personas[persona] = prompt_content
+                return prompt_content
+        except Exception as e:
+            logger.error(f"Error loading persona {persona}: {e}")
+            return self._build_system_prompt(context)
 
     def _create_error_response(self, error_msg: str) -> JoplinNoteSchema:
         """Create an error response schema"""
