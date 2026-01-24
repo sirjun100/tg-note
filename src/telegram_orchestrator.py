@@ -13,6 +13,7 @@ from src.llm_orchestrator import LLMOrchestrator
 from src.state_manager import StateManager
 from src.logging_service import LoggingService, TelegramMessage, Decision
 from src.report_generator import ReportGenerator, PriorityLevel
+from src.scheduler_service import get_scheduler_service
 from src.security_utils import (
     check_whitelist, validate_message_text, ping_joplin_api,
     handle_api_error, format_error_message, format_success_message
@@ -63,6 +64,10 @@ class TelegramOrchestrator:
             task_service=self.task_service
         )
         logger.info("Report generator initialized")
+
+        # Initialize Scheduler Service for scheduled reports
+        self.scheduler = get_scheduler_service()
+        logger.info("Scheduler service initialized")
 
         # Check Joplin connectivity on startup
         if not ping_joplin_api():
@@ -599,6 +604,79 @@ class TelegramOrchestrator:
             await update.message.reply_text(error_msg)
             logger.error(f"Error in handle_daily_report: {e}", exc_info=True)
 
+    async def send_scheduled_report(self, user_id: int) -> None:
+        """
+        Send a scheduled daily report to a user
+
+        This is called by the scheduler at the configured time.
+
+        Args:
+            user_id: Telegram user ID
+        """
+        try:
+            logger.info(f"Sending scheduled report to user {user_id}")
+
+            # Get user's configuration
+            config = self.logging_service.get_report_configuration(user_id)
+            if not config or not config.get('enabled', True):
+                logger.debug(f"Scheduled reports disabled for user {user_id}")
+                return
+
+            # Get pending clarifications from state
+            state = self.state_manager.get_state(user_id)
+            pending_clarifications = state.get("pending_clarifications", []) if state else []
+
+            # Determine minimum priority level to include
+            detail_level = config.get('detail_level', 'detailed')
+            min_priority = PriorityLevel.LOW
+
+            # Generate report
+            report = await self.report_generator.generate_report_async(
+                user_id=user_id,
+                pending_clarifications=pending_clarifications,
+                completed_items=[],
+                min_priority=min_priority
+            )
+
+            # Filter by content settings
+            if not config.get('include_critical') and not config.get('include_high'):
+                logger.debug(f"User {user_id} has all content filters disabled")
+                return
+
+            # Format and send report
+            message = self.report_generator.format_report_message(
+                report, include_details=(detail_level == 'detailed')
+            )
+
+            # Send via Telegram
+            from telegram import Bot
+            bot = Bot(token=TELEGRAM_BOT_TOKEN)
+            sent_message = await bot.send_message(chat_id=user_id, text=message)
+
+            # Log report generation
+            self.logging_service.log_daily_report(
+                user_id=user_id,
+                report_data={
+                    'joplin_count': report.joplin_count,
+                    'google_tasks_count': report.google_tasks_count,
+                    'clarification_count': report.clarification_count,
+                    'critical_items': len(report.critical_items),
+                    'high_items': len(report.high_items),
+                    'medium_items': len(report.medium_items),
+                    'low_items': len(report.low_items),
+                    'completed_count': report.completed_count,
+                    'generated_by': 'scheduled'
+                }
+            )
+
+            logger.info(
+                f"Scheduled report sent to user {user_id}: "
+                f"{report.total_items} items, message_id={sent_message.message_id}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to send scheduled report to user {user_id}: {e}", exc_info=True)
+
     async def handle_configure_report_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /configure_report_time command - Set report delivery time"""
         user = update.effective_user
@@ -650,10 +728,34 @@ class TelegramOrchestrator:
             # Save config
             self.logging_service.save_report_configuration(user_id, config)
 
-            await update.message.reply_text(
-                f"✅ Report delivery time set to {time_str}\n"
-                f"Timezone: {config.get('timezone', 'UTC')}"
-            )
+            # If enabled, reschedule the job with new time
+            if config.get('enabled', True):
+                timezone = config.get('timezone', 'UTC')
+                scheduled = await self.scheduler.schedule_daily_report(
+                    user_id=user_id,
+                    delivery_time=time_str,
+                    timezone_str=timezone,
+                    report_callback=self.send_scheduled_report
+                )
+                if scheduled:
+                    await update.message.reply_text(
+                        f"✅ Report delivery time set to {time_str}\n"
+                        f"Timezone: {timezone}\n"
+                        f"✓ Scheduled"
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"✅ Report delivery time set to {time_str}\n"
+                        f"Timezone: {timezone}\n"
+                        f"⚠️ Failed to schedule job"
+                    )
+            else:
+                await update.message.reply_text(
+                    f"✅ Report delivery time set to {time_str}\n"
+                    f"Timezone: {config.get('timezone', 'UTC')}\n"
+                    f"(Reports currently disabled)"
+                )
+
             logger.info(f"User {user_id} set report time to {time_str}")
 
         except Exception as e:
@@ -710,10 +812,34 @@ class TelegramOrchestrator:
             # Save config
             self.logging_service.save_report_configuration(user_id, config)
 
-            await update.message.reply_text(
-                f"✅ Timezone set to {timezone_str}\n"
-                f"Report time: {config.get('delivery_time', '08:00')}"
-            )
+            # If enabled, reschedule the job with new timezone
+            if config.get('enabled', True):
+                delivery_time = config.get('delivery_time', '08:00')
+                scheduled = await self.scheduler.schedule_daily_report(
+                    user_id=user_id,
+                    delivery_time=delivery_time,
+                    timezone_str=timezone_str,
+                    report_callback=self.send_scheduled_report
+                )
+                if scheduled:
+                    await update.message.reply_text(
+                        f"✅ Timezone set to {timezone_str}\n"
+                        f"Report time: {delivery_time}\n"
+                        f"✓ Scheduled"
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"✅ Timezone set to {timezone_str}\n"
+                        f"Report time: {delivery_time}\n"
+                        f"⚠️ Failed to schedule job"
+                    )
+            else:
+                await update.message.reply_text(
+                    f"✅ Timezone set to {timezone_str}\n"
+                    f"Report time: {config.get('delivery_time', '08:00')}\n"
+                    f"(Reports currently disabled)"
+                )
+
             logger.info(f"User {user_id} set timezone to {timezone_str}")
 
         except Exception as e:
@@ -767,12 +893,40 @@ class TelegramOrchestrator:
             # Save config
             self.logging_service.save_report_configuration(user_id, config)
 
-            status = "✅ Enabled" if enabled else "❌ Disabled"
-            await update.message.reply_text(
-                f"Daily reports {status}\n"
-                f"Scheduled for: {config.get('delivery_time', '08:00')} "
-                f"{config.get('timezone', 'UTC')}"
-            )
+            # Schedule or cancel job based on enabled state
+            if enabled:
+                delivery_time = config.get('delivery_time', '08:00')
+                timezone = config.get('timezone', 'UTC')
+                scheduled = await self.scheduler.schedule_daily_report(
+                    user_id=user_id,
+                    delivery_time=delivery_time,
+                    timezone_str=timezone,
+                    report_callback=self.send_scheduled_report
+                )
+                if scheduled:
+                    await update.message.reply_text(
+                        f"✅ Daily reports enabled\n"
+                        f"Scheduled for: {delivery_time} {timezone}\n"
+                        f"✓ Job scheduled"
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"⚠️ Reports enabled but scheduling failed\n"
+                        f"Configured for: {delivery_time} {timezone}"
+                    )
+            else:
+                cancelled = await self.scheduler.cancel_daily_report(user_id)
+                if cancelled:
+                    await update.message.reply_text(
+                        f"❌ Daily reports disabled\n"
+                        f"✓ Job cancelled"
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"❌ Daily reports disabled\n"
+                        f"(No scheduled job found)"
+                    )
+
             logger.info(f"User {user_id} {'enabled' if enabled else 'disabled'} daily reports")
 
         except Exception as e:
@@ -1332,6 +1486,26 @@ def main():
     application.add_handler(CommandHandler("configure_report_content", orchestrator.handle_configure_report_content))
     application.add_handler(CommandHandler("report_help", orchestrator.handle_report_help))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, orchestrator.handle_message))
+
+    # Register startup and shutdown callbacks for scheduler
+    async def startup_callback(context):
+        """Called when bot starts - initialize scheduler"""
+        try:
+            await orchestrator.scheduler.start()
+            logger.info("Scheduler started on bot startup")
+        except Exception as e:
+            logger.error(f"Failed to start scheduler: {e}")
+
+    async def shutdown_callback(context):
+        """Called when bot shuts down - stop scheduler"""
+        try:
+            await orchestrator.scheduler.stop()
+            logger.info("Scheduler stopped on bot shutdown")
+        except Exception as e:
+            logger.error(f"Failed to stop scheduler: {e}")
+
+    application.post_init = startup_callback
+    application.post_shutdown = shutdown_callback
 
     # Start the bot with configurable polling
     logger.info("Starting Telegram bot...")
