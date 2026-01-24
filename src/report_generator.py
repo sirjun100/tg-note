@@ -107,6 +107,7 @@ class ReportData:
     high_items: List[ReportItem] = field(default_factory=list)
     medium_items: List[ReportItem] = field(default_factory=list)
     low_items: List[ReportItem] = field(default_factory=list)
+    joplin_notes: List[ReportItem] = field(default_factory=list)  # Separate section for all Joplin notes
     pending_clarification: List[str] = field(default_factory=list)
     completed_items: List[str] = field(default_factory=list)
     joplin_count: int = 0
@@ -328,7 +329,7 @@ Response:"""
                 impact_score=impact,
                 tags=tags,
                 metadata={
-                    "folder": note.get("folder_id", ""),
+                    "folder": note.get("folder_name", note.get("folder_id", "")),
                     "created": note.get("created", ""),
                     "updated": note.get("updated", ""),
                 },
@@ -402,11 +403,15 @@ Response:"""
         )
 
     def categorize_items(self, items: List[ReportItem]) -> ReportData:
-        """Categorize items by priority level"""
+        """Categorize items by priority level, separating Joplin notes"""
         report = ReportData(user_id=0, report_date=datetime.now())
 
         for item in items:
-            if item.priority_level == PriorityLevel.CRITICAL:
+            # Separate Joplin notes into their own section
+            if item.source == ItemSource.JOPLIN:
+                report.joplin_notes.append(item)
+            # Priority items (Google Tasks + any Joplin notes marked as high priority tasks)
+            elif item.priority_level == PriorityLevel.CRITICAL:
                 report.critical_items.append(item)
             elif item.priority_level == PriorityLevel.HIGH:
                 report.high_items.append(item)
@@ -414,6 +419,9 @@ Response:"""
                 report.medium_items.append(item)
             else:
                 report.low_items.append(item)
+
+        # Sort Joplin notes by priority score
+        report.joplin_notes.sort(key=lambda x: x.priority_score, reverse=True)
 
         return report
 
@@ -778,7 +786,9 @@ Response:"""
         self, report: ReportData, include_details: bool = True
     ) -> str:
         """
-        Format report data into a Telegram message
+        Format report data into a Telegram message with 2 sections:
+        1. PRIORITY TASKS (Critical, High, Medium, Low)
+        2. JOPLIN NOTES (all notes, ranked by priority)
 
         Args:
             report: ReportData to format
@@ -797,64 +807,79 @@ Response:"""
         lines.append(f"📊 Daily Priority Report - {report_date}")
 
         # Summary line
-        total_str = f"{report.total_items} items total"
-        if report.joplin_count > 0 and report.google_tasks_count > 0:
-            total_str += f" ({report.joplin_count} from Joplin + {report.google_tasks_count} from Google Tasks)"
-        elif report.joplin_count > 0:
-            total_str += f" ({report.joplin_count} from Joplin)"
-        elif report.google_tasks_count > 0:
-            total_str += f" ({report.google_tasks_count} from Google Tasks)"
+        summary_parts = []
+        if report.google_tasks_count > 0:
+            summary_parts.append(f"{report.google_tasks_count} Tasks")
+        if report.joplin_count > 0:
+            summary_parts.append(f"{report.joplin_count} Notes")
 
-        lines.append(f"📊 {total_str}\n")
+        summary = " • ".join(summary_parts) if summary_parts else "No items"
+        lines.append(f"📊 {summary}\n")
 
-        # Critical items
-        if report.critical_items:
-            lines.append("🔴 CRITICAL (HIGH PRIORITY)")
-            for item in report.critical_items:
-                lines.append(self._format_item_line(item, show_source=True))
-            lines.append("")
+        # ==================== SECTION 1: PRIORITY TASKS ====================
+        priority_items = (
+            report.critical_items + report.high_items + report.medium_items + report.low_items
+        )
 
-        # High priority items
-        if report.high_items:
-            lines.append("🟠 HIGH PRIORITY")
+        if priority_items:
+            lines.append("=" * 50)
+            lines.append("🎯 SECTION 1: PRIORITY TASKS")
+            lines.append("=" * 50)
 
-            # Group by source for better readability
-            joplin_items = [i for i in report.high_items if i.source == ItemSource.JOPLIN]
-            google_items = [i for i in report.high_items if i.source == ItemSource.GOOGLE_TASKS]
+            # Critical items
+            if report.critical_items:
+                lines.append("🔴 CRITICAL PRIORITY")
+                for item in report.critical_items:
+                    lines.append(self._format_item_line(item, show_source=True))
+                lines.append("")
 
-            if joplin_items:
-                lines.append(f"📝 Joplin Notes ({len(joplin_items)}):")
-                for item in joplin_items:
-                    lines.append(self._format_item_line(item, show_source=False))
+            # High priority items
+            if report.high_items:
+                lines.append("🟠 HIGH PRIORITY")
+                for item in report.high_items:
+                    lines.append(self._format_item_line(item, show_source=True))
+                lines.append("")
 
-            if google_items:
-                if joplin_items:
-                    lines.append("")
-                lines.append(f"✅ Google Tasks ({len(google_items)}):")
-                for item in google_items:
-                    lines.append(self._format_item_line(item, show_source=False))
+            # Medium priority items
+            if report.medium_items:
+                lines.append(f"🟡 MEDIUM PRIORITY ({len(report.medium_items)} items)")
+                for item in report.medium_items[:5]:  # Limit to 5
+                    lines.append(self._format_item_line(item, show_source=True))
+                if len(report.medium_items) > 5:
+                    lines.append(f"  ... and {len(report.medium_items) - 5} more")
+                lines.append("")
 
-            lines.append("")
+            # Low priority items
+            if report.low_items and include_details:
+                lines.append(f"🟢 LOW PRIORITY ({len(report.low_items)} items)")
+                lines.append("")
 
-        # Medium priority items
-        if report.medium_items:
-            lines.append(f"🟡 MEDIUM PRIORITY ({len(report.medium_items)} items)")
-            for item in report.medium_items[:5]:  # Limit to 5
-                lines.append(self._format_item_line(item, show_source=True))
-            if len(report.medium_items) > 5:
-                lines.append(f"  ... and {len(report.medium_items) - 5} more")
-            lines.append("")
+        # ==================== SECTION 2: JOPLIN NOTES ====================
+        if report.joplin_notes:
+            lines.append("\n" + "=" * 50)
+            lines.append("📝 SECTION 2: JOPLIN NOTES")
+            lines.append(f"   ({len(report.joplin_notes)} total notes, ranked by relevance)")
+            lines.append("=" * 50)
 
-        # Low priority items (condensed)
-        if report.low_items and include_details:
-            lines.append(f"🟢 LOW PRIORITY ({len(report.low_items)} items)")
-            lines.append("")
+            # Show top 10 notes
+            for i, note in enumerate(report.joplin_notes[:10], 1):
+                # Format: priority indicator + title
+                priority_emoji = "🔴" if note.priority_level == PriorityLevel.CRITICAL else \
+                                 "🟠" if note.priority_level == PriorityLevel.HIGH else \
+                                 "🟡" if note.priority_level == PriorityLevel.MEDIUM else "🟢"
+                folder_name = note.metadata.get("folder", "No Folder") if note.metadata else "No Folder"
+                lines.append(f"{i}. {priority_emoji} {note.title}")
+                if note.metadata and folder_name != "No Folder":
+                    lines.append(f"   📂 {folder_name}")
+
+            if len(report.joplin_notes) > 10:
+                lines.append(f"\n... and {len(report.joplin_notes) - 10} more notes")
 
         # Pending clarifications
         if report.pending_clarification:
-            lines.append("⏳ PENDING CLARIFICATION")
+            lines.append("\n⏳ PENDING CLARIFICATION")
             for item_title in report.pending_clarification:
-                lines.append(f"• {item_title} - awaiting your response")
+                lines.append(f"• {item_title}")
             lines.append("")
 
         # Completed items
@@ -866,18 +891,8 @@ Response:"""
                 lines.append(f"  ... and {len(report.completed_items) - 5} more")
             lines.append("")
 
-        # Recommendation
-        if report.all_items:
-            top_item = report.all_items[0]
-            lines.append("💡 RECOMMENDATION")
-            lines.append(f'Start with: "{top_item.title}"')
-            if len(report.all_items) > 1:
-                second_item = report.all_items[1]
-                lines.append(f'Then: "{second_item.title}"')
-            lines.append("")
-
         # Footer with commands
-        lines.append("---")
+        lines.append("\n" + "-" * 50)
         lines.append("🔗 /daily_report - Generate another report now")
         lines.append("⚙️ /show_report_config - View your settings")
 
