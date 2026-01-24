@@ -504,8 +504,8 @@ class ReportGenerator:
             return []
 
         try:
-            # Get task lists
-            task_lists = await self.task_service.get_task_lists(user_id)
+            # Get task lists (get_available_task_lists is synchronous)
+            task_lists = self.task_service.get_available_task_lists(str(user_id))
             if not task_lists:
                 self.logger.debug("No Google task lists found")
                 return []
@@ -514,17 +514,20 @@ class ReportGenerator:
             all_tasks = []
             for task_list in task_lists:
                 try:
-                    tasks = await self.task_service.get_tasks(
-                        user_id, task_list["id"], show_completed=False
+                    # get_user_tasks is synchronous
+                    tasks = self.task_service.get_user_tasks(
+                        str(user_id), task_list.get("id")
                     )
                     if tasks:
-                        # Add task list ID for reference
+                        # Add task list ID for reference and filter for incomplete tasks
                         for task in tasks:
-                            task["tasklist_id"] = task_list["id"]
-                        all_tasks.extend(tasks)
+                            # Only include incomplete tasks (status != 'completed')
+                            if task.get("status") != "completed":
+                                task["tasklist_id"] = task_list.get("id")
+                                all_tasks.append(task)
                 except Exception as e:
                     self.logger.warning(
-                        f"Failed to fetch tasks from list {task_list['id']}: {e}"
+                        f"Failed to fetch tasks from list {task_list.get('id')}: {e}"
                     )
                     continue
 

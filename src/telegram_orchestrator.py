@@ -163,6 +163,15 @@ class TelegramOrchestrator:
             "/list_inbox_tasks - View your pending Google Tasks\n"
             "/google_tasks_status - See sync history & stats\n\n"
 
+            "📊 **Daily Priority Reports**\n"
+            "/daily_report - Get on-demand priority report\n"
+            "/configure_report_time HH:MM - Set delivery time (e.g., 09:00)\n"
+            "/configure_report_timezone TIMEZONE - Set your timezone\n"
+            "/toggle_daily_report on|off - Enable/disable scheduled reports\n"
+            "/show_report_config - View your report settings\n"
+            "/configure_report_content LEVEL - Set report detail level\n"
+            "/report_help - Show all report commands\n\n"
+
             "⚙️ **How It Works**\n"
             "📝 **For Regular Notes:**\n"
             "  1️⃣ Send: 'I had a great meeting with John'\n"
