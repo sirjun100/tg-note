@@ -12,6 +12,7 @@ from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
 from src.state_manager import StateManager
 from src.logging_service import LoggingService, TelegramMessage, Decision
+from src.report_generator import ReportGenerator, PriorityLevel
 from src.security_utils import (
     check_whitelist, validate_message_text, ping_joplin_api,
     handle_api_error, format_error_message, format_success_message
@@ -55,6 +56,13 @@ class TelegramOrchestrator:
                 logger.warning("Google Tasks integration not configured (credentials missing)")
             except Exception as e:
                 logger.warning(f"Failed to initialize Google Tasks integration: {e}")
+
+        # Initialize Report Generator for daily reports
+        self.report_generator = ReportGenerator(
+            joplin_client=self.joplin_client,
+            task_service=self.task_service
+        )
+        logger.info("Report generator initialized")
 
         # Check Joplin connectivity on startup
         if not ping_joplin_api():
@@ -533,6 +541,64 @@ class TelegramOrchestrator:
             await update.message.reply_text(f"❌ Error listing tasks: {e}")
             logger.error(f"Error in list_inbox_tasks: {e}")
 
+    async def handle_daily_report(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /daily_report command - Generate on-demand daily priority report"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            await update.message.reply_text("❌ You're not authorized to use this command.")
+            return
+
+        try:
+            user_id = user.id
+
+            # Show "typing" indicator
+            await update.message.chat.send_action("typing")
+
+            logger.info(f"Generating on-demand daily report for user {user_id}")
+
+            # Get pending clarifications from state (if any)
+            state = self.state_manager.get_state(user_id)
+            pending_clarifications = state.get("pending_clarifications", []) if state else []
+
+            # Generate report asynchronously
+            report = await self.report_generator.generate_report_async(
+                user_id=user_id,
+                pending_clarifications=pending_clarifications,
+                completed_items=[],  # TODO: Track completed items
+                min_priority=PriorityLevel.LOW
+            )
+
+            # Format message
+            if report.total_items == 0 and not pending_clarifications:
+                message = self.report_generator.format_report_message(report)
+            else:
+                message = self.report_generator.format_report_message(report, include_details=True)
+
+            # Send report
+            await update.message.reply_text(message)
+
+            # Log report generation
+            self.logging_service.log_system_event(
+                level="INFO",
+                module="daily_report",
+                message=f"Generated on-demand daily report for user {user_id}",
+                extra_data={
+                    "total_items": report.total_items,
+                    "joplin_count": report.joplin_count,
+                    "google_tasks_count": report.google_tasks_count,
+                    "critical": len(report.critical_items),
+                    "high": len(report.high_items),
+                    "generated_by": "manual"
+                }
+            )
+
+            logger.info(f"Daily report sent to user {user_id}: {report.total_items} items")
+
+        except Exception as e:
+            error_msg = "❌ Error generating daily report. Please try again later."
+            await update.message.reply_text(error_msg)
+            logger.error(f"Error in handle_daily_report: {e}", exc_info=True)
+
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming text messages"""
         user = update.effective_user
@@ -931,6 +997,7 @@ def main():
     application.add_handler(CommandHandler("toggle_privacy", orchestrator.handle_toggle_privacy))
     application.add_handler(CommandHandler("google_tasks_status", orchestrator.handle_google_tasks_status))
     application.add_handler(CommandHandler("list_inbox_tasks", orchestrator.handle_list_inbox_tasks))
+    application.add_handler(CommandHandler("daily_report", orchestrator.handle_daily_report))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, orchestrator.handle_message))
 
     # Start the bot with configurable polling
