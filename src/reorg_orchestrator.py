@@ -381,28 +381,27 @@ class ReorgOrchestrator:
             logger.warning(f"Failed to extract tags from folder {folder_id}: {e}")
             return []
 
-    def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False, enrichment_service: Optional[Any] = None) -> Dict[str, Any]:
+    def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False) -> Dict[str, Any]:
         """
-        Execute a series of note moves with tag enrichment and AI metadata injection.
+        Execute a series of note moves with automatic tag application.
 
         Args:
             plan: List of moves: {"note_id": "...", "target_folder_id": "..."}
             dry_run: If True, don't actually move notes, just report what would happen
-            enrichment_service: Optional EnrichmentService for adding metadata to notes
 
         Returns:
-            Results with success/failed counts and enrichment stats
+            Results with success/failed counts and tags added
         """
         try:
             if not plan:
                 logger.warning("Migration plan is empty, nothing to execute")
-                return {"success": 0, "failed": 0, "skipped": 0, "tags_added": 0, "enriched": 0}
+                return {"success": 0, "failed": 0, "skipped": 0, "tags_added": 0}
 
             if dry_run:
                 logger.info(f"🔍 DRY RUN MODE: Would move {len(plan)} notes")
-                return {"success": len(plan), "failed": 0, "skipped": 0, "dry_run": True, "tags_added": 0, "enriched": 0}
+                return {"success": len(plan), "failed": 0, "skipped": 0, "dry_run": True, "tags_added": 0}
 
-            results = {"success": 0, "failed": 0, "skipped": 0, "tags_added": 0, "enriched": 0}
+            results = {"success": 0, "failed": 0, "skipped": 0, "tags_added": 0}
             logger.info(f"🔄 Starting migration execution for {len(plan)} moves")
 
             for i, move in enumerate(plan, 1):
@@ -431,19 +430,6 @@ class ReorgOrchestrator:
                                 logger.debug(f"  ✓ Added tags to '{note_title}': {suggested_tags}")
                         except Exception as e:
                             logger.warning(f"  ⚠️ Failed to add tags to note '{note_title}': {e}")
-
-                        # Enrich note with AI metadata if enrichment_service provided
-                        if enrichment_service:
-                            try:
-                                # Run async enrichment in a non-blocking way
-                                import asyncio
-                                loop = asyncio.get_event_loop()
-                                enrich_success = loop.run_until_complete(enrichment_service.enrich_note(note_id))
-                                if enrich_success:
-                                    results["enriched"] += 1
-                                    logger.debug(f"  ✓ Enriched note '{note_title}' with AI metadata")
-                            except Exception as e:
-                                logger.warning(f"  ⚠️ Failed to enrich note '{note_title}': {e}")
                     else:
                         results["failed"] += 1
                         logger.warning(f"  ✗ Failed to move: {note_title}")
@@ -452,14 +438,14 @@ class ReorgOrchestrator:
                     results["failed"] += 1
                     logger.error(f"  ✗ Error moving note {note_id}: {e}", exc_info=True)
 
-            logger.info(f"✅ Migration complete: {results['success']} success, {results['failed']} failed, {results['skipped']} skipped, {results['tags_added']} tags added, {results['enriched']} enriched")
+            logger.info(f"✅ Migration complete: {results['success']} success, {results['failed']} failed, {results['skipped']} skipped, {results['tags_added']} tags added")
 
             # Log migration to history
             self.migration_history.append(OperationLog(
                 timestamp=datetime.now().isoformat(),
                 operation="execute_migration",
                 status="success" if results['failed'] == 0 else "partial_failure",
-                details=f"Moved {results['success']} notes (failed: {results['failed']}, skipped: {results['skipped']}, tags: {results['tags_added']}, enriched: {results['enriched']})",
+                details=f"Moved {results['success']} notes (failed: {results['failed']}, skipped: {results['skipped']}, tags: {results['tags_added']})",
                 affected_items=results['success']
             ))
 

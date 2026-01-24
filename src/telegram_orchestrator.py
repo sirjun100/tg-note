@@ -1812,7 +1812,7 @@ class TelegramOrchestrator:
             action_text = "simulating" if dry_run else "executing"
             await update.message.reply_text(f"🔄 {action_text.capitalize()} reorganization of {len(moves)} notes...")
 
-            results = self.reorg_orchestrator.execute_migration_plan(moves, dry_run=dry_run, enrichment_service=self.enrichment_service)
+            results = self.reorg_orchestrator.execute_migration_plan(moves, dry_run=dry_run)
 
             if dry_run:
                 await update.message.reply_text(
@@ -1825,13 +1825,13 @@ class TelegramOrchestrator:
                 )
             else:
                 tags_msg = f"  Tags added: {results.get('tags_added', 0)}\n" if results.get('tags_added', 0) > 0 else ""
-                enriched_msg = f"  AI sections added: {results.get('enriched', 0)}\n" if results.get('enriched', 0) > 0 else ""
 
                 await update.message.reply_text(
                     f"✅ Reorganization Complete!\n\n"
                     f"  ✓ Success: {results.get('success', 0)} notes\n"
                     f"  ✗ Failed: {results.get('failed', 0)} notes\n"
-                    f"{tags_msg}{enriched_msg}"
+                    f"{tags_msg}\n"
+                    f"Next: Use /enrich_notes to add AI metadata"
                 )
             logger.info(f"User {user.id} executed reorganization: {results} (dry_run={dry_run})")
 

@@ -185,12 +185,12 @@ class JoplinClient:
 
     def _link_tag_to_note(self, tag_id: str, note_id: str) -> bool:
         """Link a tag to a note"""
-        response = self._make_request("POST", f"tags/{tag_id}/notes", json={"id": note_id})
+        response = self._make_request("POST", f"/tags/{tag_id}/notes", json={"id": note_id})
         return response is not None
 
     def rename_tag(self, tag_id: str, new_name: str) -> bool:
         """Rename an existing tag"""
-        response = self._make_request("PUT", f"tags/{tag_id}", json={"title": new_name})
+        response = self._make_request("PUT", f"/tags/{tag_id}", json={"title": new_name})
         return response is not None
 
     def append_log(self, log_entry: str) -> bool:
@@ -237,7 +237,7 @@ class JoplinClient:
 
     def get_notes_in_folder(self, folder_id: str) -> List[Dict[str, Any]]:
         """Get all notes in a specific folder"""
-        response = self._make_request("GET", f"folders/{folder_id}/notes")
+        response = self._make_request("GET", f"/folders/{folder_id}/notes")
         return response if response is not None else []
 
     def get_all_notes(self) -> List[Dict[str, Any]]:
