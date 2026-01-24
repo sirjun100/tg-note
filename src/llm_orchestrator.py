@@ -173,6 +173,22 @@ class LLMOrchestrator:
                         logger.warning("⚠️ No function call and no content in LLM response")
                         return self._create_error_response("Empty response from LLM")
 
+                # Final validation before instantiation
+                if args is None:
+                    logger.error("❌ Logic error: 'args' is None at instantiation point")
+                    # Try to fall back if possible
+                    content = response.get("content", "").strip()
+                    if content and persona:
+                        logger.info(f"💬 Fallback: Treating as conversational response even though parsing failed: '{content[:50]}...'")
+                        return JoplinNoteSchema(
+                            status="NEED_INFO",
+                            confidence_score=1.0,
+                            question=content,
+                            log_entry=f"Forced fallback for persona: {persona}",
+                            note=None
+                        )
+                    return self._create_error_response("Failed to parse response data")
+
                 # Process the parsed arguments
                 try:
                     result = JoplinNoteSchema(**args)
@@ -184,10 +200,10 @@ class LLMOrchestrator:
                         logger.info(f"📝 Note created: '{note_title}'")
                     logger.debug(f"📊 Log entry: {result.log_entry}")
                     return result
-                except (json.JSONDecodeError, ValueError) as e:
-                    logger.error(f"❌ Failed to validate parsed arguments: {e}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to validate response arguments: {e}")
                     logger.debug(f"Parsed args: {args}")
-                    return self._create_error_response("Invalid response structure from LLM")
+                    return self._create_error_response(f"Invalid response structure: {str(e)}")
 
             elif self.provider_name == "ollama":
                 # For Ollama, use a different approach since it doesn't support function calling
