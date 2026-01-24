@@ -1696,13 +1696,13 @@ class TelegramOrchestrator:
                     "Available templates:\n"
                 )
                 for i, template in enumerate(templates, 1):
-                    help_text += f"{i}. `{template}`\n"
+                    help_text += f"{i}. {template}\n"
 
                 help_text += (
                     "\nExample:\n"
-                    "`/reorg_init PARA+ (Status-Based)`\n"
+                    "/reorg_init PARA+ (Status-Based)\n"
                 )
-                await update.message.reply_text(help_text, parse_mode='Markdown')
+                await update.message.reply_text(help_text)
                 return
 
             template_name = " ".join(context.args)
