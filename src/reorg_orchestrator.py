@@ -335,27 +335,74 @@ class ReorgOrchestrator:
             logger.error(f"Failed to resolve conflict: {e}")
             return False
 
-    def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False) -> Dict[str, int]:
+    def _extract_tags_from_folder_path(self, folder_id: str) -> List[str]:
+        """Extract suggested tags from folder hierarchy"""
+        try:
+            folders = self.joplin_client.get_folders()
+            folders_by_id = {f['id']: f for f in folders}
+
+            tags = []
+            current_id = folder_id
+
+            # Walk up the folder hierarchy to collect folder names as tags
+            visited = set()
+            while current_id and current_id not in visited:
+                if current_id in folders_by_id:
+                    folder = folders_by_id[current_id]
+                    title = folder.get('title', '')
+                    # Clean up folder title to use as tag (remove emojis and extra spaces)
+                    if title:
+                        clean_title = title.split()[0] if title else ''
+                        if clean_title and clean_title not in tags:
+                            # Extract just the meaningful part of folder names
+                            if title.startswith(('🟢', '🟡', '🔵', '❌')):
+                                # Status-based: extract status word
+                                status_word = title.split()[-1] if len(title.split()) > 1 else 'status'
+                                tags.append(status_word.lower())
+                            elif any(emoji in title for emoji in ('💼', '💪', '💰', '📚', '🏠', '📖', '📋', '🔗')):
+                                # Area/Resource: extract main keyword
+                                parts = title.split('&') if '&' in title else [title]
+                                main_part = parts[0].strip()
+                                clean_tag = main_part.split()[-1].lower() if main_part else ''
+                                if clean_tag:
+                                    tags.append(clean_tag)
+                            else:
+                                # Regular folder names
+                                clean_tag = title.lower().replace(' ', '-')
+                                tags.append(clean_tag)
+
+                    current_id = folder.get('parent_id')
+                else:
+                    break
+                visited.add(current_id)
+
+            return tags[:3] if tags else []  # Limit to 3 tags
+        except Exception as e:
+            logger.warning(f"Failed to extract tags from folder {folder_id}: {e}")
+            return []
+
+    def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False, enrichment_service: Optional[Any] = None) -> Dict[str, Any]:
         """
-        Execute a series of note moves with comprehensive error handling.
+        Execute a series of note moves with tag enrichment and AI metadata injection.
 
         Args:
             plan: List of moves: {"note_id": "...", "target_folder_id": "..."}
             dry_run: If True, don't actually move notes, just report what would happen
+            enrichment_service: Optional EnrichmentService for adding metadata to notes
 
         Returns:
-            Results with success/failed counts
+            Results with success/failed counts and enrichment stats
         """
         try:
             if not plan:
                 logger.warning("Migration plan is empty, nothing to execute")
-                return {"success": 0, "failed": 0, "skipped": 0}
+                return {"success": 0, "failed": 0, "skipped": 0, "tags_added": 0, "enriched": 0}
 
             if dry_run:
                 logger.info(f"🔍 DRY RUN MODE: Would move {len(plan)} notes")
-                return {"success": len(plan), "failed": 0, "skipped": 0, "dry_run": True}
+                return {"success": len(plan), "failed": 0, "skipped": 0, "dry_run": True, "tags_added": 0, "enriched": 0}
 
-            results = {"success": 0, "failed": 0, "skipped": 0}
+            results = {"success": 0, "failed": 0, "skipped": 0, "tags_added": 0, "enriched": 0}
             logger.info(f"🔄 Starting migration execution for {len(plan)} moves")
 
             for i, move in enumerate(plan, 1):
@@ -374,6 +421,29 @@ class ReorgOrchestrator:
                     if self.joplin_client.move_note(note_id, target_id):
                         results["success"] += 1
                         logger.debug(f"  ✓ Successfully moved: {note_title}")
+
+                        # Add tags based on destination folder
+                        try:
+                            suggested_tags = self._extract_tags_from_folder_path(target_id)
+                            if suggested_tags:
+                                self.joplin_client.apply_tags(note_id, suggested_tags)
+                                results["tags_added"] += len(suggested_tags)
+                                logger.debug(f"  ✓ Added tags to '{note_title}': {suggested_tags}")
+                        except Exception as e:
+                            logger.warning(f"  ⚠️ Failed to add tags to note '{note_title}': {e}")
+
+                        # Enrich note with AI metadata if enrichment_service provided
+                        if enrichment_service:
+                            try:
+                                # Run async enrichment in a non-blocking way
+                                import asyncio
+                                loop = asyncio.get_event_loop()
+                                enrich_success = loop.run_until_complete(enrichment_service.enrich_note(note_id))
+                                if enrich_success:
+                                    results["enriched"] += 1
+                                    logger.debug(f"  ✓ Enriched note '{note_title}' with AI metadata")
+                            except Exception as e:
+                                logger.warning(f"  ⚠️ Failed to enrich note '{note_title}': {e}")
                     else:
                         results["failed"] += 1
                         logger.warning(f"  ✗ Failed to move: {note_title}")
@@ -382,14 +452,14 @@ class ReorgOrchestrator:
                     results["failed"] += 1
                     logger.error(f"  ✗ Error moving note {note_id}: {e}", exc_info=True)
 
-            logger.info(f"✅ Migration complete: {results['success']} success, {results['failed']} failed, {results['skipped']} skipped")
+            logger.info(f"✅ Migration complete: {results['success']} success, {results['failed']} failed, {results['skipped']} skipped, {results['tags_added']} tags added, {results['enriched']} enriched")
 
             # Log migration to history
             self.migration_history.append(OperationLog(
                 timestamp=datetime.now().isoformat(),
                 operation="execute_migration",
                 status="success" if results['failed'] == 0 else "partial_failure",
-                details=f"Moved {results['success']} notes (failed: {results['failed']}, skipped: {results['skipped']})",
+                details=f"Moved {results['success']} notes (failed: {results['failed']}, skipped: {results['skipped']}, tags: {results['tags_added']}, enriched: {results['enriched']})",
                 affected_items=results['success']
             ))
 
