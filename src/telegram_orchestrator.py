@@ -1919,6 +1919,37 @@ class TelegramOrchestrator:
             await update.message.reply_text("❌ Error enriching notes.")
             logger.error(f"Error in handle_enrich_notes: {e}")
 
+    async def handle_reorg_history(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_history command - Show migration history"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            history = self.reorg_orchestrator.get_migration_history(limit=5)
+
+            if not history:
+                await update.message.reply_text("📋 No migration history yet.\nRun /reorg_execute to reorganize your notes.")
+                return
+
+            response = "📋 *Migration History (Last 5)*\n\n"
+            for i, entry in enumerate(history, 1):
+                timestamp = entry['timestamp'].split('T')[1].split('.')[0]  # Extract HH:MM:SS
+                status_icon = "✅" if entry['status'] == 'success' else "⚠️"
+                response += (
+                    f"{i}. {status_icon} {entry['operation']}\n"
+                    f"   Time: {timestamp}\n"
+                    f"   Result: {entry['details']}\n"
+                    f"   Items: {entry['affected_items']}\n\n"
+                )
+
+            await update.message.reply_text(response, parse_mode='Markdown')
+            logger.info(f"User {user.id} viewed migration history")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error retrieving history.")
+            logger.error(f"Error in handle_reorg_history: {e}")
+
     async def handle_reorg_audit_tags(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /reorg_audit_tags command - Audit and report on tags"""
         user = update.effective_user
@@ -2074,7 +2105,8 @@ class TelegramOrchestrator:
                 "  /reorg_detect_conflicts - Check for potential issues\n\n"
                 "🔄 *Reorganization*:\n"
                 "  /reorg_execute dry-run - Preview changes without applying\n"
-                "  /reorg_execute - Apply all reorganization changes\n\n"
+                "  /reorg_execute - Apply all reorganization changes\n"
+                "  /reorg_history - View last 5 migrations (audit trail)\n\n"
                 "✨ *Enrichment*:\n"
                 "  /enrich_notes [limit] [--unenriched-only] - Add metadata to notes\n"
                 "    Adds: Status, Priority, Summary, Key Takeaways, Tags\n"
@@ -2146,6 +2178,7 @@ def main():
     application.add_handler(CommandHandler("reorg_preview", orchestrator.handle_reorg_preview))
     application.add_handler(CommandHandler("reorg_detect_conflicts", orchestrator.handle_reorg_detect_conflicts))
     application.add_handler(CommandHandler("reorg_execute", orchestrator.handle_reorg_execute))
+    application.add_handler(CommandHandler("reorg_history", orchestrator.handle_reorg_history))
     application.add_handler(CommandHandler("enrich_notes", orchestrator.handle_enrich_notes))
     application.add_handler(CommandHandler("reorg_audit_tags", orchestrator.handle_reorg_audit_tags))
     application.add_handler(CommandHandler("reorg_help", orchestrator.handle_reorg_help))

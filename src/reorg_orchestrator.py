@@ -67,6 +67,7 @@ class ReorgOrchestrator:
     def __init__(self, joplin_client: JoplinClient, llm_orchestrator: LLMOrchestrator):
         self.joplin_client = joplin_client
         self.llm_orchestrator = llm_orchestrator
+        self.migration_history: List[OperationLog] = []
 
     def get_available_templates(self) -> List[str]:
         """Get list of available PARA templates"""
@@ -301,6 +302,19 @@ class ReorgOrchestrator:
         logger.info(f"Conflict detection complete: {conflicts['total_conflicts']} conflicts found")
         return conflicts
 
+    def get_migration_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent migration operations"""
+        history = []
+        for log in self.migration_history[-limit:]:
+            history.append({
+                "timestamp": log.timestamp,
+                "operation": log.operation,
+                "status": log.status,
+                "details": log.details,
+                "affected_items": log.affected_items
+            })
+        return list(reversed(history))  # Most recent first
+
     def resolve_conflict(self, conflict_type: str, resolution: str) -> bool:
         """
         Attempt to resolve a detected conflict.
@@ -369,6 +383,16 @@ class ReorgOrchestrator:
                     logger.error(f"  ✗ Error moving note {note_id}: {e}", exc_info=True)
 
             logger.info(f"✅ Migration complete: {results['success']} success, {results['failed']} failed, {results['skipped']} skipped")
+
+            # Log migration to history
+            self.migration_history.append(OperationLog(
+                timestamp=datetime.now().isoformat(),
+                operation="execute_migration",
+                status="success" if results['failed'] == 0 else "partial_failure",
+                details=f"Moved {results['success']} notes (failed: {results['failed']}, skipped: {results['skipped']})",
+                affected_items=results['success']
+            ))
+
             return results
 
         except Exception as e:
