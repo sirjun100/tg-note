@@ -64,11 +64,10 @@ class OpenAIProvider(LLMProvider):
     def __init__(self, api_key: str = None, model_name: str = "gpt-4"):
         try:
             import openai
-            self.openai = openai
-            self.openai.api_key = api_key
+            self.client = openai.OpenAI(api_key=api_key)
         except ImportError:
             logger.error("OpenAI package not installed")
-            self.openai = None
+            self.client = None
 
         super().__init__(model_name)
 
@@ -76,27 +75,45 @@ class OpenAIProvider(LLMProvider):
         return "gpt-4"
 
     def is_available(self) -> bool:
-        return self.openai is not None and self.openai.api_key is not None
+        return self.client is not None
 
     def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
         if not self.is_available():
             raise RuntimeError("OpenAI provider not available")
 
-        functions = kwargs.get("functions", [])
-        function_call = kwargs.get("function_call", None)
+        tools = kwargs.get("functions", [])
+        tool_choice = kwargs.get("function_call", None)
 
-        response = self.openai.ChatCompletion.create(
+        # Convert old function format to new tools format
+        if tools and not isinstance(tools[0], dict):
+            # Convert function schemas to tools format
+            tools = [{"type": "function", "function": func} for func in tools]
+            if tool_choice and isinstance(tool_choice, str):
+                tool_choice = {"type": "function", "function": {"name": tool_choice}}
+            elif tool_choice and isinstance(tool_choice, dict):
+                tool_choice = {"type": "function", "function": tool_choice}
+
+        response = self.client.chat.completions.create(
             model=self.model_name,
             messages=messages,
-            functions=functions if functions else None,
-            function_call=function_call,
+            tools=tools if tools else None,
+            tool_choice=tool_choice,
             temperature=kwargs.get("temperature", 0.3),
             max_tokens=kwargs.get("max_tokens", 1000)
         )
 
+        # Extract function call from tools if present
+        function_call = None
+        if response.choices[0].message.tool_calls:
+            tool_call = response.choices[0].message.tool_calls[0]
+            function_call = {
+                "name": tool_call.function.name,
+                "arguments": tool_call.function.arguments
+            }
+
         return {
             "content": response.choices[0].message.content,
-            "function_call": response.choices[0].message.get("function_call"),
+            "function_call": function_call,
             "usage": response.usage,
             "raw_response": response
         }
@@ -109,7 +126,7 @@ class OllamaProvider(LLMProvider):
         self.model_name = model_name
 
     def get_default_model(self) -> str:
-        return "llama2"
+        return "llama3.2:3b"
 
     def is_available(self) -> bool:
         try:
@@ -119,39 +136,43 @@ class OllamaProvider(LLMProvider):
             return False
 
     def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
-        # Convert OpenAI format to Ollama format
-        ollama_messages = []
-        system_message = None
+        # Convert messages to a simple prompt for Ollama generate API
+        prompt_parts = []
 
         for msg in messages:
             role = msg["role"]
             content = msg["content"]
 
             if role == "system":
-                system_message = content
+                prompt_parts.insert(0, f"System: {content}")
             elif role == "user":
-                ollama_messages.append({"role": "user", "content": content})
+                prompt_parts.append(f"User: {content}")
             elif role == "assistant":
-                ollama_messages.append({"role": "assistant", "content": content})
+                prompt_parts.append(f"Assistant: {content}")
+
+        prompt = "\n\n".join(prompt_parts)
 
         payload = {
             "model": self.model_name,
-            "messages": ollama_messages,
+            "prompt": prompt,
             "stream": False
         }
-
-        if system_message:
-            payload["system"] = system_message
 
         # Add optional parameters
         if "temperature" in kwargs:
             payload["temperature"] = kwargs["temperature"]
         if "max_tokens" in kwargs:
-            payload["max_tokens"] = kwargs["max_tokens"]
+            payload["num_predict"] = kwargs["max_tokens"]  # Ollama uses num_predict
+
+        logger.debug(f"Ollama payload: {json.dumps(payload)}")
 
         try:
+            full_url = f"{self.base_url}/api/generate"
+            print(f"DEBUG: Ollama request to: {full_url}")
+            print(f"DEBUG: Payload: {json.dumps(payload)}")
+
             response = requests.post(
-                f"{self.base_url}/api/chat",
+                full_url,
                 json=payload,
                 timeout=60
             )
@@ -159,14 +180,19 @@ class OllamaProvider(LLMProvider):
             result = response.json()
 
             return {
-                "content": result["message"]["content"],
+                "content": result["response"],
                 "function_call": None,  # Ollama doesn't support function calling natively
-                "usage": getattr(result, 'usage', None),
+                "usage": {
+                    "prompt_tokens": result.get("prompt_eval_count"),
+                    "completion_tokens": result.get("eval_count"),
+                    "total_tokens": result.get("prompt_eval_count", 0) + result.get("eval_count", 0)
+                },
                 "raw_response": result
             }
 
         except requests.RequestException as e:
             logger.error(f"Ollama API error: {e}")
+            logger.error(f"URL: {self.base_url}/api/generate")
             raise RuntimeError(f"Ollama API error: {e}")
 
 class DeepSeekProvider(LLMProvider):

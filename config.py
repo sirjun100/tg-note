@@ -22,7 +22,7 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 DEEPSEEK_MODEL = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
 
 # LLM Provider Selection
-LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'openai')  # Default to OpenAI for backward compatibility
+LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'deepseek')  # Default to DeepSeek
 
 # Joplin Configuration
 JOPLIN_WEB_CLIPPER_PORT = int(os.getenv('JOPLIN_WEB_CLIPPER_PORT', 41184))
