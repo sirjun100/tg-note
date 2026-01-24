@@ -115,6 +115,48 @@ class JoplinClient:
 
         return success
 
+    def apply_tags_and_track_new(self, note_id: str, tag_names: List[str]) -> Dict[str, Any]:
+        """Apply tags to a note and return info about which tags are new
+
+        Returns:
+            Dict with:
+            - success: bool - Whether all tags were applied successfully
+            - new_tags: List[str] - Tags that were newly created
+            - existing_tags: List[str] - Tags that already existed
+            - all_tags: List[str] - All tags that were applied
+        """
+        # Get existing tags first
+        existing_tag_titles = {tag.get('title') for tag in self.fetch_tags()}
+
+        new_tags = []
+        existing_tags = []
+        success = True
+
+        for tag_name in tag_names:
+            # Check if tag is new before creating/getting it
+            is_new = tag_name not in existing_tag_titles
+
+            tag_id = self._get_or_create_tag(tag_name)
+            if tag_id:
+                if not self._link_tag_to_note(tag_id, note_id):
+                    success = False
+
+                # Track whether tag was new
+                if is_new:
+                    new_tags.append(tag_name)
+                else:
+                    existing_tags.append(tag_name)
+            else:
+                logger.error(f"Failed to get/create tag '{tag_name}'")
+                success = False
+
+        return {
+            'success': success,
+            'new_tags': new_tags,
+            'existing_tags': existing_tags,
+            'all_tags': tag_names
+        }
+
     def _get_or_create_tag(self, tag_name: str) -> Optional[str]:
         """Get existing tag or create new one"""
         # First, check if tag exists

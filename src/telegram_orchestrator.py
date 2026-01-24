@@ -720,9 +720,12 @@ class TelegramOrchestrator:
         """Process the LLM response and create Joplin note"""
         if llm_response.status == "SUCCESS" and llm_response.note:
             logger.info(f"Creating Joplin note for user {user_id}")
-            note_id = await self._create_note_in_joplin(llm_response.note)
+            note_result = await self._create_note_in_joplin(llm_response.note)
 
-            if note_id:
+            if note_result:
+                note_id = note_result['note_id']
+                tag_info = note_result.get('tag_info', {})
+
                 # Log the decision
                 try:
                     self.joplin_client.append_log(llm_response.log_entry)
@@ -742,6 +745,9 @@ class TelegramOrchestrator:
                 )
                 self.logging_service.log_decision(decision)
 
+                # Log tag creation to database
+                self._log_tag_creation(user_id, note_id, tag_info)
+
                 # Clear state and respond
                 if clear_state:
                     self.state_manager.clear_state(user_id)
@@ -751,7 +757,15 @@ class TelegramOrchestrator:
                 folder = self.joplin_client.get_folder(folder_id) if folder_id else None
                 folder_name = folder.get('title', 'Unknown') if folder else 'Unknown'
 
-                response_msg = format_success_message(f"✅ Note created: '{llm_response.note['title']}' in folder '{folder_name}'")
+                # Build success message with tags
+                success_msg = f"✅ Note created: '{llm_response.note['title']}' in folder '{folder_name}'"
+
+                # Add tag info if tags exist
+                if tag_info.get('all_tags'):
+                    tag_display = self._format_tag_display(tag_info)
+                    success_msg += f"\nTags: {tag_display}"
+
+                response_msg = format_success_message(success_msg)
                 await message.reply_text(response_msg)
 
             else:
@@ -777,8 +791,12 @@ class TelegramOrchestrator:
                 format_error_message("I had trouble understanding your request. Please try rephrasing.")
             )
 
-    async def _create_note_in_joplin(self, note_data: Dict[str, Any]) -> Optional[str]:
-        """Create a note in Joplin with the provided data"""
+    async def _create_note_in_joplin(self, note_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Create a note in Joplin with the provided data
+
+        Returns:
+            Dict with note_id and tag_info, or None if creation failed
+        """
         try:
             logger.info(f"📝 Creating note in Joplin: '{note_data.get('title', 'Untitled')}'")
 
@@ -804,19 +822,80 @@ class TelegramOrchestrator:
 
             logger.info(f"✅ Note created successfully with ID: {note_id}")
 
-            # Apply tags if provided
+            # Apply tags if provided and track which are new
             tags = note_data.get('tags', [])
+            tag_info = {
+                'new_tags': [],
+                'existing_tags': [],
+                'all_tags': []
+            }
+
             if tags:
                 logger.debug(f"🏷️ Applying tags: {tags}")
-                self.joplin_client.apply_tags(note_id, tags)
-                logger.info(f"✅ Applied {len(tags)} tag(s) to note")
+                tag_info = self.joplin_client.apply_tags_and_track_new(note_id, tags)
+                if tag_info['success']:
+                    logger.info(f"✅ Applied {len(tags)} tag(s) to note (new: {len(tag_info['new_tags'])}, existing: {len(tag_info['existing_tags'])})")
+                else:
+                    logger.warning(f"⚠️ Some tags failed to apply")
 
-            return note_id
+            return {
+                'note_id': note_id,
+                'tag_info': tag_info
+            }
 
         except Exception as e:
             logger.error(f"💥 Error creating note in Joplin: {e}")
             logger.debug(f"Note data: {note_data}", exc_info=True)
             return None
+
+    def _format_tag_display(self, tag_info: Dict[str, Any]) -> str:
+        """Format tags for display in success message
+
+        Format: "tag1, tag2 (new), tag3"
+        Only marks tags with (new) if they were newly created
+        """
+        if not tag_info.get('all_tags'):
+            return ""
+
+        # Create a set of new tags for quick lookup
+        new_tag_set = set(tag_info.get('new_tags', []))
+
+        # Format each tag
+        formatted_tags = []
+        for tag in tag_info.get('all_tags', []):
+            if tag in new_tag_set:
+                formatted_tags.append(f"{tag} (new)")
+            else:
+                formatted_tags.append(tag)
+
+        return ", ".join(formatted_tags)
+
+    def _log_tag_creation(self, user_id: int, note_id: str, tag_info: Dict[str, Any]) -> None:
+        """Log tag creation to database for audit trail
+
+        Args:
+            user_id: Telegram user ID
+            note_id: Joplin note ID
+            tag_info: Dict with new_tags, existing_tags, all_tags
+        """
+        try:
+            for tag_name in tag_info.get('new_tags', []):
+                self.logging_service.log_tag_creation(
+                    user_id=user_id,
+                    note_id=note_id,
+                    tag_name=tag_name,
+                    is_new=True
+                )
+
+            for tag_name in tag_info.get('existing_tags', []):
+                self.logging_service.log_tag_creation(
+                    user_id=user_id,
+                    note_id=note_id,
+                    tag_name=tag_name,
+                    is_new=False
+                )
+        except Exception as e:
+            logger.warning(f"Failed to log tag creation: {e}")
 
 def main():
     """Main function to run the bot"""

@@ -141,3 +141,19 @@ CREATE INDEX IF NOT EXISTS idx_task_links_google_task ON task_links(google_task_
 CREATE INDEX IF NOT EXISTS idx_task_sync_user_id ON task_sync_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_task_sync_timestamp ON task_sync_history(created_at);
 CREATE INDEX IF NOT EXISTS idx_google_tasks_config_user ON google_tasks_config(user_id);
+
+-- Tag creation history for audit trail
+CREATE TABLE IF NOT EXISTS tag_creation_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    joplin_note_id TEXT NOT NULL,
+    tag_name TEXT NOT NULL,
+    is_new_tag BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES telegram_users(user_id)
+);
+
+-- Indexes for tag creation history
+CREATE INDEX IF NOT EXISTS idx_tag_creation_user_date ON tag_creation_history(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_tag_creation_note ON tag_creation_history(joplin_note_id);
+CREATE INDEX IF NOT EXISTS idx_tag_creation_is_new ON tag_creation_history(is_new_tag);

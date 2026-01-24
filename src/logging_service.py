@@ -13,9 +13,12 @@ Uses SQLite for simplicity and reliability.
 import sqlite3
 import json
 import os
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -418,3 +421,25 @@ class LoggingService:
                 ORDER BY created_at DESC
             ''', (user_id,))
             return cursor.fetchall()
+
+    def log_tag_creation(self, user_id: int, note_id: str, tag_name: str, is_new: bool = False):
+        """Log tag creation or application to database for audit trail
+
+        Args:
+            user_id: Telegram user ID
+            note_id: Joplin note ID the tag was applied to
+            tag_name: Name of the tag
+            is_new: True if tag was newly created, False if it was existing
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO tag_creation_history
+                    (user_id, joplin_note_id, tag_name, is_new_tag, created_at)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ''', (user_id, note_id, tag_name, is_new))
+                conn.commit()
+                logger.debug(f"Logged tag creation: user={user_id}, note={note_id}, tag={tag_name}, is_new={is_new}")
+        except Exception as e:
+            logger.error(f"Failed to log tag creation: {e}")
