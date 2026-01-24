@@ -1,6 +1,6 @@
 ---
 template_version: 1.1.0
-last_updated: 2025-01-24
+last_updated: 2026-01-24
 compatible_with: [feature-request, bug-fix, sprint-planning]
 requires: [markdown-support]
 ---
@@ -58,6 +58,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [FR-015](features/FR-015-weekly-review-report.md) | Weekly Review and Report | 🟠 High | 13 | ⭕ | Sprint 8 | 2025-01-23 | 2026-01-24 |
 | [FR-016](features/FR-016-joplin-database-reorganization.md) | Joplin Database Reorganization, Tag Management, and Entry Enrichment | 🟠 High | 21 | ⏳ | Sprint 9 | 2025-01-23 | 2026-01-24 |
 | [FR-017](features/FR-017-gtd-expert-persona.md) | GTD Expert Persona for 15-Minute Brain Dumping | 🟠 High | 8 | ✅ | Sprint 7 | 2026-01-24 | 2026-01-24 |
+| [FR-018](features/FR-018-docker-compose-setup.md) | Docker Compose Setup for Bot and Joplin Server | 🟠 High | 8 | ⭕ | Backlog | 2026-01-24 | 2026-01-24 |
 
 ## Bug Fixes
 
