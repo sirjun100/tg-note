@@ -126,30 +126,52 @@ class LLMOrchestrator:
                     except (json.JSONDecodeError, ValueError) as e:
                         logger.error(f"❌ Failed to parse function call arguments: {e}")
                         return self._create_error_response("Invalid function call format from LLM")
-                else:
-                    # Try to parse JSON directly from content (fallback for models that don't use function calling)
-                    content = response.get("content", "").strip()
-                    if content:
-                        try:
-                            # Try to extract JSON from content
-                            json_start = content.find('{')
-                            json_end = content.rfind('}') + 1
-                            if json_start != -1 and json_end > json_start:
-                                json_content = content[json_start:json_end]
-                                args = json.loads(json_content)
-                                logger.info("🔍 Parsed JSON from content (fallback):")
-                                logger.info(f"   {json.dumps(args, indent=2)}")
-                            else:
-                                logger.warning("⚠️ No function call in LLM response and no JSON found in content")
-                                logger.debug(f"Raw response content: {content}")
-                                return self._create_error_response("No structured response from LLM")
-                        except (json.JSONDecodeError, ValueError) as e:
-                            logger.error(f"❌ Failed to parse JSON from content: {e}")
-                            logger.debug(f"Raw content: {content}")
-                            return self._create_error_response("Invalid JSON format in LLM response")
                     else:
-                        logger.warning("⚠️ No function call and no content in LLM response")
-                        return self._create_error_response("Empty response from LLM")
+                        # Try to parse JSON directly from content (fallback for models that don't use function calling)
+                        content = response.get("content", "").strip()
+                        if content:
+                            try:
+                                # Try to extract JSON from content
+                                json_start = content.find('{')
+                                json_end = content.rfind('}') + 1
+                                if json_start != -1 and json_end > json_start:
+                                    json_content = content[json_start:json_end]
+                                    args = json.loads(json_content)
+                                    logger.info("🔍 Parsed JSON from content (fallback):")
+                                    logger.info(f"   {json.dumps(args, indent=2)}")
+                                else:
+                                    # [MODIFIED] If NO JSON found but we are in a persona flow, treat content as the next question
+                                    if persona:
+                                        logger.info(f"💬 Treating plain text response as persona conversation: '{content[:50]}...'")
+                                        return JoplinNoteSchema(
+                                            status="NEED_INFO",
+                                            confidence_score=1.0,
+                                            question=content,
+                                            log_entry=f"Conversational response from persona: {persona}",
+                                            note=None
+                                        )
+                                    
+                                    logger.warning("⚠️ No function call in LLM response and no JSON found in content")
+                                    logger.debug(f"Raw response content: {content}")
+                                    return self._create_error_response("No structured response from LLM")
+                            except (json.JSONDecodeError, ValueError) as e:
+                                # [MODIFIED] Even if JSON parsing fails, if we have a persona, fall back to plain text
+                                if persona:
+                                    logger.info(f"💾 JSON parse failed, falling back to plain text for persona: '{content[:50]}...'")
+                                    return JoplinNoteSchema(
+                                        status="NEED_INFO",
+                                        confidence_score=1.0,
+                                        question=content,
+                                        log_entry=f"Fallback conversational response (JSON failed)",
+                                        note=None
+                                    )
+                                
+                                logger.error(f"❌ Failed to parse JSON from content: {e}")
+                                logger.debug(f"Raw content: {content}")
+                                return self._create_error_response("Invalid JSON format in LLM response")
+                        else:
+                            logger.warning("⚠️ No function call and no content in LLM response")
+                            return self._create_error_response("Empty response from LLM")
 
                 # Process the parsed arguments
                 try:
@@ -191,7 +213,6 @@ class LLMOrchestrator:
                 logger.info("📄 Raw Ollama response:")
                 logger.info(f"   {content[:500]}{'...' if len(content) > 500 else ''}")
 
-                json_content = ""
                 try:
                     # Try to extract JSON from the response
                     json_start = content.find('{')
@@ -215,10 +236,32 @@ class LLMOrchestrator:
                         logger.debug(f"📊 Log entry: {result.log_entry}")
                         return result
                     else:
+                        # [MODIFIED] Fallback for Ollama plain text
+                        if persona:
+                            logger.info(f"💬 Treating plain text Ollama response as persona conversation: '{content[:50]}...'")
+                            return JoplinNoteSchema(
+                                status="NEED_INFO",
+                                confidence_score=1.0,
+                                question=content,
+                                log_entry=f"Ollama conversational response from persona: {persona}",
+                                note=None
+                            )
+                        
                         logger.error("❌ No JSON found in Ollama response")
                         logger.debug(f"Full response: {content}")
                         return self._create_error_response("No structured response from Ollama")
                 except (json.JSONDecodeError, ValueError) as e:
+                    # [MODIFIED] Fallback for Ollama JSON parse failure
+                    if persona:
+                        logger.info(f"💾 Ollama JSON parse failed, falling back to plain text: '{content[:50]}...'")
+                        return JoplinNoteSchema(
+                            status="NEED_INFO",
+                            confidence_score=1.0,
+                            question=content,
+                            log_entry=f"Ollama fallback conversational response",
+                            note=None
+                        )
+                    
                     logger.error(f"❌ Failed to parse Ollama response: {e}")
                     logger.debug(f"Attempted JSON: {json_content}")
                     return self._create_error_response("Invalid response format from Ollama")
