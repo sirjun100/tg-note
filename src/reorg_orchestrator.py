@@ -120,52 +120,79 @@ class ReorgOrchestrator:
         """
         Scan all notes and suggest migration to PARA structure using LLM classification.
         """
-        notes = self.joplin_client.get_all_notes()
-        folders = self.joplin_client.get_folders()
-        
-        # Build folder list for LLM context
-        folder_text = ""
-        for f in folders:
-            folder_text += f"- {f['id']}: {f['title']}\n"
+        try:
+            notes = self.joplin_client.get_all_notes()
+            folders = self.joplin_client.get_folders()
 
-        plan = {
-            "summary": {
-                "total_notes": len(notes),
-                "notes_to_move": 0,
-                "folders_to_create": 0
-            },
-            "moves": []
-        }
-        
-        # Randomly sample or process first N for preview (to avoid huge token usage)
-        limit = 20
-        processed_count = 0
-        
-        for note in notes:
-            if processed_count >= limit:
-                break
-                
-            note_title = note.get('title', 'Untitled')
-            note_body = note.get('body', '')
-            current_folder_id = note.get('parent_id')
-            
-            # Use LLM to classify
-            classification = await self.llm_orchestrator.classify_note(note_title, note_body, folder_text)
-            target_folder_id = classification.get('suggested_folder_id')
-            
-            if target_folder_id and target_folder_id != current_folder_id:
-                plan["moves"].append({
-                    "note_id": note['id'],
-                    "note_title": note_title,
-                    "source_folder_id": current_folder_id,
-                    "target_folder_id": target_folder_id,
-                    "reasoning": classification.get('reasoning', "AI matched folder content")
-                })
-                plan["summary"]["notes_to_move"] += 1
-            
-            processed_count += 1
-        
-        return plan
+            logger.debug(f"Migration plan: Found {len(notes)} notes and {len(folders)} folders")
+
+            # Build folder list for LLM context
+            folder_text = ""
+            for f in folders:
+                folder_text += f"- {f['id']}: {f['title']}\n"
+
+            plan = {
+                "summary": {
+                    "total_notes": len(notes),
+                    "notes_to_move": 0,
+                    "folders_to_create": 0,
+                    "analysis_sample_size": 0
+                },
+                "moves": []
+            }
+
+            if not notes:
+                logger.warning("No notes found in Joplin for migration planning")
+                return plan
+
+            # Randomly sample or process first N for preview (to avoid huge token usage)
+            limit = 20
+            processed_count = 0
+
+            for note in notes:
+                if processed_count >= limit:
+                    break
+
+                note_title = note.get('title', 'Untitled')
+                note_body = note.get('body', '')
+                current_folder_id = note.get('parent_id')
+
+                try:
+                    # Use LLM to classify
+                    classification = await self.llm_orchestrator.classify_note(note_title, note_body, folder_text)
+                    target_folder_id = classification.get('suggested_folder_id')
+
+                    if target_folder_id and target_folder_id != current_folder_id:
+                        plan["moves"].append({
+                            "note_id": note['id'],
+                            "note_title": note_title,
+                            "source_folder_id": current_folder_id,
+                            "target_folder_id": target_folder_id,
+                            "reasoning": classification.get('reasoning', "AI matched folder content")
+                        })
+                        plan["summary"]["notes_to_move"] += 1
+
+                    processed_count += 1
+                    plan["summary"]["analysis_sample_size"] = processed_count
+
+                except Exception as e:
+                    logger.warning(f"Failed to classify note '{note_title}': {e}")
+                    processed_count += 1
+                    continue
+
+            logger.info(f"Migration plan generated: {len(plan['moves'])} moves suggested for {processed_count} notes analyzed")
+            return plan
+
+        except Exception as e:
+            logger.error(f"Failed to generate migration plan: {e}", exc_info=True)
+            return {
+                "summary": {
+                    "total_notes": 0,
+                    "notes_to_move": 0,
+                    "error": str(e)
+                },
+                "moves": []
+            }
 
     def audit_tags(self) -> Dict[str, Any]:
         """Audit tags for duplicates, unused tags, or inconsistent casing"""

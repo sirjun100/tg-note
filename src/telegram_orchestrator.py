@@ -191,6 +191,7 @@ class TelegramOrchestrator:
             "/braindump_stop - End the session early\n\n"
 
             "🏗️ **Joplin Database Organization (FR-016)**\n"
+            "/reorg_status - Check notes, folders, and organization health\n"
             "/reorg_init status|roles - Initialize PARA structure\n"
             "/reorg_preview - See migration plan without changes\n"
             "/reorg_execute - Apply reorganization\n"
@@ -1982,6 +1983,57 @@ class TelegramOrchestrator:
             await update.message.reply_text("❌ Error detecting conflicts.")
             logger.error(f"Error in handle_reorg_detect_conflicts: {e}")
 
+    async def handle_reorg_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_status command - Show current organization status and diagnostics"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            # Get statistics from Joplin
+            all_notes = self.joplin_client.get_all_notes()
+            folders = self.joplin_client.get_folders()
+            tags = self.joplin_client.fetch_tags()
+
+            # Analyze notes
+            notes_by_folder = {}
+            for note in all_notes:
+                folder_id = note.get('parent_id', 'Unknown')
+                if folder_id not in notes_by_folder:
+                    notes_by_folder[folder_id] = 0
+                notes_by_folder[folder_id] += 1
+
+            # Build response
+            status_msg = "📊 *Joplin Organization Status*\n\n"
+            status_msg += f"📝 Notes: {len(all_notes)}\n"
+            status_msg += f"📁 Folders: {len(folders)}\n"
+            status_msg += f"🏷️ Tags: {len(tags)}\n\n"
+
+            if all_notes:
+                status_msg += "📈 Notes by Folder:\n"
+                for folder_id, count in sorted(notes_by_folder.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    # Find folder name
+                    folder_name = next((f['title'] for f in folders if f['id'] == folder_id), 'Unknown')
+                    status_msg += f"  • {folder_name}: {count} notes\n"
+
+                # Enrichment status
+                enrichment_summary = self.enrichment_service.get_enrichment_summary(all_notes)
+                status_msg += f"\n✨ Enrichment:\n"
+                status_msg += f"  • Enriched: {enrichment_summary['enriched_notes']}/{enrichment_summary['total_notes']}\n"
+                status_msg += f"  • Progress: {enrichment_summary['enrichment_percentage']:.1f}%\n"
+            else:
+                status_msg += "⚠️ No notes found in Joplin database\n"
+                status_msg += "Create some notes first with /start\n"
+
+            status_msg += f"\n💡 Next: /reorg_init status|roles"
+
+            await update.message.reply_text(status_msg, parse_mode='Markdown')
+            logger.info(f"User {user.id} viewed organization status")
+
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error checking status: {e}")
+            logger.error(f"Error in handle_reorg_status: {e}", exc_info=True)
+
     async def handle_reorg_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /reorg_help command - Show reorganization command help"""
         user = update.effective_user
@@ -1991,9 +2043,10 @@ class TelegramOrchestrator:
         try:
             help_text = (
                 "🏗️ *Joplin Database Reorganization Commands (FR-016)*\n\n"
+                "📊 *Status & Diagnostics*:\n"
+                "  /reorg_status - View notes count, folders, tags, enrichment status\n\n"
                 "📋 *Setup & Planning*:\n"
-                "  /reorg_init <template> - Initialize PARA folder structure\n"
-                "    Templates: status (by project status), roles (by role)\n\n"
+                "  /reorg_init status|roles - Initialize PARA folder structure\n"
                 "  /reorg_preview - See migration plan without changes\n"
                 "  /reorg_detect_conflicts - Check for potential issues\n\n"
                 "🔄 *Reorganization*:\n"
@@ -2064,6 +2117,7 @@ def main():
     application.add_handler(CommandHandler("braindump_stop", orchestrator.handle_braindump_stop))
 
     # FR-016: Joplin Database Reorganization Commands
+    application.add_handler(CommandHandler("reorg_status", orchestrator.handle_reorg_status))
     application.add_handler(CommandHandler("reorg_init", orchestrator.handle_reorg_init))
     application.add_handler(CommandHandler("reorg_preview", orchestrator.handle_reorg_preview))
     application.add_handler(CommandHandler("reorg_detect_conflicts", orchestrator.handle_reorg_detect_conflicts))
