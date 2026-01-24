@@ -138,8 +138,106 @@ class ReorgOrchestrator:
                 seen_names[name_lower] = name
                 
         # TODO: Add usage counts for unused tag detection
-        
+
         return audit
+
+    def detect_conflicts(self, plan: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Detect potential conflicts in a migration plan.
+
+        Returns:
+            Dict with conflict types and details
+        """
+        conflicts = {
+            "duplicate_targets": [],
+            "duplicate_titles_in_folder": [],
+            "target_folder_issues": [],
+            "tag_conflicts": [],
+            "total_conflicts": 0
+        }
+
+        # Get all notes for reference
+        all_notes = self.joplin_client.get_all_notes()
+        all_folders = self.joplin_client.get_folders()
+
+        # Create lookup maps
+        notes_by_id = {n['id']: n for n in all_notes}
+        folders_by_id = {f['id']: f for f in all_folders}
+
+        # Track planned moves by target folder
+        moves_by_target = {}
+
+        for move in plan:
+            note_id = move.get("note_id")
+            target_id = move.get("target_folder_id")
+
+            if not note_id or not target_id:
+                continue
+
+            # Check if target folder exists
+            if target_id not in folders_by_id:
+                conflicts["target_folder_issues"].append({
+                    "note_id": note_id,
+                    "target_id": target_id,
+                    "issue": "Target folder does not exist"
+                })
+                conflicts["total_conflicts"] += 1
+                continue
+
+            # Track notes moving to same folder
+            if target_id not in moves_by_target:
+                moves_by_target[target_id] = []
+            moves_by_target[target_id].append({
+                "note_id": note_id,
+                "title": notes_by_id.get(note_id, {}).get('title', 'Unknown')
+            })
+
+        # Detect duplicate titles in target folders
+        for target_id, notes_list in moves_by_target.items():
+            titles = [n['title'] for n in notes_list]
+            unique_titles = set(titles)
+
+            if len(titles) != len(unique_titles):
+                # Find duplicates
+                seen = set()
+                for title in titles:
+                    if title in seen:
+                        conflicts["duplicate_titles_in_folder"].append({
+                            "target_folder_id": target_id,
+                            "title": title,
+                            "count": titles.count(title)
+                        })
+                    seen.add(title)
+                conflicts["total_conflicts"] += len(conflicts["duplicate_titles_in_folder"])
+
+        # Check for tag conflicts
+        audit = self.audit_tags()
+        if audit.get("duplicate_names"):
+            conflicts["tag_conflicts"] = audit["duplicate_names"]
+            conflicts["total_conflicts"] += len(audit["duplicate_names"])
+
+        logger.info(f"Conflict detection complete: {conflicts['total_conflicts']} conflicts found")
+        return conflicts
+
+    def resolve_conflict(self, conflict_type: str, resolution: str) -> bool:
+        """
+        Attempt to resolve a detected conflict.
+
+        Args:
+            conflict_type: Type of conflict (e.g., "duplicate_title")
+            resolution: How to resolve (e.g., "rename", "skip", "merge")
+
+        Returns:
+            True if resolution successful
+        """
+        try:
+            logger.info(f"Attempting to resolve {conflict_type} with strategy: {resolution}")
+            # Implementation would depend on conflict type and resolution strategy
+            # For now, return True as placeholder
+            return True
+        except Exception as e:
+            logger.error(f"Failed to resolve conflict: {e}")
+            return False
 
     def execute_migration_plan(self, plan: List[Dict[str, str]]) -> Dict[str, int]:
         """

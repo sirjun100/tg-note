@@ -1934,6 +1934,56 @@ class TelegramOrchestrator:
             await update.message.reply_text("❌ Error auditing tags.")
             logger.error(f"Error in handle_reorg_audit_tags: {e}")
 
+    async def handle_reorg_detect_conflicts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_detect_conflicts command - Detect potential issues in reorganization"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            await update.message.reply_text("🔍 Scanning for potential conflicts...")
+
+            # Generate migration plan to check
+            plan = await self.reorg_orchestrator.generate_migration_plan()
+            moves = plan.get("moves", [])
+
+            # Detect conflicts
+            conflicts = self.reorg_orchestrator.detect_conflicts(moves)
+
+            response = "📋 *Conflict Detection Report*\n\n"
+
+            if conflicts["total_conflicts"] == 0:
+                response += "✅ No conflicts detected! Safe to proceed with reorganization."
+            else:
+                response += f"⚠️ Found {conflicts['total_conflicts']} potential conflicts:\n\n"
+
+                if conflicts["duplicate_titles_in_folder"]:
+                    response += "**Duplicate Titles:**\n"
+                    for dup in conflicts["duplicate_titles_in_folder"][:3]:
+                        response += f"  • '{dup['title']}' appears {dup['count']}x\n"
+
+                if conflicts["target_folder_issues"]:
+                    response += "\n**Folder Issues:**\n"
+                    for issue in conflicts["target_folder_issues"][:3]:
+                        response += f"  • {issue['issue']}\n"
+
+                if conflicts["tag_conflicts"]:
+                    response += "\n**Tag Duplicates:**\n"
+                    for tag_dup in conflicts["tag_conflicts"][:3]:
+                        response += f"  • '{tag_dup['original']}' ↔ '{tag_dup['duplicate']}'\n"
+
+                response += "\n💡 *Next Steps:*\n"
+                response += "• Review conflicts manually\n"
+                response += "• Use `/reorg_execute` to proceed anyway\n"
+                response += "• Or `/reorg_help` for more options"
+
+            await update.message.reply_text(response, parse_mode='Markdown')
+            logger.info(f"User {user.id} viewed conflict report: {conflicts['total_conflicts']} conflicts")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error detecting conflicts.")
+            logger.error(f"Error in handle_reorg_detect_conflicts: {e}")
+
     async def handle_reorg_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /reorg_help command - Show reorganization command help"""
         user = update.effective_user
@@ -1946,15 +1996,17 @@ class TelegramOrchestrator:
                 "📋 *Setup & Planning*:\n"
                 "  /reorg_init <template> - Initialize PARA folder structure\n"
                 "    Templates: PARA+ (Status-Based), PARA Context (Role-Based)\n\n"
-                "  /reorg_preview - See migration plan without changes\n\n"
+                "  /reorg_preview - See migration plan without changes\n"
+                "  /reorg_detect_conflicts - Check for potential issues\n\n"
                 "🔄 *Reorganization*:\n"
                 "  /reorg_execute - Execute the reorganization plan\n\n"
                 "✨ *Enrichment*:\n"
-                "  /enrich_notes [limit] - Add metadata to notes (default: 10)\n"
-                "    Adds: Status, Priority, Summary, Key Takeaways, Tags\n\n"
+                "  /enrich_notes [limit] [--unenriched-only] - Add metadata to notes\n"
+                "    Adds: Status, Priority, Summary, Key Takeaways, Tags\n"
+                "    Example: /enrich_notes 20 --unenriched-only\n\n"
                 "🏷️ *Tag Management*:\n"
                 "  /reorg_audit_tags - Review tag consistency\n\n"
-                "What's PARA?\n"
+                "*What's PARA?*\n"
                 "• Projects: Goal-oriented tasks with deadlines\n"
                 "• Areas: Standards maintained over time\n"
                 "• Resources: Reference materials\n"
@@ -2016,6 +2068,7 @@ def main():
     # FR-016: Joplin Database Reorganization Commands
     application.add_handler(CommandHandler("reorg_init", orchestrator.handle_reorg_init))
     application.add_handler(CommandHandler("reorg_preview", orchestrator.handle_reorg_preview))
+    application.add_handler(CommandHandler("reorg_detect_conflicts", orchestrator.handle_reorg_detect_conflicts))
     application.add_handler(CommandHandler("reorg_execute", orchestrator.handle_reorg_execute))
     application.add_handler(CommandHandler("enrich_notes", orchestrator.handle_enrich_notes))
     application.add_handler(CommandHandler("reorg_audit_tags", orchestrator.handle_reorg_audit_tags))
