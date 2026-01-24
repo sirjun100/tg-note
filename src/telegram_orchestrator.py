@@ -191,7 +191,7 @@ class TelegramOrchestrator:
             "/braindump_stop - End the session early\n\n"
 
             "🏗️ **Joplin Database Organization (FR-016)**\n"
-            "/reorg_init <template> - Initialize PARA folder structure\n"
+            "/reorg_init status|roles - Initialize PARA structure\n"
             "/reorg_preview - See migration plan without changes\n"
             "/reorg_execute - Apply reorganization\n"
             "/enrich_notes [limit] - Add metadata to notes\n"
@@ -1694,13 +1694,11 @@ class TelegramOrchestrator:
                     "🏗️ *Initialize PARA Structure*\n\n"
                     "Usage: /reorg_init <template>\n\n"
                     "Available templates:\n"
-                )
-                for i, template in enumerate(templates, 1):
-                    help_text += f"{i}. {template}\n"
-
-                help_text += (
-                    "\nExample:\n"
-                    "/reorg_init PARA+ (Status-Based)\n"
+                    "  status - Organize by project status (Active, Planned, On Hold, Stalled)\n"
+                    "  roles  - Organize by roles (Professional, Personal, Volunteer)\n\n"
+                    "Examples:\n"
+                    "  /reorg_init status\n"
+                    "  /reorg_init roles\n"
                 )
                 await update.message.reply_text(help_text)
                 return
@@ -1995,7 +1993,7 @@ class TelegramOrchestrator:
                 "🏗️ *Joplin Database Reorganization Commands (FR-016)*\n\n"
                 "📋 *Setup & Planning*:\n"
                 "  /reorg_init <template> - Initialize PARA folder structure\n"
-                "    Templates: PARA+ (Status-Based), PARA Context (Role-Based)\n\n"
+                "    Templates: status (by project status), roles (by role)\n\n"
                 "  /reorg_preview - See migration plan without changes\n"
                 "  /reorg_detect_conflicts - Check for potential issues\n\n"
                 "🔄 *Reorganization*:\n"

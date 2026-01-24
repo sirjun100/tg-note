@@ -50,13 +50,13 @@ class ReorgOrchestrator:
     """Orchestrates database reorganization based on PARA methodology"""
 
     PARA_TEMPLATES = {
-        "PARA+ (Status-Based)": {
+        "status": {
             "Projects": ["🟢 Active", "🟡 Planned", "🔵 On Hold", "❌ Stalled"],
             "Areas": ["💼 Work & Career", "💪 Health & Fitness", "💰 Finance & Investing", "📚 Learning", "🏠 Home"],
             "Resources": ["📖 Books & Articles", "📋 Templates", "🔗 Reference"],
             "Archive": []
         },
-        "PARA Context (Role-Based)": {
+        "roles": {
             "Projects": ["Professional", "Personal", "Volunteer"],
             "Areas": ["Work", "Life", "Creative", "Health"],
             "Resources": ["Tools", "Templates", "Knowledge"],
