@@ -1771,7 +1771,7 @@ class TelegramOrchestrator:
                 f"Use `/reorg_execute` to apply all changes"
             )
 
-            await update.message.reply_text(response, parse_mode='Markdown')
+            await update.message.reply_text(response)
             logger.info(f"User {user.id} viewed migration preview")
 
         except Exception as e:
@@ -1792,11 +1792,10 @@ class TelegramOrchestrator:
                 await update.message.reply_text("🔍 DRY-RUN MODE: Simulating reorganization without making changes...")
             else:
                 await update.message.reply_text(
-                    "⚠️ *WARNING: This will reorganize your notes*\n\n"
+                    "WARNING: This will reorganize your notes\n\n"
                     "This action will move notes to their suggested folders.\n"
                     "You can always move them back manually.\n\n"
-                    "Use /reorg_execute dry-run to preview first!",
-                    parse_mode='Markdown'
+                    "Use /reorg_execute dry-run to preview first!"
                 )
 
             # Generate and execute plan
@@ -1858,14 +1857,14 @@ class TelegramOrchestrator:
             # Show enrichment status first
             summary = self.enrichment_service.get_enrichment_summary()
             status_msg = (
-                f"📊 *Enrichment Status*\n"
+                f"Enrichment Status\n"
                 f"Total notes: {summary['total_notes']}\n"
                 f"Already enriched: {summary['enriched_notes']}\n"
                 f"Awaiting enrichment: {summary['unenriched_notes']}\n"
                 f"Enrichment: {summary['enrichment_percentage']:.1f}%\n\n"
             )
 
-            await update.message.reply_text(status_msg, parse_mode='Markdown')
+            await update.message.reply_text(status_msg)
 
             # Prepare enrichment parameters
             notes = self.joplin_client.get_all_notes()
@@ -1898,13 +1897,13 @@ class TelegramOrchestrator:
 
             # Format final report
             result_msg = (
-                f"✅ *Enrichment Complete!*\n\n"
-                f"📈 Results:\n"
+                f"Enrichment Complete!\n\n"
+                f"Results:\n"
                 f"  ✓ Enriched: {stats.enriched} notes\n"
                 f"  ⊘ Skipped: {stats.skipped} (already enriched)\n"
                 f"  ✗ Failed: {stats.failed} notes\n"
                 f"  Success Rate: {stats.success_rate}\n\n"
-                f"📝 Metadata Added:\n"
+                f"Metadata Added:\n"
                 f"  • Status (Active/Waiting/Someday/Done)\n"
                 f"  • Priority (Critical/High/Medium/Low)\n"
                 f"  • Summary\n"
@@ -1912,7 +1911,7 @@ class TelegramOrchestrator:
                 f"  • Suggested Tags"
             )
 
-            await update.message.reply_text(result_msg, parse_mode='Markdown')
+            await update.message.reply_text(result_msg)
             logger.info(f"User {user.id} completed batch enrichment: {stats.enriched}/{stats.total} notes")
 
         except Exception as e:
@@ -1980,7 +1979,7 @@ class TelegramOrchestrator:
                 "• Use `/enrich_notes` to add consistent tags to notes"
             )
 
-            await update.message.reply_text(response, parse_mode='Markdown')
+            await update.message.reply_text(response)
             logger.info(f"User {user.id} viewed tag audit report")
 
         except Exception as e:
@@ -2025,12 +2024,12 @@ class TelegramOrchestrator:
                     for tag_dup in conflicts["tag_conflicts"][:3]:
                         response += f"  • '{tag_dup['original']}' ↔ '{tag_dup['duplicate']}'\n"
 
-                response += "\n💡 *Next Steps:*\n"
+                response += "\nNext Steps:\n"
                 response += "• Review conflicts manually\n"
-                response += "• Use `/reorg_execute` to proceed anyway\n"
-                response += "• Or `/reorg_help` for more options"
+                response += "• Use /reorg_execute to proceed anyway\n"
+                response += "• Or /reorg_help for more options"
 
-            await update.message.reply_text(response, parse_mode='Markdown')
+            await update.message.reply_text(response)
             logger.info(f"User {user.id} viewed conflict report: {conflicts['total_conflicts']} conflicts")
 
         except Exception as e:
@@ -2096,31 +2095,31 @@ class TelegramOrchestrator:
 
         try:
             help_text = (
-                "🏗️ *Joplin Database Reorganization Commands (FR-016)*\n\n"
-                "📊 *Status & Diagnostics*:\n"
+                "Joplin Database Reorganization Commands (FR-016)\n\n"
+                "Status & Diagnostics:\n"
                 "  /reorg_status - View notes count, folders, tags, enrichment status\n\n"
-                "📋 *Setup & Planning*:\n"
+                "Setup & Planning:\n"
                 "  /reorg_init status|roles - Initialize PARA folder structure\n"
                 "  /reorg_preview - See migration plan without changes\n"
                 "  /reorg_detect_conflicts - Check for potential issues\n\n"
-                "🔄 *Reorganization*:\n"
+                "Reorganization:\n"
                 "  /reorg_execute dry-run - Preview changes without applying\n"
                 "  /reorg_execute - Apply all reorganization changes\n"
                 "  /reorg_history - View last 5 migrations (audit trail)\n\n"
-                "✨ *Enrichment*:\n"
+                "Enrichment:\n"
                 "  /enrich_notes [limit] [--unenriched-only] - Add metadata to notes\n"
                 "    Adds: Status, Priority, Summary, Key Takeaways, Tags\n"
                 "    Example: /enrich_notes 20 --unenriched-only\n\n"
-                "🏷️ *Tag Management*:\n"
+                "Tag Management:\n"
                 "  /reorg_audit_tags - Review tag consistency\n\n"
-                "*What's PARA?*\n"
+                "What's PARA?\n"
                 "• Projects: Goal-oriented tasks with deadlines\n"
                 "• Areas: Standards maintained over time\n"
                 "• Resources: Reference materials\n"
                 "• Archive: Completed items"
             )
 
-            await update.message.reply_text(help_text, parse_mode='Markdown')
+            await update.message.reply_text(help_text)
             logger.info(f"User {user.id} viewed reorganization help")
 
         except Exception as e:
