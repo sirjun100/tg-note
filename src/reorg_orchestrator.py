@@ -1,17 +1,50 @@
 """
 Reorganization Orchestrator for Joplin Database
 Handles PARA methodology implementation and database restructuring logic.
+Includes comprehensive error handling, logging, and conflict detection.
 """
 
 import logging
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
-from src.joplin_client import JoplinClient
+from dataclasses import dataclass
 
+from src.joplin_client import JoplinClient
 from src.enrichment_service import EnrichmentService
 from src.llm_orchestrator import LLMOrchestrator
 
 logger = logging.getLogger(__name__)
+
+
+# Custom exceptions for better error handling
+class ReorgException(Exception):
+    """Base exception for reorganization operations"""
+    pass
+
+
+class TemplateFolderException(ReorgException):
+    """Raised when folder initialization fails"""
+    pass
+
+
+class MigrationConflictException(ReorgException):
+    """Raised when migration conflicts are detected"""
+    pass
+
+
+class MigrationExecutionException(ReorgException):
+    """Raised when migration execution fails"""
+    pass
+
+
+@dataclass
+class OperationLog:
+    """Log entry for reorganization operations"""
+    timestamp: str
+    operation: str
+    status: str  # 'success', 'warning', 'error'
+    details: str
+    affected_items: int = 0
 
 class ReorgOrchestrator:
     """Orchestrates database reorganization based on PARA methodology"""
@@ -41,25 +74,47 @@ class ReorgOrchestrator:
 
     def initialize_structure(self, template_name: str) -> bool:
         """Create the top-level folder structure based on template"""
-        template = self.PARA_TEMPLATES.get(template_name)
-        if not template:
-            logger.error(f"Template '{template_name}' not found")
-            return False
+        try:
+            template = self.PARA_TEMPLATES.get(template_name)
+            if not template:
+                logger.error(f"Template '{template_name}' not found. Available: {list(self.PARA_TEMPLATES.keys())}")
+                raise TemplateFolderException(f"Unknown template: {template_name}")
 
-        logger.info(f"Initializing PARA structure using template: {template_name}")
-        
-        for main_folder, sub_folders in template.items():
-            # Create main folder
-            main_folder_id = self.joplin_client.get_or_create_folder_by_path([main_folder])
-            if not main_folder_id:
-                logger.error(f"Failed to create main folder '{main_folder}'")
-                return False
-                
-            # Create sub-folders
-            for sub in sub_folders:
-                self.joplin_client.get_or_create_folder_by_path([main_folder, sub])
-                
-        return True
+            logger.info(f"🏗️ Initializing PARA structure using template: {template_name}")
+
+            folders_created = 0
+            for main_folder, sub_folders in template.items():
+                try:
+                    # Create main folder
+                    main_folder_id = self.joplin_client.get_or_create_folder_by_path([main_folder])
+                    if not main_folder_id:
+                        raise TemplateFolderException(f"Failed to create main folder '{main_folder}'")
+
+                    folders_created += 1
+                    logger.debug(f"✓ Created main folder: {main_folder}")
+
+                    # Create sub-folders
+                    for sub in sub_folders:
+                        try:
+                            self.joplin_client.get_or_create_folder_by_path([main_folder, sub])
+                            folders_created += 1
+                            logger.debug(f"  ✓ Created sub-folder: {sub}")
+                        except Exception as e:
+                            logger.warning(f"  ⚠️ Failed to create sub-folder {sub}: {e}")
+
+                except Exception as e:
+                    logger.error(f"Failed to create main folder '{main_folder}': {e}")
+                    raise
+
+            logger.info(f"✅ PARA structure initialization complete: {folders_created} folders created")
+            return True
+
+        except TemplateFolderException as e:
+            logger.error(f"Template initialization error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during structure initialization: {e}", exc_info=True)
+            raise ReorgException(f"Failed to initialize PARA structure: {e}")
 
     async def generate_migration_plan(self) -> Dict[str, Any]:
         """
@@ -241,19 +296,49 @@ class ReorgOrchestrator:
 
     def execute_migration_plan(self, plan: List[Dict[str, str]]) -> Dict[str, int]:
         """
-        Execute a series of note moves.
-        Each move is: {"note_id": "...", "target_folder_id": "..."}
+        Execute a series of note moves with comprehensive error handling.
+
+        Args:
+            plan: List of moves: {"note_id": "...", "target_folder_id": "..."}
+
+        Returns:
+            Results with success/failed counts
         """
-        results = {"success": 0, "failed": 0}
-        
-        for move in plan:
-            note_id = move.get("note_id")
-            target_id = move.get("target_folder_id")
-            
-            if note_id and target_id:
-                if self.joplin_client.move_note(note_id, target_id):
-                    results["success"] += 1
-                else:
+        try:
+            if not plan:
+                logger.warning("Migration plan is empty, nothing to execute")
+                return {"success": 0, "failed": 0, "skipped": 0}
+
+            results = {"success": 0, "failed": 0, "skipped": 0}
+            logger.info(f"🔄 Starting migration execution for {len(plan)} moves")
+
+            for i, move in enumerate(plan, 1):
+                try:
+                    note_id = move.get("note_id")
+                    target_id = move.get("target_folder_id")
+                    note_title = move.get("note_title", "Unknown")
+
+                    if not note_id or not target_id:
+                        logger.warning(f"Skipping move {i}: Invalid note_id or target_id")
+                        results["skipped"] += 1
+                        continue
+
+                    logger.debug(f"Moving note {i}/{len(plan)}: '{note_title}' → folder {target_id[:8]}...")
+
+                    if self.joplin_client.move_note(note_id, target_id):
+                        results["success"] += 1
+                        logger.debug(f"  ✓ Successfully moved: {note_title}")
+                    else:
+                        results["failed"] += 1
+                        logger.warning(f"  ✗ Failed to move: {note_title}")
+
+                except Exception as e:
                     results["failed"] += 1
-                    
-        return results
+                    logger.error(f"  ✗ Error moving note {note_id}: {e}", exc_info=True)
+
+            logger.info(f"✅ Migration complete: {results['success']} success, {results['failed']} failed, {results['skipped']} skipped")
+            return results
+
+        except Exception as e:
+            logger.error(f"Migration execution failed: {e}", exc_info=True)
+            raise MigrationExecutionException(f"Failed to execute migration plan: {e}")

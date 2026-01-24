@@ -53,54 +53,80 @@ class EnrichmentService:
         self._cancel_batch = True
 
     async def enrich_note(self, note_id: str) -> bool:
-        """Fetch a note, get AI enrichment, and update the note"""
-        note = self.joplin_client.get_note(note_id)
-        if not note:
-            logger.error(f"Note {note_id} not found for enrichment")
-            return False
+        """Fetch a note, get AI enrichment, and update the note with error handling"""
+        try:
+            # Fetch the note
+            note = self.joplin_client.get_note(note_id)
+            if not note:
+                logger.error(f"Note {note_id} not found for enrichment")
+                return False
 
-        title = note.get('title', 'Untitled')
-        body = note.get('body', '')
+            title = note.get('title', 'Untitled')
+            body = note.get('body', '')
+            logger.debug(f"Enriching note: '{title}'")
 
-        # Get enrichment from LLM
-        enrichment_data = await self.llm_orchestrator.enrich_note(title, body)
-        metadata = enrichment_data.get('metadata')
-        
-        if not metadata:
-            logger.warning(f"No metadata generated for note {note_id}")
-            return False
+            # Check if already enriched
+            if self._is_already_enriched(body):
+                logger.debug(f"Note {note_id} already enriched, skipping")
+                return True
 
-        # Construct new body with front matter metadata
-        meta_header = "---\n"
-        meta_header += f"Status: {metadata.get('status', 'N/A')}\n"
-        meta_header += f"Priority: {metadata.get('priority', 'N/A')}\n"
-        meta_header += f"Summary: {metadata.get('summary', 'N/A')}\n"
-        
-        takeaways = metadata.get('key_takeaways', [])
-        if takeaways:
-            meta_header += "Key Takeaways:\n"
-            for t in takeaways:
-                meta_header += f"  - {t}\n"
-        
-        meta_header += "---\n\n"
+            # Get enrichment from LLM
+            try:
+                enrichment_data = await self.llm_orchestrator.enrich_note(title, body)
+                metadata = enrichment_data.get('metadata')
 
-        # Check if note already has enrichment (avoid double enrichment)
-        if self._is_already_enriched(body):
-            logger.info(f"Note {note_id} already enriched, skipping")
+                if not metadata:
+                    logger.warning(f"No metadata generated for note '{title}' ({note_id})")
+                    return False
+            except Exception as e:
+                logger.error(f"LLM enrichment failed for note '{title}': {e}")
+                return False
+
+            # Construct metadata header
+            try:
+                meta_header = "---\n"
+                meta_header += f"Status: {metadata.get('status', 'N/A')}\n"
+                meta_header += f"Priority: {metadata.get('priority', 'N/A')}\n"
+                meta_header += f"Summary: {metadata.get('summary', 'N/A')}\n"
+
+                takeaways = metadata.get('key_takeaways', [])
+                if takeaways:
+                    meta_header += "Key Takeaways:\n"
+                    for t in takeaways:
+                        meta_header += f"  - {t}\n"
+
+                meta_header += "---\n\n"
+                new_body = meta_header + body
+            except Exception as e:
+                logger.error(f"Failed to construct metadata header for note '{title}': {e}")
+                return False
+
+            # Update note with metadata
+            try:
+                success = self.joplin_client.update_note(note_id, {"body": new_body})
+                if not success:
+                    logger.warning(f"Failed to update note body for '{title}'")
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to update note '{title}': {e}")
+                return False
+
+            # Apply suggested tags
+            try:
+                suggested_tags = metadata.get('suggested_tags', [])
+                if suggested_tags:
+                    self.joplin_client.apply_tags(note_id, suggested_tags)
+                    logger.debug(f"Applied {len(suggested_tags)} tags to note '{title}'")
+            except Exception as e:
+                logger.warning(f"Failed to apply tags to note '{title}': {e}")
+                # Don't fail enrichment if tag application fails
+
+            logger.info(f"✓ Enriched note '{title}': Priority={metadata.get('priority', 'UNKNOWN')}")
             return True
 
-        # Construct new body with front matter metadata
-        new_body = meta_header + body
-
-        # Update note and apply tags
-        success = self.joplin_client.update_note(note_id, {"body": new_body})
-
-        suggested_tags = metadata.get('suggested_tags', [])
-        if suggested_tags:
-            self.joplin_client.apply_tags(note_id, suggested_tags)
-
-        logger.debug(f"Enriched note {note_id}: {metadata.get('priority', 'UNKNOWN')}")
-        return success
+        except Exception as e:
+            logger.error(f"Unexpected error enriching note {note_id}: {e}", exc_info=True)
+            return False
 
     async def enrich_notes_batch(
         self,
