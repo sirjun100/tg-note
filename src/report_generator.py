@@ -542,31 +542,33 @@ Response:"""
             return []
 
         try:
-            # Get all folders (recursively if needed)
-            folders = self.joplin_client.get_folders()
-            if not folders:
-                self.logger.info("No Joplin folders found")
-                return []
-
-            # Collect notes from ALL folders (not just those with priority tags)
+            # Fetch all notes directly (get_notes_in_folder doesn't work reliably)
+            # This endpoint returns all notes regardless of folder
             all_notes = []
-            for folder in folders:
-                try:
-                    notes = self.joplin_client.get_notes_in_folder(folder["id"])
-                    if notes:
-                        # Add all notes, let priority scoring algorithm rank them
-                        for note in notes:
-                            # Ensure note has required fields for report generation
-                            if "title" in note and "id" in note:
-                                # Add folder information for context
-                                note["folder_id"] = folder["id"]
-                                note["folder_name"] = folder.get("title", "Unknown")
-                                all_notes.append(note)
-                except Exception as e:
-                    self.logger.warning(f"Failed to fetch notes from folder {folder.get('title', folder['id'])}: {e}")
-                    continue
 
-            self.logger.debug(f"Fetched {len(all_notes)} total Joplin notes from {len(folders)} folders")
+            # Get notes via the /notes endpoint
+            notes = self.joplin_client._make_request('GET', '/notes')
+            if isinstance(notes, list):
+                all_notes = notes
+            elif isinstance(notes, dict) and 'items' in notes:
+                all_notes = notes['items']
+
+            # Enrich notes with folder information if available
+            if all_notes:
+                folders = self.joplin_client.get_folders()
+                folder_map = {f["id"]: f.get("title", "Unknown") for f in folders}
+
+                for note in all_notes:
+                    # Add folder name if available
+                    folder_id = note.get("parent_id", "")
+                    if folder_id in folder_map:
+                        note["folder_id"] = folder_id
+                        note["folder_name"] = folder_map[folder_id]
+                    else:
+                        note["folder_id"] = folder_id
+                        note["folder_name"] = "Unknown"
+
+            self.logger.debug(f"Fetched {len(all_notes)} total Joplin notes")
             return all_notes
 
         except Exception as e:
