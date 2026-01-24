@@ -599,6 +599,333 @@ class TelegramOrchestrator:
             await update.message.reply_text(error_msg)
             logger.error(f"Error in handle_daily_report: {e}", exc_info=True)
 
+    async def handle_configure_report_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /configure_report_time command - Set report delivery time"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            user_id = user.id
+            args = context.args
+
+            if not args or len(args) < 1:
+                await update.message.reply_text(
+                    "❌ Usage: /configure_report_time HH:MM\n"
+                    "Example: /configure_report_time 08:00"
+                )
+                return
+
+            time_str = args[0]
+
+            # Validate time format
+            try:
+                hour, minute = map(int, time_str.split(":"))
+                if not (0 <= hour < 24 and 0 <= minute < 60):
+                    raise ValueError()
+            except:
+                await update.message.reply_text(
+                    f"❌ Invalid time format: {time_str}\n"
+                    "Use 24-hour format: HH:MM (e.g., 08:00, 14:30)"
+                )
+                return
+
+            # Get current config
+            config = self.logging_service.get_report_configuration(user_id)
+            if not config:
+                config = {
+                    'enabled': True,
+                    'delivery_time': time_str,
+                    'timezone': 'UTC',
+                    'include_critical': True,
+                    'include_high': True,
+                    'include_medium': False,
+                    'include_google_tasks': True,
+                    'include_clarification_pending': True,
+                    'detail_level': 'detailed'
+                }
+            else:
+                config['delivery_time'] = time_str
+
+            # Save config
+            self.logging_service.save_report_configuration(user_id, config)
+
+            await update.message.reply_text(
+                f"✅ Report delivery time set to {time_str}\n"
+                f"Timezone: {config.get('timezone', 'UTC')}"
+            )
+            logger.info(f"User {user_id} set report time to {time_str}")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error setting report time.")
+            logger.error(f"Error in handle_configure_report_time: {e}")
+
+    async def handle_configure_report_timezone(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /configure_report_timezone command - Set timezone"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            user_id = user.id
+            args = context.args
+
+            if not args or len(args) < 1:
+                await update.message.reply_text(
+                    "❌ Usage: /configure_report_timezone TIMEZONE\n"
+                    "Examples: US/Eastern, Europe/London, Asia/Tokyo, UTC"
+                )
+                return
+
+            timezone_str = args[0]
+
+            # Validate timezone using pytz
+            try:
+                import pytz
+                pytz.timezone(timezone_str)
+            except:
+                await update.message.reply_text(
+                    f"❌ Unknown timezone: {timezone_str}\n"
+                    "Examples: US/Eastern, Europe/London, Asia/Tokyo, UTC"
+                )
+                return
+
+            # Get current config
+            config = self.logging_service.get_report_configuration(user_id)
+            if not config:
+                config = {
+                    'enabled': True,
+                    'delivery_time': '08:00',
+                    'timezone': timezone_str,
+                    'include_critical': True,
+                    'include_high': True,
+                    'include_medium': False,
+                    'include_google_tasks': True,
+                    'include_clarification_pending': True,
+                    'detail_level': 'detailed'
+                }
+            else:
+                config['timezone'] = timezone_str
+
+            # Save config
+            self.logging_service.save_report_configuration(user_id, config)
+
+            await update.message.reply_text(
+                f"✅ Timezone set to {timezone_str}\n"
+                f"Report time: {config.get('delivery_time', '08:00')}"
+            )
+            logger.info(f"User {user_id} set timezone to {timezone_str}")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error setting timezone.")
+            logger.error(f"Error in handle_configure_report_timezone: {e}")
+
+    async def handle_toggle_daily_report(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /toggle_daily_report command - Enable/disable automatic reports"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            user_id = user.id
+            args = context.args
+
+            if not args or len(args) < 1:
+                await update.message.reply_text(
+                    "❌ Usage: /toggle_daily_report on|off\n"
+                    "Examples: /toggle_daily_report on"
+                )
+                return
+
+            action = args[0].lower()
+
+            if action not in ['on', 'off', 'yes', 'no', 'true', 'false', '1', '0']:
+                await update.message.reply_text(
+                    "❌ Invalid option. Use: on, off, yes, no, true, or false"
+                )
+                return
+
+            enabled = action in ['on', 'yes', 'true', '1']
+
+            # Get current config
+            config = self.logging_service.get_report_configuration(user_id)
+            if not config:
+                config = {
+                    'enabled': enabled,
+                    'delivery_time': '08:00',
+                    'timezone': 'UTC',
+                    'include_critical': True,
+                    'include_high': True,
+                    'include_medium': False,
+                    'include_google_tasks': True,
+                    'include_clarification_pending': True,
+                    'detail_level': 'detailed'
+                }
+            else:
+                config['enabled'] = enabled
+
+            # Save config
+            self.logging_service.save_report_configuration(user_id, config)
+
+            status = "✅ Enabled" if enabled else "❌ Disabled"
+            await update.message.reply_text(
+                f"Daily reports {status}\n"
+                f"Scheduled for: {config.get('delivery_time', '08:00')} "
+                f"{config.get('timezone', 'UTC')}"
+            )
+            logger.info(f"User {user_id} {'enabled' if enabled else 'disabled'} daily reports")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error toggling daily reports.")
+            logger.error(f"Error in handle_toggle_daily_report: {e}")
+
+    async def handle_show_report_config(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /show_report_config command - Display current configuration"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            user_id = user.id
+
+            # Get config
+            config = self.logging_service.get_report_configuration(user_id)
+
+            if not config:
+                message = (
+                    "⚙️ Your Report Configuration (Defaults)\n\n"
+                    "Status: ✅ Enabled\n"
+                    "Delivery Time: 08:00\n"
+                    "Timezone: UTC\n\n"
+                    "Content Included:\n"
+                    "  • Critical: Yes\n"
+                    "  • High Priority: Yes\n"
+                    "  • Medium Priority: No\n"
+                    "  • Google Tasks: Yes\n"
+                    "  • Clarifications: Yes\n\n"
+                    "Detail Level: detailed\n\n"
+                    "No custom configuration set yet.\n"
+                    "Use commands to customize."
+                )
+            else:
+                message = self.report_generator.format_configuration_display(config)
+
+            await update.message.reply_text(message)
+            logger.info(f"User {user_id} viewed report configuration")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error retrieving configuration.")
+            logger.error(f"Error in handle_show_report_config: {e}")
+
+    async def handle_configure_report_content(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /configure_report_content command - Set priority filter"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            user_id = user.id
+            args = context.args
+
+            if not args or len(args) < 1:
+                await update.message.reply_text(
+                    "❌ Usage: /configure_report_content LEVEL\n"
+                    "Options: critical, high, medium, all\n"
+                    "  • critical: Only critical items\n"
+                    "  • high: Critical and high priority\n"
+                    "  • medium: Critical, high, and medium\n"
+                    "  • all: All priority levels"
+                )
+                return
+
+            level = args[0].lower()
+
+            if level not in ['critical', 'high', 'medium', 'all']:
+                await update.message.reply_text(
+                    "❌ Invalid level. Use: critical, high, medium, or all"
+                )
+                return
+
+            # Get current config
+            config = self.logging_service.get_report_configuration(user_id)
+            if not config:
+                config = {
+                    'enabled': True,
+                    'delivery_time': '08:00',
+                    'timezone': 'UTC',
+                    'include_critical': True,
+                    'include_high': level in ['high', 'medium', 'all'],
+                    'include_medium': level in ['medium', 'all'],
+                    'include_low': level == 'all',
+                    'include_google_tasks': True,
+                    'include_clarification_pending': True,
+                    'detail_level': 'detailed'
+                }
+            else:
+                config['include_critical'] = True  # Always include critical
+                config['include_high'] = level in ['high', 'medium', 'all']
+                config['include_medium'] = level in ['medium', 'all']
+                config['include_low'] = level == 'all'
+
+            # Save config
+            self.logging_service.save_report_configuration(user_id, config)
+
+            await update.message.reply_text(
+                f"✅ Report content set to: {level.upper()}\n"
+                "Including:\n"
+                f"  • Critical: Yes\n"
+                f"  • High Priority: {'Yes' if level in ['high', 'medium', 'all'] else 'No'}\n"
+                f"  • Medium Priority: {'Yes' if level in ['medium', 'all'] else 'No'}\n"
+                f"  • Low Priority: {'Yes' if level == 'all' else 'No'}"
+            )
+            logger.info(f"User {user_id} set report content level to {level}")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error setting report content.")
+            logger.error(f"Error in handle_configure_report_content: {e}")
+
+    async def handle_report_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /report_help command - Show help for report commands"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            help_text = (
+                "📊 Daily Priority Report Commands\n\n"
+                "Generate Reports:\n"
+                "  /daily_report - Generate report immediately\n\n"
+                "Configure Delivery:\n"
+                "  /configure_report_time <HH:MM> - Set delivery time (24-hour format)\n"
+                "    Example: /configure_report_time 08:00\n\n"
+                "  /configure_report_timezone <timezone> - Set your timezone\n"
+                "    Example: /configure_report_timezone US/Eastern\n"
+                "    Common: US/Eastern, US/Central, US/Pacific, Europe/London, Asia/Tokyo\n\n"
+                "  /toggle_daily_report on|off - Enable/disable automatic reports\n"
+                "    Example: /toggle_daily_report on\n\n"
+                "Customize Content:\n"
+                "  /configure_report_content <level> - Set minimum priority level\n"
+                "    Options: critical, high, medium, all\n"
+                "    Example: /configure_report_content high\n\n"
+                "View Settings:\n"
+                "  /show_report_config - View your current configuration\n\n"
+                "Help:\n"
+                "  /report_help - Show this help message\n\n"
+                "What's Included:\n"
+                "• High-priority Joplin notes (tagged: #urgent, #critical, #important)\n"
+                "• Incomplete Google Tasks\n"
+                "• Notes pending clarification\n"
+                "• Items completed since last report\n"
+                "• Smart priority ranking across all sources"
+            )
+
+            await update.message.reply_text(help_text)
+            logger.info(f"User {user.id} viewed report help")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error retrieving help.")
+            logger.error(f"Error in handle_report_help: {e}")
+
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming text messages"""
         user = update.effective_user
@@ -998,6 +1325,12 @@ def main():
     application.add_handler(CommandHandler("google_tasks_status", orchestrator.handle_google_tasks_status))
     application.add_handler(CommandHandler("list_inbox_tasks", orchestrator.handle_list_inbox_tasks))
     application.add_handler(CommandHandler("daily_report", orchestrator.handle_daily_report))
+    application.add_handler(CommandHandler("configure_report_time", orchestrator.handle_configure_report_time))
+    application.add_handler(CommandHandler("configure_report_timezone", orchestrator.handle_configure_report_timezone))
+    application.add_handler(CommandHandler("toggle_daily_report", orchestrator.handle_toggle_daily_report))
+    application.add_handler(CommandHandler("show_report_config", orchestrator.handle_show_report_config))
+    application.add_handler(CommandHandler("configure_report_content", orchestrator.handle_configure_report_content))
+    application.add_handler(CommandHandler("report_help", orchestrator.handle_report_help))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, orchestrator.handle_message))
 
     # Start the bot with configurable polling

@@ -443,3 +443,77 @@ class LoggingService:
                 logger.debug(f"Logged tag creation: user={user_id}, note={note_id}, tag={tag_name}, is_new={is_new}")
         except Exception as e:
             logger.error(f"Failed to log tag creation: {e}")
+
+    # Report Configuration Methods
+
+    def save_report_configuration(self, user_id: int, config: Dict[str, Any]):
+        """Save report configuration for a user"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO report_configurations
+                (user_id, enabled, delivery_time, timezone, include_critical, include_high,
+                 include_medium, include_low, include_google_tasks, include_clarification_pending,
+                 detail_level, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                user_id,
+                config.get('enabled', True),
+                config.get('delivery_time', '08:00'),
+                config.get('timezone', 'UTC'),
+                config.get('include_critical', True),
+                config.get('include_high', True),
+                config.get('include_medium', False),
+                config.get('include_low', False),
+                config.get('include_google_tasks', True),
+                config.get('include_clarification_pending', True),
+                config.get('detail_level', 'detailed'),
+                datetime.now()
+            ))
+            conn.commit()
+            logger.debug(f"Saved report configuration for user {user_id}")
+
+    def get_report_configuration(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get report configuration for a user"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = self._dict_factory
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM report_configurations WHERE user_id = ?', (user_id,))
+            row = cursor.fetchone()
+            if row:
+                return row
+            return None
+
+    def delete_report_configuration(self, user_id: int):
+        """Delete report configuration for a user"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM report_configurations WHERE user_id = ?', (user_id,))
+            conn.commit()
+            logger.debug(f"Deleted report configuration for user {user_id}")
+
+    def log_daily_report(self, user_id: int, report_data: Dict[str, Any]):
+        """Log a daily report generation event"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO daily_reports
+                (user_id, report_date, joplin_items_count, google_tasks_count,
+                 clarification_items_count, critical_items, high_items, medium_items,
+                 low_items, completed_since_last, generated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                user_id,
+                datetime.now().date(),
+                report_data.get('joplin_count', 0),
+                report_data.get('google_tasks_count', 0),
+                report_data.get('clarification_count', 0),
+                report_data.get('critical_items', 0),
+                report_data.get('high_items', 0),
+                report_data.get('medium_items', 0),
+                report_data.get('low_items', 0),
+                report_data.get('completed_count', 0),
+                report_data.get('generated_by', 'scheduled')  # 'scheduled' or 'manual'
+            ))
+            conn.commit()
+            logger.debug(f"Logged daily report for user {user_id}")
