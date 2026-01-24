@@ -140,8 +140,23 @@ class ReportGenerator:
         "low": PriorityLevel.LOW,
     }
 
-    def __init__(self):
+    # Minimum priority level to include in report (can be configured)
+    MIN_PRIORITY_THRESHOLD = PriorityLevel.LOW
+
+    # Maximum items to include per category
+    MAX_ITEMS_PER_CATEGORY = 20
+
+    def __init__(self, joplin_client=None, task_service=None):
+        """
+        Initialize report generator
+
+        Args:
+            joplin_client: JoplinClient instance for fetching notes
+            task_service: TaskService instance for fetching Google Tasks
+        """
         self.logger = logger
+        self.joplin_client = joplin_client
+        self.task_service = task_service
 
     def extract_priority_from_tags(self, tags: List[str]) -> PriorityLevel:
         """Extract priority level from tag list"""
@@ -406,6 +421,237 @@ class ReportGenerator:
         # Most urgent is first item (already sorted by priority score)
         top_item = report.all_items[0]
         return top_item.title
+
+    def filter_by_priority(
+        self, items: List[ReportItem], min_priority: PriorityLevel
+    ) -> List[ReportItem]:
+        """Filter items by minimum priority level"""
+        return [item for item in items if item.priority_level.value >= min_priority.value]
+
+    def limit_items(self, items: List[ReportItem], limit: int = None) -> List[ReportItem]:
+        """Limit number of items returned"""
+        if limit is None:
+            limit = self.MAX_ITEMS_PER_CATEGORY
+        return items[:limit]
+
+    async def fetch_joplin_notes_for_report(
+        self, user_id: int, min_priority: PriorityLevel = PriorityLevel.LOW
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch high-priority Joplin notes
+
+        Args:
+            user_id: Telegram user ID
+            min_priority: Minimum priority level to include
+
+        Returns:
+            List of note dictionaries
+        """
+        if not self.joplin_client:
+            self.logger.warning("Joplin client not configured")
+            return []
+
+        try:
+            # Get all folders
+            folders = self.joplin_client.get_folders()
+            if not folders:
+                self.logger.info("No Joplin folders found")
+                return []
+
+            # Collect notes from all folders
+            all_notes = []
+            for folder in folders:
+                try:
+                    notes = self.joplin_client.get_notes_in_folder(folder["id"])
+                    if notes:
+                        for note in notes:
+                            # Extract tags for priority filtering
+                            tags = note.get("tags", [])
+                            if isinstance(tags, str):
+                                tags = [t.strip().lower() for t in tags.split(",")]
+                            else:
+                                tags = [t.lower() for t in tags]
+
+                            # Check if note has priority tags
+                            has_priority_tag = any(
+                                tag in self.PRIORITY_TAGS for tag in tags
+                            )
+                            if has_priority_tag:
+                                all_notes.append(note)
+                except Exception as e:
+                    self.logger.warning(f"Failed to fetch notes from folder {folder['id']}: {e}")
+                    continue
+
+            self.logger.debug(f"Fetched {len(all_notes)} Joplin notes with priority tags")
+            return all_notes
+
+        except Exception as e:
+            self.logger.error(f"Failed to fetch Joplin notes: {e}")
+            return []
+
+    async def fetch_google_tasks_for_report(self, user_id: int) -> List[Dict[str, Any]]:
+        """
+        Fetch incomplete Google Tasks
+
+        Args:
+            user_id: Telegram user ID
+
+        Returns:
+            List of task dictionaries
+        """
+        if not self.task_service:
+            self.logger.debug("Google Tasks client not configured")
+            return []
+
+        try:
+            # Get task lists
+            task_lists = await self.task_service.get_task_lists(user_id)
+            if not task_lists:
+                self.logger.debug("No Google task lists found")
+                return []
+
+            # Fetch tasks from all lists
+            all_tasks = []
+            for task_list in task_lists:
+                try:
+                    tasks = await self.task_service.get_tasks(
+                        user_id, task_list["id"], show_completed=False
+                    )
+                    if tasks:
+                        # Add task list ID for reference
+                        for task in tasks:
+                            task["tasklist_id"] = task_list["id"]
+                        all_tasks.extend(tasks)
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to fetch tasks from list {task_list['id']}: {e}"
+                    )
+                    continue
+
+            self.logger.debug(f"Fetched {len(all_tasks)} incomplete Google Tasks")
+            return all_tasks
+
+        except Exception as e:
+            self.logger.error(f"Failed to fetch Google Tasks: {e}")
+            return []
+
+    async def aggregate_report_items(
+        self,
+        user_id: int,
+        joplin_notes: List[Dict[str, Any]],
+        google_tasks: List[Dict[str, Any]],
+        min_priority: PriorityLevel = PriorityLevel.LOW,
+    ) -> List[ReportItem]:
+        """
+        Aggregate items from both sources and rank by priority
+
+        Args:
+            user_id: Telegram user ID
+            joplin_notes: List of Joplin notes
+            google_tasks: List of Google Tasks
+            min_priority: Minimum priority level to include
+
+        Returns:
+            Sorted list of ReportItems by priority score
+        """
+        items = []
+
+        # Create ReportItems from Joplin notes
+        for note in joplin_notes:
+            try:
+                item = self.create_joplin_item(note)
+                if item and item.priority_level.value >= min_priority.value:
+                    items.append(item)
+            except Exception as e:
+                self.logger.warning(f"Failed to process Joplin note {note.get('id')}: {e}")
+                continue
+
+        # Create ReportItems from Google Tasks
+        for task in google_tasks:
+            try:
+                item = self.create_google_task_item(task)
+                if item and item.priority_level.value >= min_priority.value:
+                    items.append(item)
+            except Exception as e:
+                self.logger.warning(f"Failed to process Google Task {task.get('id')}: {e}")
+                continue
+
+        # Sort by priority score (highest first)
+        items.sort(key=lambda x: x.priority_score, reverse=True)
+
+        self.logger.debug(f"Aggregated {len(items)} report items from both sources")
+
+        return items
+
+    async def generate_report_async(
+        self,
+        user_id: int,
+        pending_clarifications: List[Tuple[str, str]] = None,
+        completed_items: List[str] = None,
+        min_priority: PriorityLevel = PriorityLevel.LOW,
+    ) -> ReportData:
+        """
+        Generate a complete daily report asynchronously
+
+        Fetches data from both Joplin and Google Tasks, aggregates, and generates report.
+
+        Args:
+            user_id: Telegram user ID
+            pending_clarifications: List of (note_id, note_title) tuples
+            completed_items: List of completed item titles
+            min_priority: Minimum priority level to include
+
+        Returns:
+            ReportData with categorized and scored items
+        """
+        self.logger.info(f"Generating async report for user {user_id}")
+
+        try:
+            # Fetch from both sources concurrently
+            joplin_notes = await self.fetch_joplin_notes_for_report(user_id, min_priority)
+            google_tasks = await self.fetch_google_tasks_for_report(user_id)
+
+            # Aggregate items
+            items = await self.aggregate_report_items(
+                user_id, joplin_notes, google_tasks, min_priority
+            )
+
+            # Categorize by priority
+            report = self.categorize_items(items)
+            report.user_id = user_id
+            report.report_date = datetime.now()
+
+            # Add pending clarifications
+            if pending_clarifications:
+                for note_id, note_title in pending_clarifications:
+                    report.pending_clarification.append(note_title)
+                report.clarification_count = len(pending_clarifications)
+
+            # Add completed items
+            if completed_items:
+                report.completed_items = completed_items
+                report.completed_count = len(completed_items)
+
+            # Count by source
+            report.joplin_count = sum(
+                1 for item in report.all_items if item.source == ItemSource.JOPLIN
+            )
+            report.google_tasks_count = sum(
+                1 for item in report.all_items if item.source == ItemSource.GOOGLE_TASKS
+            )
+
+            self.logger.info(
+                f"Report generated: {report.total_items} items "
+                f"({report.joplin_count} Joplin, {report.google_tasks_count} Tasks)"
+            )
+
+            return report
+
+        except Exception as e:
+            self.logger.error(f"Failed to generate async report: {e}")
+            # Return empty report on error
+            report = ReportData(user_id=user_id, report_date=datetime.now())
+            return report
 
 
 if __name__ == "__main__":
