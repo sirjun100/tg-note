@@ -153,6 +153,10 @@ class ReportGenerator:
     # Maximum items to include per category
     MAX_ITEMS_PER_CATEGORY = 20
 
+    # Hybrid selection strategy: tagged + recently modified
+    # Include notes if they have priority tags OR modified in last N days
+    RECENT_DAYS_THRESHOLD = 7  # Show notes modified in last 7 days
+
     def __init__(self, joplin_client=None, task_service=None):
         """
         Initialize report generator
@@ -532,52 +536,124 @@ Response:"""
             limit = self.MAX_ITEMS_PER_CATEGORY
         return items[:limit]
 
+    def _has_priority_tag(self, note: Dict[str, Any]) -> bool:
+        """Check if note has any priority-indicating tags"""
+        tags = note.get("tags", [])
+        if isinstance(tags, str):
+            tags = [t.strip().lower() for t in tags.split(",")]
+        else:
+            tags = [t.lower() for t in tags] if tags else []
+
+        # Check if any tag is in our priority tags dictionary
+        for tag in tags:
+            if tag in self.PRIORITY_TAGS:
+                return True
+        return False
+
+    def _is_recently_modified(self, note: Dict[str, Any], days_threshold: int = 7) -> bool:
+        """Check if note was modified in the last N days"""
+        try:
+            updated_ms = note.get("updated", 0)
+            if not updated_ms:
+                return False
+
+            # Convert milliseconds to seconds if needed
+            if updated_ms > 10000000000:  # Likely in milliseconds
+                updated_timestamp = updated_ms / 1000
+            else:
+                updated_timestamp = updated_ms
+
+            # Get the date
+            updated_date = datetime.fromtimestamp(updated_timestamp).date()
+            days_since_update = (datetime.now().date() - updated_date).days
+
+            return days_since_update <= days_threshold
+        except Exception as e:
+            self.logger.debug(f"Error checking modification date: {e}")
+            return False
+
     async def fetch_joplin_notes_for_report(
         self, user_id: int, min_priority: PriorityLevel = PriorityLevel.LOW
     ) -> List[Dict[str, Any]]:
         """
-        Fetch all Joplin notes from all folders for the report
+        Fetch Joplin notes using hybrid strategy with smart fallback:
+        - Include all notes with priority tags (#urgent, #critical, #important, #high, #medium)
+        - Include all notes modified in the last 7 days
+        - If filter results in too few notes, use AI to analyze untagged notes
 
         Args:
             user_id: Telegram user ID
             min_priority: Minimum priority level to include
 
         Returns:
-            List of note dictionaries with all notes from all folders
+            List of selected note dictionaries, sorted by relevance
         """
         if not self.joplin_client:
             self.logger.warning("Joplin client not configured")
             return []
 
         try:
-            # Fetch all notes directly (get_notes_in_folder doesn't work reliably)
-            # This endpoint returns all notes regardless of folder
+            # Fetch all notes
             all_notes = []
-
-            # Get notes via the /notes endpoint
             notes = self.joplin_client._make_request('GET', '/notes')
             if isinstance(notes, list):
                 all_notes = notes
             elif isinstance(notes, dict) and 'items' in notes:
                 all_notes = notes['items']
 
-            # Enrich notes with folder information if available
-            if all_notes:
-                folders = self.joplin_client.get_folders()
-                folder_map = {f["id"]: f.get("title", "Unknown") for f in folders}
+            if not all_notes:
+                self.logger.debug("No Joplin notes found")
+                return []
 
-                for note in all_notes:
-                    # Add folder name if available
+            # Get folder mapping
+            folders = self.joplin_client.get_folders()
+            folder_map = {f["id"]: f.get("title", "Unknown") for f in folders}
+
+            # Try hybrid filtering first: tags + recent modifications
+            selected_notes = []
+            for note in all_notes:
+                has_tag = self._has_priority_tag(note)
+                is_recent = self._is_recently_modified(note, self.RECENT_DAYS_THRESHOLD)
+
+                if has_tag or is_recent:
+                    # Enrich with folder information
                     folder_id = note.get("parent_id", "")
-                    if folder_id in folder_map:
-                        note["folder_id"] = folder_id
-                        note["folder_name"] = folder_map[folder_id]
-                    else:
-                        note["folder_id"] = folder_id
-                        note["folder_name"] = "Unknown"
+                    note["folder_id"] = folder_id
+                    note["folder_name"] = folder_map.get(folder_id, "Unknown")
+                    selected_notes.append(note)
 
-            self.logger.debug(f"Fetched {len(all_notes)} total Joplin notes")
-            return all_notes
+            # Fallback: if hybrid filter returns too few notes, use AI to analyze all
+            if len(selected_notes) == 0:
+                self.logger.debug(
+                    "Hybrid filter found 0 notes (no tags, no recent mods). "
+                    "Using AI analysis to rank all notes by importance."
+                )
+                # Use all notes and let AI analysis rank them
+                for note in all_notes:
+                    folder_id = note.get("parent_id", "")
+                    note["folder_id"] = folder_id
+                    note["folder_name"] = folder_map.get(folder_id, "Unknown")
+                selected_notes = all_notes
+            elif len(selected_notes) < 5:
+                self.logger.debug(
+                    f"Hybrid filter found only {len(selected_notes)} notes. "
+                    "Adding AI-analyzed untagged notes to reach minimum threshold."
+                )
+                # Add a few more notes analyzed by AI
+                untagged_notes = [
+                    n for n in all_notes
+                    if not self._has_priority_tag(n) and n not in selected_notes
+                ]
+                for note in untagged_notes[:5]:
+                    folder_id = note.get("parent_id", "")
+                    note["folder_id"] = folder_id
+                    note["folder_name"] = folder_map.get(folder_id, "Unknown")
+                    selected_notes.append(note)
+
+            self.logger.debug(
+                f"Selected {len(selected_notes)} relevant Joplin notes from {len(all_notes)} total"
+            )
+            return selected_notes
 
         except Exception as e:
             self.logger.error(f"Failed to fetch Joplin notes: {e}")
@@ -858,11 +934,12 @@ Response:"""
         if report.joplin_notes:
             lines.append("\n" + "=" * 50)
             lines.append("📝 SECTION 2: JOPLIN NOTES")
-            lines.append(f"   ({len(report.joplin_notes)} total notes, ranked by relevance)")
+            lines.append(f"   ({len(report.joplin_notes)} notes selected & ranked by relevance)")
+            lines.append("   Strategy: Priority tags + Recent changes + AI importance")
             lines.append("=" * 50)
 
-            # Show top 10 notes
-            for i, note in enumerate(report.joplin_notes[:10], 1):
+            # Show all notes (sorted by priority)
+            for i, note in enumerate(report.joplin_notes[:15], 1):
                 # Format: priority indicator + title
                 priority_emoji = "🔴" if note.priority_level == PriorityLevel.CRITICAL else \
                                  "🟠" if note.priority_level == PriorityLevel.HIGH else \
@@ -872,8 +949,8 @@ Response:"""
                 if note.metadata and folder_name != "No Folder":
                     lines.append(f"   📂 {folder_name}")
 
-            if len(report.joplin_notes) > 10:
-                lines.append(f"\n... and {len(report.joplin_notes) - 10} more notes")
+            if len(report.joplin_notes) > 15:
+                lines.append(f"\n... and {len(report.joplin_notes) - 15} more relevant notes")
 
         # Pending clarifications
         if report.pending_clarification:
