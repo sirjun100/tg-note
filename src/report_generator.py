@@ -653,6 +653,255 @@ class ReportGenerator:
             report = ReportData(user_id=user_id, report_date=datetime.now())
             return report
 
+    def _format_item_line(self, item: ReportItem, show_source: bool = True) -> str:
+        """
+        Format a single report item as a line for Telegram
+
+        Args:
+            item: ReportItem to format
+            show_source: Whether to show source (Joplin/Google Tasks)
+
+        Returns:
+            Formatted line
+        """
+        line = f"• {item.title}"
+
+        # Add due date info if available
+        if item.due_date:
+            if item.is_overdue:
+                days_str = (
+                    f"OVERDUE since {item.due_date.strftime('%b %d')}"
+                    if item.days_overdue > 0
+                    else "OVERDUE"
+                )
+                line += f" - {days_str}"
+            else:
+                line += f" - Due {item.due_date.strftime('%b %d')}"
+
+        # Add source indicator
+        if show_source:
+            source_emoji = "📝" if item.source == ItemSource.JOPLIN else "✅"
+            line += f" ({source_emoji})"
+
+        return line
+
+    def format_report_message(
+        self, report: ReportData, include_details: bool = True
+    ) -> str:
+        """
+        Format report data into a Telegram message
+
+        Args:
+            report: ReportData to format
+            include_details: Whether to include detailed breakdowns
+
+        Returns:
+            Formatted Telegram message
+        """
+        if not report.total_items and not report.completed_items and not report.pending_clarification:
+            return "📊 Daily Priority Report\n\nNo items to report today. Great job staying on top of things! 🎉"
+
+        lines = []
+
+        # Header
+        report_date = report.report_date.strftime("%b %d, %Y")
+        lines.append(f"📊 Daily Priority Report - {report_date}")
+
+        # Summary line
+        total_str = f"{report.total_items} items total"
+        if report.joplin_count > 0 and report.google_tasks_count > 0:
+            total_str += f" ({report.joplin_count} from Joplin + {report.google_tasks_count} from Google Tasks)"
+        elif report.joplin_count > 0:
+            total_str += f" ({report.joplin_count} from Joplin)"
+        elif report.google_tasks_count > 0:
+            total_str += f" ({report.google_tasks_count} from Google Tasks)"
+
+        lines.append(f"📊 {total_str}\n")
+
+        # Critical items
+        if report.critical_items:
+            lines.append("🔴 CRITICAL (HIGH PRIORITY)")
+            for item in report.critical_items:
+                lines.append(self._format_item_line(item, show_source=True))
+            lines.append("")
+
+        # High priority items
+        if report.high_items:
+            lines.append("🟠 HIGH PRIORITY")
+
+            # Group by source for better readability
+            joplin_items = [i for i in report.high_items if i.source == ItemSource.JOPLIN]
+            google_items = [i for i in report.high_items if i.source == ItemSource.GOOGLE_TASKS]
+
+            if joplin_items:
+                lines.append(f"📝 Joplin Notes ({len(joplin_items)}):")
+                for item in joplin_items:
+                    lines.append(self._format_item_line(item, show_source=False))
+
+            if google_items:
+                if joplin_items:
+                    lines.append("")
+                lines.append(f"✅ Google Tasks ({len(google_items)}):")
+                for item in google_items:
+                    lines.append(self._format_item_line(item, show_source=False))
+
+            lines.append("")
+
+        # Medium priority items
+        if report.medium_items:
+            lines.append(f"🟡 MEDIUM PRIORITY ({len(report.medium_items)} items)")
+            for item in report.medium_items[:5]:  # Limit to 5
+                lines.append(self._format_item_line(item, show_source=True))
+            if len(report.medium_items) > 5:
+                lines.append(f"  ... and {len(report.medium_items) - 5} more")
+            lines.append("")
+
+        # Low priority items (condensed)
+        if report.low_items and include_details:
+            lines.append(f"🟢 LOW PRIORITY ({len(report.low_items)} items)")
+            lines.append("")
+
+        # Pending clarifications
+        if report.pending_clarification:
+            lines.append("⏳ PENDING CLARIFICATION")
+            for item_title in report.pending_clarification:
+                lines.append(f"• {item_title} - awaiting your response")
+            lines.append("")
+
+        # Completed items
+        if report.completed_items:
+            lines.append(f"✨ COMPLETED TODAY ({len(report.completed_items)} items)")
+            for item_title in report.completed_items[:5]:  # Limit to 5
+                lines.append(f"• {item_title}")
+            if len(report.completed_items) > 5:
+                lines.append(f"  ... and {len(report.completed_items) - 5} more")
+            lines.append("")
+
+        # Recommendation
+        if report.all_items:
+            top_item = report.all_items[0]
+            lines.append("💡 RECOMMENDATION")
+            lines.append(f'Start with: "{top_item.title}"')
+            if len(report.all_items) > 1:
+                second_item = report.all_items[1]
+                lines.append(f'Then: "{second_item.title}"')
+            lines.append("")
+
+        # Footer with commands
+        lines.append("---")
+        lines.append("🔗 /daily_report - Generate another report now")
+        lines.append("⚙️ /show_report_config - View your settings")
+
+        return "\n".join(lines)
+
+    def format_report_compact(self, report: ReportData) -> str:
+        """
+        Format report as a compact/brief message
+
+        Args:
+            report: ReportData to format
+
+        Returns:
+            Compact formatted message
+        """
+        if not report.total_items:
+            return "📊 Daily Priority Report\n\nNo items today."
+
+        lines = []
+        report_date = report.report_date.strftime("%b %d")
+        lines.append(f"📊 Daily Report - {report_date}")
+        lines.append(f"Critical: {len(report.critical_items)} | High: {len(report.high_items)} | Medium: {len(report.medium_items)}")
+        lines.append(f"Completed: {report.completed_count}")
+
+        if report.all_items:
+            top = report.all_items[0]
+            lines.append(f"\n🎯 Top Priority: {top.title}")
+
+        lines.append("\n/daily_report - Full report")
+
+        return "\n".join(lines)
+
+    def format_report_detailed(self, report: ReportData) -> str:
+        """
+        Format report with full details including descriptions
+
+        Args:
+            report: ReportData to format
+
+        Returns:
+            Detailed formatted message
+        """
+        lines = []
+        report_date = report.report_date.strftime("%b %d, %Y")
+        lines.append(f"📊 Daily Priority Report - {report_date}")
+        lines.append(f"Total items: {report.total_items}")
+        lines.append("")
+
+        # Critical
+        if report.critical_items:
+            lines.append("🔴 CRITICAL ITEMS")
+            for item in report.critical_items:
+                lines.append(f"• {item.title}")
+                if item.description:
+                    lines.append(f"  {item.description}")
+            lines.append("")
+
+        # High
+        if report.high_items:
+            lines.append("🟠 HIGH PRIORITY")
+            for item in report.high_items[:10]:
+                lines.append(f"• {item.title}")
+                if item.description:
+                    lines.append(f"  {item.description}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def format_configuration_display(self, config: Dict[str, Any]) -> str:
+        """
+        Format user's report configuration for display
+
+        Args:
+            config: Configuration dictionary
+
+        Returns:
+            Formatted configuration display
+        """
+        lines = []
+        lines.append("⚙️ Your Report Configuration")
+        lines.append("")
+
+        # Status
+        enabled = config.get("enabled", True)
+        status = "✅ Enabled" if enabled else "❌ Disabled"
+        lines.append(f"Status: {status}")
+
+        # Delivery settings
+        lines.append(f"Delivery Time: {config.get('delivery_time', '08:00')}")
+        lines.append(f"Timezone: {config.get('timezone', 'UTC')}")
+
+        # Content settings
+        lines.append("")
+        lines.append("Content Included:")
+        lines.append(f"  • Critical: {'Yes' if config.get('include_critical') else 'No'}")
+        lines.append(f"  • High Priority: {'Yes' if config.get('include_high') else 'No'}")
+        lines.append(f"  • Medium Priority: {'Yes' if config.get('include_medium') else 'No'}")
+        lines.append(f"  • Google Tasks: {'Yes' if config.get('include_google_tasks') else 'No'}")
+        lines.append(f"  • Clarifications: {'Yes' if config.get('include_clarification_pending') else 'No'}")
+
+        lines.append("")
+        lines.append("Detail Level: " + config.get("detail_level", "detailed").capitalize())
+
+        lines.append("")
+        lines.append("Commands:")
+        lines.append("  /configure_report_time <HH:MM>")
+        lines.append("  /configure_report_timezone <timezone>")
+        lines.append("  /toggle_daily_report on|off")
+        lines.append("  /configure_report_content critical|high|medium|all")
+        lines.append("  /report_help")
+
+        return "\n".join(lines)
+
 
 if __name__ == "__main__":
     # Example usage
