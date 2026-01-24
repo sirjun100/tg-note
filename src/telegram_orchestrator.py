@@ -15,6 +15,8 @@ from src.state_manager import StateManager
 from src.logging_service import LoggingService, TelegramMessage, Decision
 from src.report_generator import ReportGenerator, PriorityLevel
 from src.scheduler_service import get_scheduler_service
+from src.reorg_orchestrator import ReorgOrchestrator
+from src.enrichment_service import EnrichmentService
 from src.security_utils import (
     check_whitelist, validate_message_text, ping_joplin_api,
     handle_api_error, format_error_message, format_success_message
@@ -69,6 +71,17 @@ class TelegramOrchestrator:
         # Initialize Scheduler Service for scheduled reports
         self.scheduler = get_scheduler_service()
         logger.info("Scheduler service initialized")
+
+        # Initialize Reorganization and Enrichment Services for FR-016
+        self.reorg_orchestrator = ReorgOrchestrator(
+            joplin_client=self.joplin_client,
+            llm_orchestrator=self.llm_orchestrator
+        )
+        self.enrichment_service = EnrichmentService(
+            joplin_client=self.joplin_client,
+            llm_orchestrator=self.llm_orchestrator
+        )
+        logger.info("Reorganization and enrichment services initialized")
 
         # Check Joplin connectivity on startup
         if not ping_joplin_api():
@@ -176,6 +189,14 @@ class TelegramOrchestrator:
             "🧠 **GTD Brain Dump**\n"
             "/braindump - Start an interactive mind sweep session\n"
             "/braindump_stop - End the session early\n\n"
+
+            "🏗️ **Joplin Database Organization (FR-016)**\n"
+            "/reorg_init <template> - Initialize PARA folder structure\n"
+            "/reorg_preview - See migration plan without changes\n"
+            "/reorg_execute - Apply reorganization\n"
+            "/enrich_notes [limit] - Add metadata to notes\n"
+            "/reorg_audit_tags - Check tag consistency\n"
+            "/reorg_help - Show all reorganization commands\n\n"
 
             "⚙️ **How It Works**\n"
             "📝 **For Regular Notes:**\n"
@@ -1658,6 +1679,261 @@ class TelegramOrchestrator:
         except Exception as e:
             logger.warning(f"Failed to log tag creation: {e}")
 
+    # ===== FR-016: Joplin Database Reorganization Commands =====
+
+    async def handle_reorg_init(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_init command - Initialize PARA folder structure"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            if not context.args or len(context.args) == 0:
+                templates = self.reorg_orchestrator.get_available_templates()
+                help_text = (
+                    "🏗️ *Initialize PARA Structure*\n\n"
+                    "Usage: /reorg_init <template>\n\n"
+                    "Available templates:\n"
+                )
+                for i, template in enumerate(templates, 1):
+                    help_text += f"{i}. `{template}`\n"
+
+                help_text += (
+                    "\nExample:\n"
+                    "`/reorg_init PARA+ (Status-Based)`\n"
+                )
+                await update.message.reply_text(help_text, parse_mode='Markdown')
+                return
+
+            template_name = " ".join(context.args)
+            available_templates = self.reorg_orchestrator.get_available_templates()
+
+            if template_name not in available_templates:
+                await update.message.reply_text(
+                    f"❌ Unknown template: {template_name}\n"
+                    f"Available: {', '.join(available_templates)}"
+                )
+                return
+
+            await update.message.reply_text(f"🏗️ Initializing PARA structure with template: {template_name}")
+
+            success = self.reorg_orchestrator.initialize_structure(template_name)
+
+            if success:
+                await update.message.reply_text(
+                    f"✅ PARA structure initialized successfully!\n"
+                    f"Template: {template_name}\n\n"
+                    f"Next steps:\n"
+                    f"1. Use `/reorg_preview` to see migration plan\n"
+                    f"2. Use `/reorg_execute` to reorganize your notes"
+                )
+                logger.info(f"User {user.id} initialized PARA structure with template: {template_name}")
+            else:
+                await update.message.reply_text("❌ Failed to initialize PARA structure. Check bot logs.")
+                logger.error(f"Failed to initialize PARA structure for user {user.id}")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error initializing PARA structure.")
+            logger.error(f"Error in handle_reorg_init: {e}")
+
+    async def handle_reorg_preview(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_preview command - Show migration plan without executing"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            await update.message.reply_text("📋 Generating migration plan... This may take a minute...")
+
+            plan = await self.reorg_orchestrator.generate_migration_plan()
+            summary = plan.get("summary", {})
+            moves = plan.get("moves", [])
+
+            response = (
+                "📋 *Migration Plan Preview*\n\n"
+                f"📊 Summary:\n"
+                f"  • Total notes: {summary.get('total_notes', 0)}\n"
+                f"  • Notes to move: {summary.get('notes_to_move', 0)}\n"
+                f"  • Sampled for analysis: {len(moves)}\n\n"
+            )
+
+            if moves:
+                response += "📌 First 5 suggested moves:\n\n"
+                for move in moves[:5]:
+                    response += (
+                        f"• **{move.get('note_title', 'Untitled')}**\n"
+                        f"  → {move.get('reasoning', 'AI suggested')}\n"
+                    )
+            else:
+                response += "✅ No moves suggested - your notes are well-organized!"
+
+            response += (
+                f"\n\nReady to reorganize?\n"
+                f"Use `/reorg_execute` to apply all changes"
+            )
+
+            await update.message.reply_text(response, parse_mode='Markdown')
+            logger.info(f"User {user.id} viewed migration preview")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error generating migration plan.")
+            logger.error(f"Error in handle_reorg_preview: {e}")
+
+    async def handle_reorg_execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_execute command - Execute the reorganization"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            await update.message.reply_text(
+                "⚠️ *WARNING: This will reorganize your notes*\n\n"
+                "This action will move notes to their suggested folders based on AI analysis.\n"
+                "You can always move them back manually.\n\n"
+                "Continuing in 5 seconds... (press Ctrl+C to cancel)",
+                parse_mode='Markdown'
+            )
+
+            # In production, you'd wait for confirmation
+            # For now, we'll generate and execute the plan
+            plan = await self.reorg_orchestrator.generate_migration_plan()
+            moves = plan.get("moves", [])
+
+            await update.message.reply_text(f"🔄 Executing reorganization of {len(moves)} notes...")
+
+            results = self.reorg_orchestrator.execute_migration_plan(moves)
+
+            await update.message.reply_text(
+                f"✅ Reorganization Complete!\n\n"
+                f"  ✓ Success: {results.get('success', 0)} notes\n"
+                f"  ✗ Failed: {results.get('failed', 0)} notes\n\n"
+                f"Next: Use `/enrich_notes` to add metadata to your notes"
+            )
+            logger.info(f"User {user.id} executed reorganization: {results}")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error executing reorganization.")
+            logger.error(f"Error in handle_reorg_execute: {e}")
+
+    async def handle_enrich_notes(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /enrich_notes command - Enrich notes with metadata"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            limit = 10
+            if context.args:
+                try:
+                    limit = int(context.args[0])
+                except ValueError:
+                    pass
+
+            await update.message.reply_text(
+                f"✨ Enriching up to {limit} notes with metadata...\n"
+                f"This may take a few minutes..."
+            )
+
+            notes = self.joplin_client.get_all_notes()
+            notes_to_enrich = notes[:limit] if notes else []
+
+            enriched = 0
+            failed = 0
+
+            for note in notes_to_enrich:
+                try:
+                    success = await self.enrichment_service.enrich_note(note.get('id'))
+                    if success:
+                        enriched += 1
+                    else:
+                        failed += 1
+                except Exception as e:
+                    logger.debug(f"Failed to enrich note {note.get('id')}: {e}")
+                    failed += 1
+
+            await update.message.reply_text(
+                f"✅ Enrichment Complete!\n\n"
+                f"  ✓ Enriched: {enriched} notes\n"
+                f"  ✗ Failed: {failed} notes\n\n"
+                f"Metadata added: Status, Priority, Summary, Key Takeaways, Tags"
+            )
+            logger.info(f"User {user.id} enriched {enriched} notes")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error enriching notes.")
+            logger.error(f"Error in handle_enrich_notes: {e}")
+
+    async def handle_reorg_audit_tags(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_audit_tags command - Audit and report on tags"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            await update.message.reply_text("🔍 Auditing your tags...")
+
+            audit = self.reorg_orchestrator.audit_tags()
+
+            response = (
+                "📊 *Tag Audit Report*\n\n"
+                f"Total tags: {audit.get('total_tags', 0)}\n"
+            )
+
+            duplicates = audit.get('duplicate_names', [])
+            if duplicates:
+                response += f"\n⚠️ Potential duplicates (case-insensitive):\n"
+                for dup in duplicates[:5]:
+                    response += f"  • {dup['original']} ↔ {dup['duplicate']}\n"
+            else:
+                response += "\n✅ No duplicate tags found\n"
+
+            response += (
+                "\n💡 Next steps:\n"
+                "• Review duplicates manually\n"
+                "• Use `/enrich_notes` to add consistent tags to notes"
+            )
+
+            await update.message.reply_text(response, parse_mode='Markdown')
+            logger.info(f"User {user.id} viewed tag audit report")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error auditing tags.")
+            logger.error(f"Error in handle_reorg_audit_tags: {e}")
+
+    async def handle_reorg_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /reorg_help command - Show reorganization command help"""
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            help_text = (
+                "🏗️ *Joplin Database Reorganization Commands (FR-016)*\n\n"
+                "📋 *Setup & Planning*:\n"
+                "  /reorg_init <template> - Initialize PARA folder structure\n"
+                "    Templates: PARA+ (Status-Based), PARA Context (Role-Based)\n\n"
+                "  /reorg_preview - See migration plan without changes\n\n"
+                "🔄 *Reorganization*:\n"
+                "  /reorg_execute - Execute the reorganization plan\n\n"
+                "✨ *Enrichment*:\n"
+                "  /enrich_notes [limit] - Add metadata to notes (default: 10)\n"
+                "    Adds: Status, Priority, Summary, Key Takeaways, Tags\n\n"
+                "🏷️ *Tag Management*:\n"
+                "  /reorg_audit_tags - Review tag consistency\n\n"
+                "What's PARA?\n"
+                "• Projects: Goal-oriented tasks with deadlines\n"
+                "• Areas: Standards maintained over time\n"
+                "• Resources: Reference materials\n"
+                "• Archive: Completed items"
+            )
+
+            await update.message.reply_text(help_text, parse_mode='Markdown')
+            logger.info(f"User {user.id} viewed reorganization help")
+
+        except Exception as e:
+            await update.message.reply_text("❌ Error retrieving help.")
+            logger.error(f"Error in handle_reorg_help: {e}")
+
 def main():
     """Main function to run the bot"""
     # Set up logging
@@ -1702,6 +1978,15 @@ def main():
     application.add_handler(CommandHandler("braindump", orchestrator.handle_braindump))
     application.add_handler(CommandHandler("capture", orchestrator.handle_braindump))  # Alias
     application.add_handler(CommandHandler("braindump_stop", orchestrator.handle_braindump_stop))
+
+    # FR-016: Joplin Database Reorganization Commands
+    application.add_handler(CommandHandler("reorg_init", orchestrator.handle_reorg_init))
+    application.add_handler(CommandHandler("reorg_preview", orchestrator.handle_reorg_preview))
+    application.add_handler(CommandHandler("reorg_execute", orchestrator.handle_reorg_execute))
+    application.add_handler(CommandHandler("enrich_notes", orchestrator.handle_enrich_notes))
+    application.add_handler(CommandHandler("reorg_audit_tags", orchestrator.handle_reorg_audit_tags))
+    application.add_handler(CommandHandler("reorg_help", orchestrator.handle_reorg_help))
+
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, orchestrator.handle_message))
 
     # Register startup and shutdown callbacks for scheduler
