@@ -16,11 +16,6 @@ def main() -> None:
     settings = get_settings()
     setup_logging(debug=settings.debug)
 
-    # Health-check server for Fly.io
-    if os.environ.get("PORT"):
-        from src.health_server import start_health_server
-        start_health_server()
-
     from src.telegram_orchestrator import main as run_bot
     run_bot()
 

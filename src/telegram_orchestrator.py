@@ -1,10 +1,19 @@
 """
 Telegram Orchestrator — thin coordinator that wires services and registers handlers.
 
-All command/message logic lives in ``src.handlers.*`` modules.
+Supports two modes:
+  • Webhook (Fly.io / production): machine sleeps when idle, wakes on message
+  • Polling (local development): always-on, no public URL needed
+
+Mode is auto-detected: if WEBHOOK_URL or FLY_APP_NAME is set → webhook,
+otherwise → polling.
 """
 
+from __future__ import annotations
+
+import asyncio
 import logging
+import os
 from typing import Optional
 
 from telegram.ext import Application
@@ -73,21 +82,35 @@ class TelegramOrchestrator:
         logger.info("All services initialized")
 
 
-def main() -> None:
-    """Entry-point: build the Application, register handlers, and start polling."""
-    logging.basicConfig(
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        level=logging.INFO,
-    )
+# ---------------------------------------------------------------------------
+# Webhook URL resolution
+# ---------------------------------------------------------------------------
 
-    if not TELEGRAM_BOT_TOKEN:
-        logger.error("TELEGRAM_BOT_TOKEN not configured")
-        return
+def _resolve_webhook_url() -> Optional[str]:
+    """Return the public webhook URL if we should run in webhook mode."""
+    url = os.environ.get("WEBHOOK_URL")
+    if url:
+        return url.rstrip("/")
+    app_name = os.environ.get("FLY_APP_NAME")
+    if app_name:
+        return f"https://{app_name}.fly.dev"
+    return None
 
-    application: Application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    orchestrator = TelegramOrchestrator()
 
-    # --- Register all handler modules ---
+# ---------------------------------------------------------------------------
+# Entry points
+# ---------------------------------------------------------------------------
+
+def _build_application(orchestrator: TelegramOrchestrator) -> Application:
+    """Build a PTB Application with all handlers registered (no updater for webhook)."""
+    webhook_url = _resolve_webhook_url()
+    use_webhook = webhook_url is not None
+
+    builder = Application.builder().token(TELEGRAM_BOT_TOKEN)
+    if use_webhook:
+        builder = builder.updater(None)
+    application: Application = builder.build()
+
     from src.handlers import (
         register_braindump_handlers,
         register_core_handlers,
@@ -100,29 +123,98 @@ def main() -> None:
     register_report_handlers(application, orchestrator)
     register_braindump_handlers(application, orchestrator)
     register_reorg_handlers(application, orchestrator)
-    # Core must be last — its MessageHandler is a catch-all
     register_core_handlers(application, orchestrator)
 
-    # --- Scheduler lifecycle ---
+    return application
+
+
+async def _run_webhook(application: Application, orchestrator: TelegramOrchestrator) -> None:
+    """Webhook mode — register webhook, start HTTP server, wait forever."""
+    from src.webhook_server import WebhookServer
+
+    webhook_url = _resolve_webhook_url()
+    full_url = f"{webhook_url}/webhook"
+    port = int(os.environ.get("PORT", "8080"))
+    secret = os.environ.get("WEBHOOK_SECRET")
+
+    server = WebhookServer(
+        ptb_app=application,
+        port=port,
+        webhook_path="/webhook",
+        secret_token=secret,
+    )
+
+    async def _startup(app: object) -> None:
+        await server.start()
+        await application.bot.set_webhook(
+            url=full_url,
+            secret_token=secret,
+            drop_pending_updates=True,
+        )
+        logger.info("Webhook registered: %s", full_url)
+        try:
+            await orchestrator.scheduler.start()
+        except Exception as exc:
+            logger.error("Scheduler start failed: %s", exc)
+
+    async def _shutdown(app: object) -> None:
+        try:
+            await orchestrator.scheduler.stop()
+        except Exception as exc:
+            logger.error("Scheduler stop failed: %s", exc)
+        await server.stop()
+
+    application.post_init = _startup
+    application.post_shutdown = _shutdown
+
+    async with application:
+        await application.start()
+        logger.info("Bot running in WEBHOOK mode on port %d", port)
+        stop_event = asyncio.Event()
+        await stop_event.wait()
+
+
+def _run_polling(application: Application, orchestrator: TelegramOrchestrator) -> None:
+    """Polling mode — used for local development."""
+
     async def _startup(context: object) -> None:
         try:
             await orchestrator.scheduler.start()
-            logger.info("Scheduler started")
         except Exception as exc:
             logger.error("Scheduler start failed: %s", exc)
 
     async def _shutdown(context: object) -> None:
         try:
             await orchestrator.scheduler.stop()
-            logger.info("Scheduler stopped")
         except Exception as exc:
             logger.error("Scheduler stop failed: %s", exc)
 
     application.post_init = _startup
     application.post_shutdown = _shutdown
 
-    logger.info("Starting Telegram bot...")
+    logger.info("Bot running in POLLING mode")
     application.run_polling(poll_interval=3, timeout=10, drop_pending_updates=True)
+
+
+def main() -> None:
+    """Entry-point: detect mode, build app, and run."""
+    logging.basicConfig(
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        level=logging.INFO,
+    )
+
+    if not TELEGRAM_BOT_TOKEN:
+        logger.error("TELEGRAM_BOT_TOKEN not configured")
+        return
+
+    orchestrator = TelegramOrchestrator()
+    application = _build_application(orchestrator)
+
+    webhook_url = _resolve_webhook_url()
+    if webhook_url:
+        asyncio.run(_run_webhook(application, orchestrator))
+    else:
+        _run_polling(application, orchestrator)
 
 
 if __name__ == "__main__":

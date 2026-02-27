@@ -1,30 +1,32 @@
 FROM python:3.11-slim
 
-# Set working directory
+# Install Node.js 18 (for Joplin CLI) and build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates make g++ socat \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Joplin CLI globally
+RUN npm install -g joplin
+
 WORKDIR /app
 
-# Install system dependencies if needed (e.g., for building python packages)
-# RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
 COPY . .
 
-# Create directory for data persistence
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data/bot /app/data/joplin
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV LOGS_DB_PATH=/app/data/bot_logs.db
-ENV STATE_DB_PATH=/app/data/conversation_state.db
+ENV LOGS_DB_PATH=/app/data/bot/bot_logs.db
+ENV STATE_DB_PATH=/app/data/bot/conversation_state.db
+ENV JOPLIN_PROFILE=/app/data/joplin
 
-# Expose health check port (fly.io uses 8080)
 EXPOSE 8080
 
-# Run the application
-CMD ["python", "main.py"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
