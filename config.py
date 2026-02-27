@@ -1,39 +1,43 @@
-# Configuration file for Intelligent Joplin Librarian
+"""
+Backward-compatible config shim.
 
-# Load environment variables
-import os
-from dotenv import load_dotenv
+Existing modules that `from config import X` will continue to work.
+All values are now sourced from pydantic-settings (src.settings).
 
-load_dotenv()
+This file will be removed once all modules are migrated.
+"""
 
-# Telegram Configuration
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-ALLOWED_TELEGRAM_USER_IDS = os.getenv('ALLOWED_TELEGRAM_USER_IDS', '').split(',')
+from src.settings import get_settings as _get_settings
 
-# OpenAI Configuration
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+_s = _get_settings()
 
-# Ollama Configuration
-OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
-OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama2')
+# Telegram
+TELEGRAM_BOT_TOKEN = _s.telegram.bot_token
+ALLOWED_TELEGRAM_USER_IDS = _s.telegram.allowed_user_ids.split(",")
 
-# DeepSeek Configuration
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-DEEPSEEK_MODEL = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
+# OpenAI
+OPENAI_API_KEY = _s.llm.openai_api_key
 
-# LLM Provider Selection
-LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'deepseek')  # Default to DeepSeek
+# Ollama
+OLLAMA_BASE_URL = _s.llm.ollama_base_url
+OLLAMA_MODEL = _s.llm.ollama_model
 
-# Joplin Configuration
-JOPLIN_WEB_CLIPPER_HOST = os.getenv('JOPLIN_WEB_CLIPPER_HOST', 'localhost')
-JOPLIN_WEB_CLIPPER_PORT = int(os.getenv('JOPLIN_WEB_CLIPPER_PORT', 41184))
-JOPLIN_WEB_CLIPPER_TOKEN = os.getenv('JOPLIN_WEB_CLIPPER_TOKEN')
-# Optional: full base URL override (e.g. https://joplin.fly.dev for Fly.io public routing)
-JOPLIN_WEB_CLIPPER_BASE_URL = os.getenv('JOPLIN_WEB_CLIPPER_BASE_URL')
+# DeepSeek
+DEEPSEEK_API_KEY = _s.llm.deepseek_api_key
+DEEPSEEK_MODEL = _s.llm.deepseek_model
 
-# Application Settings
-DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+# LLM Provider
+LLM_PROVIDER = _s.llm.provider
 
-# Database Configuration
-LOGS_DB_PATH = os.getenv('LOGS_DB_PATH', 'bot_logs.db')
-STATE_DB_PATH = os.getenv('STATE_DB_PATH', 'conversation_state.db')
+# Joplin
+JOPLIN_WEB_CLIPPER_HOST = _s.joplin.host
+JOPLIN_WEB_CLIPPER_PORT = _s.joplin.port
+JOPLIN_WEB_CLIPPER_TOKEN = _s.joplin.token
+JOPLIN_WEB_CLIPPER_BASE_URL = _s.joplin.base_url
+
+# Application
+DEBUG = _s.debug
+
+# Database
+LOGS_DB_PATH = _s.database.logs_db_path
+STATE_DB_PATH = _s.database.state_db_path

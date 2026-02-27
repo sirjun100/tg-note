@@ -1,74 +1,55 @@
 """
-LLM Provider Abstraction Layer
-Supports multiple LLM providers with a unified interface.
+Async LLM Provider Abstraction Layer.
+
+Each provider implements `generate_response` as an async method
+using httpx instead of blocking requests.
 """
+
+from __future__ import annotations
 
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
-import requests
+from typing import Any, Dict, List, Optional
+
+import httpx
+
+from src.constants import LLM_DEFAULT_MAX_TOKENS, LLM_DEFAULT_TEMPERATURE, LLM_REQUEST_TIMEOUT
+from src.exceptions import LLMError, LLMProviderUnavailable
+from src.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-class LLMProvider(ABC):
-    """Abstract base class for LLM providers"""
 
-    def __init__(self, model_name: str = None):
+class LLMProvider(ABC):
+    """Abstract base class for LLM providers."""
+
+    def __init__(self, model_name: str | None = None):
         self.model_name = model_name or self.get_default_model()
 
     @abstractmethod
-    def get_default_model(self) -> str:
-        """Return the default model name for this provider"""
-        pass
+    def get_default_model(self) -> str: ...
 
     @abstractmethod
-    def is_available(self) -> bool:
-        """Check if this provider is available and configured"""
-        pass
+    def is_available(self) -> bool: ...
 
     @abstractmethod
-    def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
-        """
-        Generate a response from the LLM
+    async def generate_response(
+        self, messages: List[Dict[str, str]], **kwargs: Any
+    ) -> Dict[str, Any]: ...
 
-        Args:
-            messages: List of message dicts with 'role' and 'content'
-            **kwargs: Additional provider-specific parameters
-
-        Returns:
-            Dict containing response data
-        """
-        pass
-
-    def prepare_messages_for_function_calling(self, messages: List[Dict[str, str]],
-                                            function_schema: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Prepare messages and function schema for function calling
-
-        Args:
-            messages: Conversation messages
-            function_schema: Function schema for structured output
-
-        Returns:
-            Prepared data for the provider
-        """
-        return {
-            "messages": messages,
-            "function_schema": function_schema
-        }
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI GPT provider"""
+    """OpenAI GPT provider (uses the openai SDK which handles its own async)."""
 
-    def __init__(self, api_key: str = None, model_name: str = "gpt-4"):
+    def __init__(self, api_key: str | None = None, model_name: str = "gpt-4"):
+        self._api_key = api_key
         try:
             import openai
-            self.client = openai.OpenAI(api_key=api_key)
+            self.client = openai.AsyncOpenAI(api_key=api_key)
         except ImportError:
             logger.error("OpenAI package not installed")
             self.client = None
-
         super().__init__(model_name)
 
     def get_default_model(self) -> str:
@@ -77,72 +58,68 @@ class OpenAIProvider(LLMProvider):
     def is_available(self) -> bool:
         return self.client is not None
 
-    def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
+    async def generate_response(
+        self, messages: List[Dict[str, str]], **kwargs: Any
+    ) -> Dict[str, Any]:
         if not self.is_available():
-            raise RuntimeError("OpenAI provider not available")
+            raise LLMProviderUnavailable("OpenAI provider not available")
 
         tools = kwargs.get("functions", [])
-        tool_choice = kwargs.get("function_call", None)
+        tool_choice = kwargs.get("function_call")
 
-        # Convert old function format to new tools format
         if tools and not isinstance(tools[0], dict):
-            # Convert function schemas to tools format
             tools = [{"type": "function", "function": func} for func in tools]
-            if tool_choice and isinstance(tool_choice, str):
+            if isinstance(tool_choice, str):
                 tool_choice = {"type": "function", "function": {"name": tool_choice}}
-            elif tool_choice and isinstance(tool_choice, dict):
+            elif isinstance(tool_choice, dict):
                 tool_choice = {"type": "function", "function": tool_choice}
 
-        response = self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(
             model=self.model_name,
             messages=messages,
-            tools=tools if tools else None,
+            tools=tools or None,
             tool_choice=tool_choice,
-            temperature=kwargs.get("temperature", 0.3),
-            max_tokens=kwargs.get("max_tokens", 1000)
+            temperature=kwargs.get("temperature", LLM_DEFAULT_TEMPERATURE),
+            max_tokens=kwargs.get("max_tokens", LLM_DEFAULT_MAX_TOKENS),
         )
 
-        # Extract function call from tools if present
         function_call = None
         if response.choices[0].message.tool_calls:
-            tool_call = response.choices[0].message.tool_calls[0]
-            function_call = {
-                "name": tool_call.function.name,
-                "arguments": tool_call.function.arguments
-            }
+            tc = response.choices[0].message.tool_calls[0]
+            function_call = {"name": tc.function.name, "arguments": tc.function.arguments}
 
         return {
             "content": response.choices[0].message.content,
             "function_call": function_call,
             "usage": response.usage,
-            "raw_response": response
+            "raw_response": response,
         }
 
+
 class OllamaProvider(LLMProvider):
-    """Ollama local LLM provider"""
+    """Ollama local LLM provider — uses httpx for async HTTP."""
 
     def __init__(self, base_url: str = "http://localhost:11434", model_name: str = "llama2"):
-        self.base_url = base_url.rstrip('/')
-        self.model_name = model_name
+        self.base_url = base_url.rstrip("/")
+        super().__init__(model_name)
 
     def get_default_model(self) -> str:
         return "llama3.2:3b"
 
     def is_available(self) -> bool:
         try:
-            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
-            return response.status_code == 200
-        except:
+            with httpx.Client(timeout=5) as c:
+                resp = c.get(f"{self.base_url}/api/tags")
+                return resp.status_code == 200
+        except (httpx.ConnectError, httpx.TimeoutException):
             return False
 
-    def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
-        # Convert messages to a simple prompt for Ollama generate API
+    async def generate_response(
+        self, messages: List[Dict[str, str]], **kwargs: Any
+    ) -> Dict[str, Any]:
         prompt_parts = []
-
         for msg in messages:
-            role = msg["role"]
-            content = msg["content"]
-
+            role, content = msg["role"], msg["content"]
             if role == "system":
                 prompt_parts.insert(0, f"System: {content}")
             elif role == "user":
@@ -150,59 +127,48 @@ class OllamaProvider(LLMProvider):
             elif role == "assistant":
                 prompt_parts.append(f"Assistant: {content}")
 
-        prompt = "\n\n".join(prompt_parts)
-
-        payload = {
+        payload: Dict[str, Any] = {
             "model": self.model_name,
-            "prompt": prompt,
-            "stream": False
+            "prompt": "\n\n".join(prompt_parts),
+            "stream": False,
         }
-
-        # Add optional parameters
         if "temperature" in kwargs:
             payload["temperature"] = kwargs["temperature"]
         if "max_tokens" in kwargs:
-            payload["num_predict"] = kwargs["max_tokens"]  # Ollama uses num_predict
+            payload["num_predict"] = kwargs["max_tokens"]
 
-        logger.debug(f"Ollama payload: {json.dumps(payload)}")
+        async with httpx.AsyncClient(timeout=LLM_REQUEST_TIMEOUT) as client:
+            try:
+                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+                resp.raise_for_status()
+            except httpx.HTTPError as exc:
+                raise LLMError(f"Ollama API error: {exc}") from exc
 
-        try:
-            full_url = f"{self.base_url}/api/generate"
-            print(f"DEBUG: Ollama request to: {full_url}")
-            print(f"DEBUG: Payload: {json.dumps(payload)}")
+        result = resp.json()
+        return {
+            "content": result["response"],
+            "function_call": None,
+            "usage": {
+                "prompt_tokens": result.get("prompt_eval_count"),
+                "completion_tokens": result.get("eval_count"),
+                "total_tokens": result.get("prompt_eval_count", 0) + result.get("eval_count", 0),
+            },
+            "raw_response": result,
+        }
 
-            response = requests.post(
-                full_url,
-                json=payload,
-                timeout=60
-            )
-            response.raise_for_status()
-            result = response.json()
-
-            return {
-                "content": result["response"],
-                "function_call": None,  # Ollama doesn't support function calling natively
-                "usage": {
-                    "prompt_tokens": result.get("prompt_eval_count"),
-                    "completion_tokens": result.get("eval_count"),
-                    "total_tokens": result.get("prompt_eval_count", 0) + result.get("eval_count", 0)
-                },
-                "raw_response": result
-            }
-
-        except requests.RequestException as e:
-            logger.error(f"Ollama API error: {e}")
-            logger.error(f"URL: {self.base_url}/api/generate")
-            raise RuntimeError(f"Ollama API error: {e}")
 
 class DeepSeekProvider(LLMProvider):
-    """DeepSeek LLM provider"""
+    """DeepSeek LLM provider — uses httpx for async HTTP."""
 
-    def __init__(self, api_key: str = None, base_url: str = "https://api.deepseek.com",
-                 model_name: str = "deepseek-chat"):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str = "https://api.deepseek.com",
+        model_name: str = "deepseek-chat",
+    ):
         self.api_key = api_key
-        self.base_url = base_url.rstrip('/')
-        self.model_name = model_name
+        self.base_url = base_url.rstrip("/")
+        super().__init__(model_name)
 
     def get_default_model(self) -> str:
         return "deepseek-chat"
@@ -210,89 +176,84 @@ class DeepSeekProvider(LLMProvider):
     def is_available(self) -> bool:
         return self.api_key is not None
 
-    def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
+    async def generate_response(
+        self, messages: List[Dict[str, str]], **kwargs: Any
+    ) -> Dict[str, Any]:
         if not self.is_available():
-            raise RuntimeError("DeepSeek provider not available - API key not configured")
+            raise LLMProviderUnavailable("DeepSeek API key not configured")
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-
-        payload = {
+        payload: Dict[str, Any] = {
             "model": self.model_name,
             "messages": messages,
-            "temperature": kwargs.get("temperature", 0.3),
-            "max_tokens": kwargs.get("max_tokens", 1000)
+            "temperature": kwargs.get("temperature", LLM_DEFAULT_TEMPERATURE),
+            "max_tokens": kwargs.get("max_tokens", LLM_DEFAULT_MAX_TOKENS),
         }
-
-        # Add function calling support if provided
         if "functions" in kwargs:
             payload["functions"] = kwargs["functions"]
         if "function_call" in kwargs:
             payload["function_call"] = kwargs["function_call"]
 
-        try:
-            response = requests.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60
-            )
-            response.raise_for_status()
-            result = response.json()
+        async with httpx.AsyncClient(timeout=LLM_REQUEST_TIMEOUT) as client:
+            try:
+                resp = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+                resp.raise_for_status()
+            except httpx.HTTPError as exc:
+                raise LLMError(f"DeepSeek API error: {exc}") from exc
 
-            return {
-                "content": result["choices"][0]["message"].get("content"),
-                "function_call": result["choices"][0]["message"].get("function_call"),
-                "usage": result.get("usage"),
-                "raw_response": result
-            }
+        result = resp.json()
+        return {
+            "content": result["choices"][0]["message"].get("content"),
+            "function_call": result["choices"][0]["message"].get("function_call"),
+            "usage": result.get("usage"),
+            "raw_response": result,
+        }
 
-        except requests.RequestException as e:
-            logger.error(f"DeepSeek API error: {e}")
-            raise RuntimeError(f"DeepSeek API error: {e}")
 
 class LLMProviderRegistry:
-    """Registry for LLM providers"""
+    """Registry for LLM providers — built from settings."""
 
-    def __init__(self):
-        self.providers = {}
-        self.register_builtin_providers()
+    def __init__(self) -> None:
+        self.providers: Dict[str, LLMProvider] = {}
+        self._register_builtin()
 
-    def register_builtin_providers(self):
-        """Register built-in providers"""
-        from config import OPENAI_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL, DEEPSEEK_API_KEY, DEEPSEEK_MODEL
+    def _register_builtin(self) -> None:
+        cfg = get_settings().llm
 
-        # OpenAI
-        if OPENAI_API_KEY:
-            self.providers["openai"] = OpenAIProvider(api_key=OPENAI_API_KEY)
+        if cfg.openai_api_key:
+            self.providers["openai"] = OpenAIProvider(api_key=cfg.openai_api_key)
 
-        # Ollama
-        ollama_url = OLLAMA_BASE_URL or "http://localhost:11434"
-        ollama_model = OLLAMA_MODEL or "llama2"
-        self.providers["ollama"] = OllamaProvider(base_url=ollama_url, model_name=ollama_model)
+        self.providers["ollama"] = OllamaProvider(
+            base_url=cfg.ollama_base_url, model_name=cfg.ollama_model
+        )
 
-        # DeepSeek
-        if DEEPSEEK_API_KEY:
-            deepseek_model = DEEPSEEK_MODEL or "deepseek-chat"
-            self.providers["deepseek"] = DeepSeekProvider(api_key=DEEPSEEK_API_KEY, model_name=deepseek_model)
+        if cfg.deepseek_api_key:
+            self.providers["deepseek"] = DeepSeekProvider(
+                api_key=cfg.deepseek_api_key, model_name=cfg.deepseek_model
+            )
 
-    def register_provider(self, name: str, provider: LLMProvider):
-        """Register a custom provider"""
-        self.providers[name] = provider
-
-    def get_provider(self, name: str) -> Optional[LLMProvider]:
-        """Get a provider by name"""
+    def get_provider(self, name: str) -> LLMProvider | None:
         return self.providers.get(name)
 
     def get_available_providers(self) -> Dict[str, LLMProvider]:
-        """Get all available (configured) providers"""
-        return {name: provider for name, provider in self.providers.items() if provider.is_available()}
+        return {n: p for n, p in self.providers.items() if p.is_available()}
 
     def list_providers(self) -> List[str]:
-        """List all registered provider names"""
         return list(self.providers.keys())
 
-# Global registry instance
-registry = LLMProviderRegistry()
+
+_registry: LLMProviderRegistry | None = None
+
+
+def get_registry() -> LLMProviderRegistry:
+    global _registry
+    if _registry is None:
+        _registry = LLMProviderRegistry()
+    return _registry
