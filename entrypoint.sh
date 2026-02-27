@@ -2,7 +2,10 @@
 set -e
 
 JOPLIN_PROFILE="${JOPLIN_PROFILE:-/app/data/joplin}"
+
+# Ensure all data directories exist (volume mount overrides Dockerfile mkdir)
 mkdir -p "$JOPLIN_PROFILE"
+mkdir -p /app/data/bot
 
 # Configure Joplin API on port 41184 (localhost only — bot is in the same container)
 joplin config api.port 41184 --profile "$JOPLIN_PROFILE" 2>/dev/null || true

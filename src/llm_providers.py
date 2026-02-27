@@ -257,3 +257,7 @@ def get_registry() -> LLMProviderRegistry:
     if _registry is None:
         _registry = LLMProviderRegistry()
     return _registry
+
+
+# Backward-compatible alias used by llm_orchestrator
+registry = get_registry()

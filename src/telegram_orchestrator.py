@@ -129,7 +129,9 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
 
 
 async def _run_webhook(application: Application, orchestrator: TelegramOrchestrator) -> None:
-    """Webhook mode — register webhook, start HTTP server, wait forever."""
+    """Webhook mode — register webhook, start HTTP server, handle SIGTERM."""
+    import signal
+
     from src.webhook_server import WebhookServer
 
     webhook_url = _resolve_webhook_url()
@@ -143,6 +145,8 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
         webhook_path="/webhook",
         secret_token=secret,
     )
+
+    stop_event = asyncio.Event()
 
     async def _startup(app: object) -> None:
         await server.start()
@@ -167,11 +171,16 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
     application.post_init = _startup
     application.post_shutdown = _shutdown
 
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, stop_event.set)
+
     async with application:
         await application.start()
         logger.info("Bot running in WEBHOOK mode on port %d", port)
-        stop_event = asyncio.Event()
         await stop_event.wait()
+        logger.info("Shutdown signal received, stopping gracefully...")
+        await application.stop()
 
 
 def _run_polling(application: Application, orchestrator: TelegramOrchestrator) -> None:
