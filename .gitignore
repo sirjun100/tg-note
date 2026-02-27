@@ -1,15 +1,18 @@
-# Environment variables (contains API keys)
+# Environment variables
 .env
 
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
 *.so
+*.egg-info/
+dist/
+build/
 
-# Database files
+# Databases
 *.db
 *.sqlite
 *.sqlite3
@@ -17,15 +20,16 @@ __pycache__/
 # Virtual environment
 venv/
 env/
-ENV/
+.venv/
 
-# IDE files
+# IDE / Editor
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
@@ -33,11 +37,29 @@ Thumbs.db
 *.log
 logs/
 
-# Temporary files
+# Temporary / credentials
 *.tmp
 *.temp
-*.json  # Credentials files
-gtd-*.md  # GTD/temp documents
+*.json
+!ruff.toml
+!fly.toml
+!fly.joplin.toml
+!package.json
+gtd-*.md
 
-# Joplin local data (user notes, sync)
+# Joplin local data
 joplin-data/
+
+# Docker
+data/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# mypy
+.mypy_cache/
+
+# pytest
+.pytest_cache/
