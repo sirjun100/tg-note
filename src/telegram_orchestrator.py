@@ -148,7 +148,13 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
 
     stop_event = asyncio.Event()
 
-    async def _startup(app: object) -> None:
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, stop_event.set)
+
+    async with application:
+        await application.start()
+
         await server.start()
         await application.bot.set_webhook(
             url=full_url,
@@ -156,30 +162,21 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
             drop_pending_updates=True,
         )
         logger.info("Webhook registered: %s", full_url)
+
         try:
             await orchestrator.scheduler.start()
         except Exception as exc:
             logger.error("Scheduler start failed: %s", exc)
 
-    async def _shutdown(app: object) -> None:
+        logger.info("Bot running in WEBHOOK mode on port %d", port)
+        await stop_event.wait()
+        logger.info("Shutdown signal received, stopping gracefully...")
+
         try:
             await orchestrator.scheduler.stop()
         except Exception as exc:
             logger.error("Scheduler stop failed: %s", exc)
         await server.stop()
-
-    application.post_init = _startup
-    application.post_shutdown = _shutdown
-
-    loop = asyncio.get_running_loop()
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, stop_event.set)
-
-    async with application:
-        await application.start()
-        logger.info("Bot running in WEBHOOK mode on port %d", port)
-        await stop_event.wait()
-        logger.info("Shutdown signal received, stopping gracefully...")
         await application.stop()
 
 
