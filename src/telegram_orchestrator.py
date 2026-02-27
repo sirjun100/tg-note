@@ -44,8 +44,11 @@ class TelegramOrchestrator:
     def __init__(self):
         self.joplin_client = JoplinClient()
         self.llm_orchestrator = LLMOrchestrator()
-        self.state_manager = StateManager()
-        self.logging_service = LoggingService()
+        
+        # Initialize services with configured database paths
+        from config import STATE_DB_PATH, LOGS_DB_PATH
+        self.state_manager = StateManager(db_path=STATE_DB_PATH)
+        self.logging_service = LoggingService(db_path=LOGS_DB_PATH)
 
         # Initialize Google Tasks integration if available
         self.task_service = None

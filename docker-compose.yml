@@ -1,0 +1,25 @@
+services:
+  joplin-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile.joplin
+    container_name: joplin-cli
+    restart: unless-stopped
+    volumes:
+      - ./joplin-data:/root/.config/joplin
+
+  telegram-joplin:
+    build: .
+    container_name: telegram-joplin
+    restart: unless-stopped
+    depends_on:
+      - joplin-cli
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - LOGS_DB_PATH=/app/data/bot_logs.db
+      - STATE_DB_PATH=/app/data/conversation_state.db
+      - JOPLIN_WEB_CLIPPER_HOST=joplin-cli
+

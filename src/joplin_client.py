@@ -7,7 +7,12 @@ import json
 import logging
 from typing import Dict, List, Optional, Any
 import requests
-from config import JOPLIN_WEB_CLIPPER_PORT, JOPLIN_WEB_CLIPPER_TOKEN
+from config import (
+    JOPLIN_WEB_CLIPPER_PORT,
+    JOPLIN_WEB_CLIPPER_TOKEN,
+    JOPLIN_WEB_CLIPPER_HOST,
+    JOPLIN_WEB_CLIPPER_BASE_URL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +20,13 @@ class JoplinClient:
     """Client for interacting with Joplin Web Clipper API"""
 
     def __init__(self, base_url: str = None, token: str = None):
-        self.base_url = base_url or f"http://localhost:{JOPLIN_WEB_CLIPPER_PORT}"
+        if base_url is None:
+            base_url = (
+                JOPLIN_WEB_CLIPPER_BASE_URL
+                if JOPLIN_WEB_CLIPPER_BASE_URL
+                else f"http://{JOPLIN_WEB_CLIPPER_HOST}:{JOPLIN_WEB_CLIPPER_PORT}"
+            )
+        self.base_url = base_url.rstrip("/")
         self.token = token or JOPLIN_WEB_CLIPPER_TOKEN
         self.session = requests.Session()
 

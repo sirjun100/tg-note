@@ -1,0 +1,25 @@
+FROM node:18-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    socat \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Joplin CLI
+RUN npm install -g joplin
+
+# Create data directory
+RUN mkdir -p /root/.config/joplin
+
+# Copy entrypoint script
+COPY joplin-entrypoint.sh /joplin-entrypoint.sh
+RUN chmod +x /joplin-entrypoint.sh
+
+# Expose Joplin Web Clipper API port
+EXPOSE 41184
+
+# Use entrypoint script to start Joplin and socat
+ENTRYPOINT ["/joplin-entrypoint.sh"]

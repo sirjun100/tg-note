@@ -47,11 +47,163 @@ A Telegram bot that intelligently creates notes in Joplin using AI.
     ./start.sh
     ```
 
-    Or manually:
-    ```bash
     source activate.sh
     python main.py
     ```
+
+## Docker Setup
+
+### Prerequisites
+- Docker and Docker Compose installed
+
+### Running with Docker
+
+1. **Configure Environment**
+   Create a `.env` file from the example:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and configuration
+   ```
+
+2. **Build and Run**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. **View Logs**
+   ```bash
+   docker-compose logs -f
+   ```
+
+4. **Stop the Container**
+   ```bash
+   docker-compose down
+   ```
+
+### Data Persistence
+The Docker container is configured to persist data in the `./data` directory. This includes:
+- `bot_logs.db`: Database for logs, decisions, and Google Tasks tokens.
+- `conversation_state.db`: Database for user conversation states.
+
+Ensure you do not delete the `./data` directory if you want to keep your bot's history and authorization.
+
+## Synology / Headless Deployment
+
+If you want to run the bot 24/7 on a Synology NAS or any remote server, you can use the built-in Joplin CLI service to handle synchronization with Dropbox.
+
+### Running Headless
+
+1.  **Start Services**
+    ```bash
+    docker-compose up -d --build
+    ```
+
+2.  **Authorize Dropbox (One-time setup)**
+    Run the following command to link your Dropbox account:
+    ```bash
+    docker exec -it joplin-cli joplin config sync.target 7
+    docker exec -it joplin-cli joplin sync
+    ```
+    Follow the URL provided in the terminal, authorize on Dropbox, and paste the code back into the terminal.
+
+3.  **Configure API Token**
+    Once syncing is working, you need to get the API token from the headless Joplin instance:
+    ```bash
+    docker exec -it joplin-cli joplin server stop # Required to edit config
+    # The token is usually generated automatically or can be set
+    docker exec -it joplin-cli joplin server start
+    ```
+    Alternatively, check the logs or the `joplin-data` folder for the token and update your `.env` file's `JOPLIN_WEB_CLIPPER_TOKEN`.
+
+4.  **Restart**
+    ```bash
+    docker-compose restart telegram-joplin
+    ```
+
+## Fly.io Deployment
+
+Deploy the bot and Joplin to [Fly.io](https://fly.io) for a fully cloud-hosted setup. Both apps run in the same organization and communicate via Fly's private network (`*.internal`).
+
+### Prerequisites
+
+- [flyctl](https://fly.io/docs/hands-on/install-flyctl/) installed and logged in (`fly auth login`)
+- A Fly.io account
+
+### 1. Deploy Joplin First
+
+Create the Joplin app, add a volume, then deploy:
+
+```bash
+fly launch -c fly.joplin.toml --no-deploy
+fly volumes create joplin_data --region lax --size 1 -a joplin
+fly deploy -c fly.joplin.toml
+```
+
+### 2. Create Bot App and Volume
+
+```bash
+fly launch --no-deploy
+fly volumes create telegram_joplin_data --region lax --size 1 -a telegram-joplin
+```
+
+Use the same region (e.g. `lax`, `iad`, `ams`) for both apps so they can communicate via Fly's private network. Edit `primary_region` in both `fly.toml` and `fly.joplin.toml` if you use a different region.
+
+### 3. One-Time Joplin Setup (Sync & Token)
+
+Configure sync (e.g. Dropbox) and get the Web Clipper token:
+
+```bash
+# Connect to Joplin container
+fly ssh console -a joplin
+
+# Configure sync (example: Dropbox)
+joplin config sync.target 7
+joplin sync
+# Follow the URL, authorize, paste the code back
+
+# Get the API token for the bot
+joplin config api.token
+# Copy the token - you'll set it as a secret for telegram-joplin
+
+exit
+```
+
+### 4. Set Secrets
+
+```bash
+fly secrets set \
+  TELEGRAM_BOT_TOKEN=your_bot_token \
+  ALLOWED_TELEGRAM_USER_IDS=your_telegram_user_id \
+  DEEPSEEK_API_KEY=your_deepseek_key \
+  JOPLIN_WEB_CLIPPER_TOKEN=your_joplin_token \
+  -a telegram-joplin
+```
+
+### 5. Deploy
+
+```bash
+fly deploy -a telegram-joplin
+```
+
+### 6. Optional: Joplin Internal-Only
+
+To remove Joplin's public URL (bot connects via private network):
+
+```bash
+fly ips release -a joplin
+```
+
+### Updating
+
+```bash
+fly deploy -c fly.joplin.toml -a joplin      # Update Joplin
+fly deploy -a telegram-joplin                 # Update bot
+```
+
+### Data Persistence
+
+- **Joplin**: Notes and sync data in `joplin_data` volume
+- **Bot**: Logs and conversation state in `telegram_joplin_data` volume
 
 ## Google Tasks Integration (Optional)
 

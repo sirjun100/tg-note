@@ -5,7 +5,12 @@ Provides authentication, validation, and error management functions.
 
 import logging
 from typing import List, Optional, Dict
-from config import ALLOWED_TELEGRAM_USER_IDS
+from config import (
+    ALLOWED_TELEGRAM_USER_IDS,
+    JOPLIN_WEB_CLIPPER_HOST,
+    JOPLIN_WEB_CLIPPER_PORT,
+    JOPLIN_WEB_CLIPPER_BASE_URL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +71,7 @@ def validate_message_text(text: str) -> Optional[str]:
 
     return text
 
-def ping_joplin_api(base_url: str = "http://localhost:41184") -> bool:
+def ping_joplin_api(base_url: str = None) -> bool:
     """
     Check if Joplin Web Clipper API is accessible
 
@@ -77,6 +82,13 @@ def ping_joplin_api(base_url: str = "http://localhost:41184") -> bool:
         True if API is reachable, False otherwise
     """
     import requests
+
+    if base_url is None:
+        base_url = (
+            JOPLIN_WEB_CLIPPER_BASE_URL
+            if JOPLIN_WEB_CLIPPER_BASE_URL
+            else f"http://{JOPLIN_WEB_CLIPPER_HOST}:{JOPLIN_WEB_CLIPPER_PORT}"
+        )
 
     try:
         response = requests.get(f"{base_url}/ping", timeout=5)

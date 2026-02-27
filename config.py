@@ -25,8 +25,15 @@ DEEPSEEK_MODEL = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
 LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'deepseek')  # Default to DeepSeek
 
 # Joplin Configuration
+JOPLIN_WEB_CLIPPER_HOST = os.getenv('JOPLIN_WEB_CLIPPER_HOST', 'localhost')
 JOPLIN_WEB_CLIPPER_PORT = int(os.getenv('JOPLIN_WEB_CLIPPER_PORT', 41184))
 JOPLIN_WEB_CLIPPER_TOKEN = os.getenv('JOPLIN_WEB_CLIPPER_TOKEN')
+# Optional: full base URL override (e.g. https://joplin.fly.dev for Fly.io public routing)
+JOPLIN_WEB_CLIPPER_BASE_URL = os.getenv('JOPLIN_WEB_CLIPPER_BASE_URL')
 
 # Application Settings
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+
+# Database Configuration
+LOGS_DB_PATH = os.getenv('LOGS_DB_PATH', 'bot_logs.db')
+STATE_DB_PATH = os.getenv('STATE_DB_PATH', 'conversation_state.db')

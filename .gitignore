@@ -38,3 +38,6 @@ logs/
 *.temp
 *.json  # Credentials files
 gtd-*.md  # GTD/temp documents
+
+# Joplin local data (user notes, sync)
+joplin-data/
