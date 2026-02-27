@@ -54,7 +54,7 @@ telegram-joplin/
 │   └── auth_service.py            # OAuth helpers
 │
 ├── tests/                         # Test suite
-├── docs/                          # Historical docs & sprint summaries
+├── docs/                          # Audience guides, architecture, and project docs
 ├── .github/workflows/ci.yml       # CI/CD (ruff, mypy, pytest, deploy)
 ├── docker-compose.yml             # Local Docker (single service)
 ├── fly.toml                       # Fly.io config (single machine)
@@ -95,6 +95,13 @@ docker-compose logs -f
 ```
 
 Data persists in `./data/` (bot databases + Joplin notes in subdirectories).
+
+## Documentation by Audience
+
+- Business analyst: `docs/for-business-analyst/README.md`
+- Senior developers: `docs/for-senior-developers/README.md`
+- Developers: `docs/for-developers/README.md`
+- Docs index: `docs/README.md`
 
 ## Fly.io Deployment
 

@@ -17,6 +17,12 @@ project-management/
     └── processes/       # Process documentation
 ```
 
+## Strict Structure Rules
+
+- All FR files and FR implementation summaries stay under `backlog/features/`.
+- All sprint planning and sprint follow-up documents stay under `sprints/`.
+- `docs/` at repository root is reserved for product/user/developer guides, not planning artifacts.
+
 ## Quick Start
 
 1. **View the backlog**: Open `backlog/product-backlog.md`

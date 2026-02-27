@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class StateManager:
     """Manages conversation state for users"""
 
-    def __init__(self, db_path: str = "conversation_state.db"):
+    def __init__(self, db_path: str = "data/bot/conversation_state.db"):
         self.db_path = db_path
         self._lock = threading.Lock()
         self._init_db()
@@ -23,6 +23,7 @@ class StateManager:
     def _init_db(self):
         """Initialize SQLite database"""
         with self._lock:
+            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 

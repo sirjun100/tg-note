@@ -92,7 +92,7 @@ Complete integration of Google Tasks API with automatic task creation, OAuth2 au
 - Status Retrieval: PASS
 
 ### Related Documentation
-- [Implementation Summary](../../FR-012-IMPLEMENTATION-SUMMARY.md)
+- [Implementation Summary](./FR-012-IMPLEMENTATION-SUMMARY.md)
 - Database Schema: `database_schema.sql`
 - Code Changes: `src/logging_service.py`, `src/task_service.py`, `src/telegram_orchestrator.py`
 

@@ -17,6 +17,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +62,16 @@ class Decision:
 
 
 class LoggingService:
-    def __init__(self, db_path: str = "bot_logs.db"):
+    def __init__(self, db_path: str = "data/bot/bot_logs.db"):
         self.db_path = db_path
         self._init_db()
 
     def _init_db(self):
         """Initialize database with schema"""
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        schema_path = Path(__file__).resolve().parent.parent / "database_schema.sql"
         with sqlite3.connect(self.db_path) as conn:
-            with open('database_schema.sql', 'r') as f:
+            with open(schema_path, "r", encoding="utf-8") as f:
                 schema = f.read()
             conn.executescript(schema)
             conn.commit()

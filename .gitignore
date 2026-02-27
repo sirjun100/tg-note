@@ -40,11 +40,12 @@ logs/
 # Temporary / credentials
 *.tmp
 *.temp
-*.json
 !ruff.toml
 !fly.toml
-!fly.joplin.toml
 !package.json
+client-id.json
+credentials.json
+token.json
 gtd-*.md
 
 # Joplin local data

@@ -207,7 +207,7 @@
 - ✅ Production-ready code
 
 **Related Documentation**:
-- [FR-012 Implementation Summary](../../FR-012-IMPLEMENTATION-SUMMARY.md)
+- [FR-012 Implementation Summary](../backlog/features/FR-012-IMPLEMENTATION-SUMMARY.md)
 - [FR-012 Feature Request](../backlog/features/FR-012-google-tasks-integration.md)
 - [Product Backlog](../backlog/product-backlog.md)
 

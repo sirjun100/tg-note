@@ -89,8 +89,8 @@ class GoogleSettings(BaseSettings):
 class DatabaseSettings(BaseSettings):
     model_config = _ENV_CONFIG
 
-    logs_db_path: str = Field(default="bot_logs.db", alias="LOGS_DB_PATH")
-    state_db_path: str = Field(default="conversation_state.db", alias="STATE_DB_PATH")
+    logs_db_path: str = Field(default="data/bot/bot_logs.db", alias="LOGS_DB_PATH")
+    state_db_path: str = Field(default="data/bot/conversation_state.db", alias="STATE_DB_PATH")
 
 
 class AppSettings(BaseSettings):
