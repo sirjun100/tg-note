@@ -425,6 +425,21 @@ class LoggingService:
             ''', (user_id,))
             return cursor.fetchall()
 
+    def delete_failed_syncs_no_token(self) -> int:
+        """Remove failed sync rows that were logged only because user had no Google token.
+        Used after BF-001 fix: those were not real sync attempts and should not count as failures.
+        Returns number of rows deleted."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                DELETE FROM task_sync_history
+                WHERE sync_result = 'failed'
+                  AND error_message LIKE 'No Google token found for user %'
+            ''')
+            deleted = cursor.rowcount
+            conn.commit()
+            return deleted
+
     def log_tag_creation(self, user_id: int, note_id: str, tag_name: str, is_new: bool = False):
         """Log tag creation or application to database for audit trail
 

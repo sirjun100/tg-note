@@ -163,12 +163,8 @@ class TaskService:
             # Load user's Google token
             token = self.logging_service.load_google_token(user_id)
             if not token:
-                error_msg = f"No Google token found for user {user_id}"
-                print(f"❌ {error_msg}")
-                self.logging_service.log_task_sync(
-                    user_id, None, "", "none", None, None,
-                    "joplin_to_google", "failed", error_msg
-                )
+                # Do not log as "failed" sync: no sync was attempted (user must link account first)
+                print(f"⚠️ No Google token for user {user_id}; skipping task creation. User can /authorize_google_tasks to link.")
                 return []
 
             # Load user's Google Tasks configuration

@@ -9,7 +9,7 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-01-24 (Sprint 6 Complete & Validated, Sprint 7 Started)
+**Last Updated**: 2026-03-01 (BF-001 Google Tasks sync no-token added)
 
 ## Project Overview
 
@@ -64,7 +64,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
-| [BF-001](bugs/BF-001-bug-description.md) | [Bug Description] | 🔴 Critical | [X] | ⭕ | - | 2026-01-01 | 2026-01-01 |
+| [BF-001](bugs/BF-001-google-tasks-sync-no-token.md) | Google Tasks Sync Fails: No Google token found for user | 🟠 High | 2 | ⏳ | Backlog | 2026-03-01 | 2026-03-01 |
 | [BF-002](bugs/BF-002-bug-description.md) | [Bug Description] | 🟠 High | [X] | ⭕ | - | 2026-01-01 | 2026-01-01 |
 | [BF-003](bugs/BF-003-bug-description.md) | [Bug Description] | 🟡 Medium | [X] | ⭕ | - | 2026-01-01 | 2026-01-01 |
 
