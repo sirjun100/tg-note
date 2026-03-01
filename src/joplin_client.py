@@ -118,19 +118,28 @@ class JoplinClient:
     async def move_note(self, note_id: str, parent_id: str) -> None:
         await self._request("PUT", f"/notes/{note_id}", json={"parent_id": parent_id})
 
-    async def get_all_notes(self) -> List[Dict[str, Any]]:
-        result = await self._request("GET", "/notes")
-        return _items(result)
+    async def get_all_notes(self, fields: str | None = None) -> List[Dict[str, Any]]:
+        endpoint = "/notes"
+        if fields:
+            endpoint = f"/notes?fields={fields}"
+        return await self._paginated_items(endpoint)
 
     async def get_notes_in_folder(self, folder_id: str) -> List[Dict[str, Any]]:
-        result = await self._request("GET", f"/folders/{folder_id}/notes")
-        return _items(result)
+        return await self._paginated_items(f"/folders/{folder_id}/notes")
 
     # -- folders --
 
     async def get_folders(self) -> List[Dict[str, Any]]:
-        result = await self._request("GET", "/folders")
-        return _items(result)
+        folders = await self._paginated_items("/folders")
+        # Ignore soft-deleted folders; they can still be returned by API but
+        # should not be considered valid destinations for new notes.
+        active_folders: List[Dict[str, Any]] = []
+        for folder in folders:
+            deleted_time = folder.get("deleted_time", 0) or 0
+            if deleted_time:
+                continue
+            active_folders.append(folder)
+        return active_folders
 
     async def get_folder(self, folder_id: str) -> Dict[str, Any]:
         result = await self._request("GET", f"/folders/{folder_id}")
@@ -174,14 +183,12 @@ class JoplinClient:
     # -- tags --
 
     async def fetch_tags(self) -> List[Dict[str, Any]]:
-        result = await self._request("GET", "/tags")
-        tags = _items(result)
+        tags = await self._paginated_items("/tags")
         logger.info("Fetched %d tags", len(tags))
         return tags
 
     async def get_notes_with_tag(self, tag_id: str) -> List[Dict[str, Any]]:
-        result = await self._request("GET", f"/tags/{tag_id}/notes")
-        return _items(result)
+        return await self._paginated_items(f"/tags/{tag_id}/notes")
 
     async def apply_tags(self, note_id: str, tag_names: List[str]) -> bool:
         success = True
@@ -243,6 +250,24 @@ class JoplinClient:
             return True
         except JoplinError:
             return False
+
+    async def _paginated_items(self, endpoint: str) -> List[Dict[str, Any]]:
+        """
+        Fetch all pages from a Joplin list endpoint.
+
+        Joplin may paginate folders/tags with `has_more` and `page`.
+        """
+        page = 1
+        items: List[Dict[str, Any]] = []
+        while True:
+            sep = "&" if "?" in endpoint else "?"
+            result = await self._request("GET", f"{endpoint}{sep}page={page}")
+            page_items = _items(result)
+            items.extend(page_items)
+            if not isinstance(result, dict) or not result.get("has_more"):
+                break
+            page += 1
+        return items
 
     # -- decision log --
 

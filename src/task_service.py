@@ -403,7 +403,7 @@ class TaskService:
 
             total_synced = len(task_links)
             failed_count = len(failed_syncs)
-            success_count = total_synced - failed_count
+            success_count = max(total_synced - failed_count, 0)
 
             return {
                 "total_synced": total_synced,

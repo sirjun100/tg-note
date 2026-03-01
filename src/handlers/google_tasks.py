@@ -244,6 +244,13 @@ def _tasks_status(orch: "TelegramOrchestrator"):
         if not user or not check_whitelist(user.id):
             return
         try:
+            token = orch.logging_service.load_google_token(str(user.id))
+            if not token:
+                await update.message.reply_text(
+                    "❌ Google Tasks not authorized\n\nUse /authorize_google_tasks to set up access"
+                )
+                return
+
             status = orch.task_service.get_task_sync_status(user.id)
             msg = "📊 Google Tasks Sync Status\n\n"
             msg += f"Total synced: {status.get('total_synced', 0)}\n"

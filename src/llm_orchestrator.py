@@ -48,7 +48,13 @@ class LLMOrchestrator:
         self.prompts_dir = Path(__file__).parent / "prompts"
         self._personas = {}
 
-    def process_message(self, user_message: str, context: Dict[str, Any] = None, persona: str = None, history: List[Dict[str, str]] = None) -> JoplinNoteSchema:
+    async def process_message(
+        self,
+        user_message: str,
+        context: Dict[str, Any] = None,
+        persona: str = None,
+        history: List[Dict[str, str]] = None,
+    ) -> JoplinNoteSchema:
         """
         Process user message and generate note data using LLM
 
@@ -98,7 +104,7 @@ class LLMOrchestrator:
                 logger.info(f"📋 Schema: {json.dumps(JoplinNoteSchema.schema(), indent=2)}")
                 logger.debug(f"📡 Sending request to {self.provider_name} with function calling")
 
-                response = self.provider.generate_response(
+                response = await self.provider.generate_response(
                     messages=messages,
                     functions=functions,
                     function_call={"name": "create_joplin_note"},
@@ -219,7 +225,7 @@ class LLMOrchestrator:
 
                 logger.info("📡 Sending request to Ollama...")
 
-                response = self.provider.generate_response(
+                response = await self.provider.generate_response(
                     messages=messages,
                     temperature=0.1,  # Very low temperature for structured output
                     max_tokens=1500
@@ -306,7 +312,7 @@ class LLMOrchestrator:
         
         logger.info(f"🏷️ Classifying note: '{note_title}'")
         
-        response = self.provider.generate_response(
+        response = await self.provider.generate_response(
             messages=messages,
             temperature=0.1,
             max_tokens=500
@@ -337,7 +343,7 @@ class LLMOrchestrator:
         
         logger.info(f"✨ Enriching note: '{note_title}'")
         
-        response = self.provider.generate_response(
+        response = await self.provider.generate_response(
             messages=messages,
             temperature=0.3,
             max_tokens=1000
@@ -367,7 +373,7 @@ class LLMOrchestrator:
 
         logger.info(f"🔬 Augmenting note with research: '{note_title}'")
 
-        response = self.provider.generate_response(
+        response = await self.provider.generate_response(
             messages=messages,
             temperature=0.5,
             max_tokens=800
@@ -407,7 +413,20 @@ Your task is to analyze user messages and either:
 ## Joplin Structure
 The user organizes notes in these folders:
 {folder_list}
-Important: Never choose the Archive folder or any folder containing 'archive' in the name.
+The system follows a Second Brain/PARA structure with these main roots:
+- 00 - Inbox
+- 01 - Projects
+- 02 - Areas
+- 03 - Resources
+- 04 - Archives
+
+Folder selection policy:
+- You MUST choose the best folder from the provided folder list above.
+- Return the exact folder ID in `note.parent_id`.
+- Prefer the PARA roots and their children when applicable.
+- If content is valid but folder is uncertain, default to Inbox (00 - Inbox) rather than asking for folder clarification.
+- Only use NEED_INFO when note content itself is unclear.
+- Never choose Archives unless user explicitly asks to archive.
 
 ## Available Tags
 """
@@ -438,9 +457,15 @@ Important: Never choose the Archive folder or any folder containing 'archive' in
 ### Note Creation Rules:
 - Title should be concise but descriptive (max 100 characters)
 - Body should capture the main content, can be detailed
-- Choose the most appropriate folder based on content type
+- Choose the most appropriate folder based on content type and PARA intent
 - Use relevant existing tags or create new meaningful ones
+- Reuse existing tags when they already match the note intent
 - Multiple tags are allowed
+- For URL messages, enrich the note using extracted website content when available
+- For URL messages, generate tags from BOTH user intent and extracted website topics/entities
+- Keep tags concrete and searchable (topics, format, source, domain-specific terms)
+- If the selected folder is in the 01 - Projects subtree, include exactly one status tag:
+  status/planning, status/building, status/blocked, or status/done.
 
 ### Confidence Scoring:
 - 0.9-1.0: Very clear, no ambiguity
@@ -484,6 +509,39 @@ Response: {
 }
 
 Remember: Be helpful, accurate, and ask for clarification when needed rather than making assumptions."""
+
+        # Optional URL enrichment context.
+        url_ctx = context.get("url_context") if context else None
+        if url_ctx and url_ctx.get("url"):
+            extracted_text = (url_ctx.get("extracted_text") or "").strip()
+            if len(extracted_text) > 2200:
+                extracted_text = extracted_text[:2200] + "..."
+
+            prompt += f"""
+
+## URL Enrichment Context
+The user message includes this URL:
+- URL: {url_ctx.get("final_url") or url_ctx.get("url")}
+- Domain: {url_ctx.get("domain", "")}
+- Extracted title: {url_ctx.get("title", "")}
+- Extracted description: {url_ctx.get("description", "")}
+- Author: {url_ctx.get("author", "")}
+- Published: {url_ctx.get("published_at", "")}
+- URL type: {url_ctx.get("content_type", "knowledge")}
+
+Template requirement for this URL:
+- Template: {url_ctx.get("template_name", "Knowledge Enrichment")} (#{url_ctx.get("template_id", "2")})
+- Instructions: {url_ctx.get("template_instructions", "")}
+
+Extracted website text (trusted context):
+{extracted_text}
+
+When URL context is provided:
+1) Use extracted website content to enrich the note body.
+2) Prefer extracted topics and entities when generating tags.
+3) Keep the source URL visible in the note body.
+4) Follow the required template sections for the selected template.
+"""
 
         return prompt
 

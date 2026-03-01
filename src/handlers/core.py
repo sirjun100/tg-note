@@ -4,7 +4,11 @@ Core handlers: /start, /status, /helpme, and message routing.
 
 from __future__ import annotations
 
+import asyncio
+import difflib
 import logging
+import os
+import re
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from telegram import Message, Update
@@ -21,16 +25,25 @@ from src.security_utils import (
     validate_message_text,
     validate_note_data,
 )
+from src.url_enrichment import extract_urls, fetch_url_context
 
 if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
 
 logger = logging.getLogger(__name__)
+_sync_task: Optional[asyncio.Task] = None
+PROJECT_STATUS_TAGS = {
+    "status/planning",
+    "status/building",
+    "status/blocked",
+    "status/done",
+}
 
 
 def register_core_handlers(application: Any, orch: "TelegramOrchestrator") -> None:
     application.add_handler(CommandHandler("start", _start(orch)))
     application.add_handler(CommandHandler("status", _status(orch)))
+    application.add_handler(CommandHandler("project_status", _project_status(orch)))
     application.add_handler(CommandHandler("helpme", _helpme(orch)))
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, _message(orch))
@@ -62,6 +75,7 @@ def _start(orch: "TelegramOrchestrator"):
             "/start - Show this message\n"
             "/helpme - Show detailed help with all commands\n"
             "/status - Check bot status\n"
+            "/project_status - Show project status tag summary\n"
             "/list_inbox_tasks - List pending Google Tasks\n\n"
             "For more commands, use: /helpme"
         )
@@ -78,6 +92,7 @@ def _status(orch: "TelegramOrchestrator"):
             return
 
         joplin_ok = await ping_joplin_api()
+        dropbox_sync_ok, dropbox_sync_msg = await _get_joplin_dropbox_sync_status()
         has_pending = orch.state_manager.has_pending_state(user.id)
 
         google_ok = False
@@ -91,6 +106,8 @@ def _status(orch: "TelegramOrchestrator"):
         msg = (
             "🤖 Bot Status:\n\n"
             f"Joplin API: {'✅ Connected' if joplin_ok else '❌ Not accessible'}\n"
+            f"Joplin Sync (Dropbox): {'✅ Configured' if dropbox_sync_ok else '❌ Not configured'}"
+            f"{f' ({dropbox_sync_msg})' if dropbox_sync_msg else ''}\n"
             f"Pending clarification: {'✅ Yes' if has_pending else '❌ No'}\n"
             f"Google Tasks: {'✅ Configured' if google_ok else '❌ Not configured'}\n"
         )
@@ -99,6 +116,44 @@ def _status(orch: "TelegramOrchestrator"):
         await update.message.reply_text(msg)
 
     return handler
+
+
+async def _get_joplin_dropbox_sync_status() -> tuple[bool, str]:
+    """Return whether Joplin sync target is configured to Dropbox (target=7)."""
+    profile = os.environ.get("JOPLIN_PROFILE")
+    if not profile and os.path.isdir("/app/data/joplin"):
+        profile = "/app/data/joplin"
+
+    cmd = ["joplin", "config", "sync.target"]
+    if profile:
+        cmd = ["joplin", "--profile", profile, "config", "sync.target"]
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        return False, "Joplin CLI unavailable"
+
+    try:
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=6)
+    except asyncio.TimeoutError:
+        proc.kill()
+        return False, "status check timeout"
+
+    output = f"{stdout.decode('utf-8', errors='ignore')}\n{stderr.decode('utf-8', errors='ignore')}"
+    match = re.search(r"sync\.target\s*=\s*(\d+)", output)
+    if not match:
+        return False, "unknown target"
+
+    target = int(match.group(1))
+    if target == 7:
+        return True, "target=Dropbox"
+    if target == 0:
+        return False, "target=None"
+    return False, f"target={target}"
 
 
 def _helpme(orch: "TelegramOrchestrator"):
@@ -116,6 +171,7 @@ def _helpme(orch: "TelegramOrchestrator"):
             "📋 **Commands**\n"
             "/start - Welcome message & quick command list\n"
             "/status - Check if Joplin & Google Tasks are connected\n"
+            "/project_status - Show counts by project status tags\n"
             "/helpme - Show this detailed help message\n\n"
             "📅 **Google Tasks Management**\n"
             "/authorize_google_tasks - Connect your Google account\n"
@@ -141,6 +197,91 @@ def _helpme(orch: "TelegramOrchestrator"):
         )
         await update.message.reply_text(help_message)
         logger.info("Showed help to user %d", user.id)
+
+    return handler
+
+
+def _project_status(orch: "TelegramOrchestrator"):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            folders = await orch.joplin_client.get_folders()
+            by_id = {f.get("id"): f for f in folders if f.get("id")}
+
+            project_root_id = None
+            for f in folders:
+                if (f.get("title") or "").strip().lower() == "01 - projects":
+                    project_root_id = f.get("id")
+                    break
+
+            if not project_root_id:
+                await update.message.reply_text("❌ I couldn't find folder `01 - Projects`.")
+                return
+
+            def in_projects(folder_id: str) -> bool:
+                cur = folder_id
+                seen: set[str] = set()
+                while cur and cur not in seen:
+                    if cur == project_root_id:
+                        return True
+                    seen.add(cur)
+                    node = by_id.get(cur)
+                    if not node:
+                        break
+                    cur = node.get("parent_id", "")
+                return False
+
+            tags = await orch.joplin_client.fetch_tags()
+            tag_id_by_name = {
+                (t.get("title") or "").strip().lower(): t.get("id")
+                for t in tags
+                if t.get("id")
+            }
+
+            status_order = [
+                "status/planning",
+                "status/building",
+                "status/blocked",
+                "status/done",
+            ]
+            status_counts = {name: 0 for name in status_order}
+            tagged_project_note_ids: set[str] = set()
+
+            for status_name in status_order:
+                tag_id = tag_id_by_name.get(status_name)
+                if not tag_id:
+                    continue
+                notes = await orch.joplin_client.get_notes_with_tag(tag_id)
+                for note in notes:
+                    note_id = note.get("id")
+                    parent_id = note.get("parent_id", "")
+                    if note_id and parent_id and in_projects(parent_id):
+                        status_counts[status_name] += 1
+                        tagged_project_note_ids.add(note_id)
+
+            all_notes = await orch.joplin_client.get_all_notes(fields="id,parent_id")
+            all_project_note_ids = {
+                n.get("id")
+                for n in all_notes
+                if n.get("id") and n.get("parent_id") and in_projects(n.get("parent_id", ""))
+            }
+            untagged_count = max(len(all_project_note_ids) - len(tagged_project_note_ids), 0)
+
+            msg = (
+                "📊 Project Status Tags\n\n"
+                f"🟡 Planning: {status_counts['status/planning']}\n"
+                f"🔵 Building: {status_counts['status/building']}\n"
+                f"🟠 Blocked: {status_counts['status/blocked']}\n"
+                f"✅ Done: {status_counts['status/done']}\n"
+                f"⚪ Untagged: {untagged_count}\n"
+            )
+            await update.message.reply_text(msg)
+        except Exception as exc:
+            logger.error("Failed to compute project status: %s", exc, exc_info=True)
+            await update.message.reply_text("❌ Failed to compute project status right now.")
 
     return handler
 
@@ -248,9 +389,10 @@ async def _handle_new_request(
     except Exception as exc:
         logger.warning("Failed to fetch tags: %s", exc)
 
+    url_context = await _build_url_context(validated_text=text)
     folders = await orch.joplin_client.get_folders()
-    ctx = {"existing_tags": existing_tags, "folders": folders}
-    llm_response = orch.llm_orchestrator.process_message(text, ctx)
+    ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
+    llm_response = await orch.llm_orchestrator.process_message(text, ctx)
     await _process_llm_response(orch, user_id, llm_response, message, telegram_message_id)
 
 
@@ -281,9 +423,10 @@ async def _handle_clarification_reply(
         return
 
     existing_tags = state.get("existing_tags", [])
+    url_context = await _build_url_context(validated_text=combined)
     folders = await orch.joplin_client.get_folders()
-    ctx = {"existing_tags": existing_tags, "folders": folders}
-    llm_response = orch.llm_orchestrator.process_message(combined, ctx)
+    ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
+    llm_response = await orch.llm_orchestrator.process_message(combined, ctx)
     await _process_llm_response(orch, user_id, llm_response, message, clear_state=True)
 
 
@@ -305,6 +448,20 @@ async def _process_llm_response(
     if llm_response.status == "SUCCESS" and llm_response.note:
         note_result = await create_note_in_joplin(orch, llm_response.note)
         if note_result:
+            if note_result.get("error") == "folder_not_found":
+                requested = note_result.get("requested_folder") or "(empty)"
+                suggestions = note_result.get("suggestions", [])
+                msg = f"❌ I couldn't find folder `{requested}`.\n\n"
+                if suggestions:
+                    msg += "Try one of these folders:\n"
+                    for name in suggestions:
+                        msg += f"• {name}\n"
+                    msg += "\nReply with one folder name and I'll save the note there."
+                else:
+                    msg += "Please provide a valid folder name."
+                await message.reply_text(msg)
+                return
+
             note_id = note_result["note_id"]
             tag_info = note_result.get("tag_info", {})
 
@@ -329,9 +486,16 @@ async def _process_llm_response(
             if clear_state:
                 orch.state_manager.clear_state(user_id)
 
+            _schedule_joplin_sync()
+
             folder_id = llm_response.note.get("parent_id")
-            folder = await orch.joplin_client.get_folder(folder_id) if folder_id else None
-            folder_name = folder.get("title", "Unknown") if folder else "Unknown"
+            folder_name = "Unknown"
+            if folder_id:
+                try:
+                    folder = await orch.joplin_client.get_folder(folder_id)
+                    folder_name = folder.get("title", "Unknown") if folder else "Unknown"
+                except Exception as exc:
+                    logger.warning("Failed to resolve folder '%s' after note creation: %s", folder_id, exc)
 
             success_msg = f"✅ Note created: '{llm_response.note['title']}' in folder '{folder_name}'"
             if tag_info.get("all_tags"):
@@ -347,7 +511,10 @@ async def _process_llm_response(
             "llm_response": llm_response.dict(),
         }
         orch.state_manager.update_state(user_id, state)
-        await message.reply_text(f"🤔 {llm_response.question}")
+        await message.reply_text(
+            "🧠 Second Brain folders: 00 - Inbox, 01 - Projects, 02 - Areas, 03 - Resources, 04 - Archives.\n\n"
+            f"🤔 {llm_response.question}"
+        )
     else:
         logger.error("Unexpected LLM response: %s", llm_response)
         await message.reply_text(format_error_message("I had trouble understanding. Please try rephrasing."))
@@ -357,18 +524,43 @@ async def create_note_in_joplin(
     orch: "TelegramOrchestrator", note_data: Dict[str, Any]
 ) -> Optional[Dict[str, Any]]:
     try:
-        errors = validate_note_data(note_data)
+        requested_folder = (note_data.get("parent_id") or "").strip()
+        resolved_folder_id, suggestions = await _resolve_folder_id_or_suggestions(
+            orch,
+            requested_folder,
+            note_title=note_data.get("title", ""),
+            note_body=note_data.get("body", ""),
+        )
+        if not resolved_folder_id:
+            return {
+                "error": "folder_not_found",
+                "requested_folder": requested_folder,
+                "suggestions": suggestions,
+            }
+
+        # Validate after folder resolution so missing/invalid parent_id
+        # can be recovered via inference/suggestions.
+        normalized_note = dict(note_data)
+        normalized_note["parent_id"] = resolved_folder_id
+        normalized_note["tags"] = await _ensure_project_status_tag(
+            orch,
+            resolved_folder_id,
+            normalized_note.get("tags", []),
+            normalized_note.get("title", ""),
+            normalized_note.get("body", ""),
+        )
+        errors = validate_note_data(normalized_note)
         if errors:
             logger.error("Note validation failed: %s", errors)
             return None
 
         note_id = await orch.joplin_client.create_note(
-            folder_id=note_data["parent_id"],
-            title=note_data["title"],
-            body=note_data["body"],
+            folder_id=resolved_folder_id,
+            title=normalized_note["title"],
+            body=normalized_note["body"],
         )
 
-        tags = note_data.get("tags", [])
+        tags = normalized_note.get("tags", [])
         tag_info: Dict[str, Any] = {"new_tags": [], "existing_tags": [], "all_tags": []}
         if tags:
             tag_info = await orch.joplin_client.apply_tags_and_track_new(note_id, tags)
@@ -377,6 +569,162 @@ async def create_note_in_joplin(
     except Exception as exc:
         logger.error("Error creating note: %s", exc, exc_info=True)
         return None
+
+
+async def _resolve_folder_id_or_suggestions(
+    orch: "TelegramOrchestrator",
+    requested_folder: str,
+    note_title: str = "",
+    note_body: str = "",
+) -> tuple[Optional[str], list[str]]:
+    folders = await orch.joplin_client.get_folders()
+    if not folders:
+        # Self-heal first-run/empty setups by creating a default Inbox folder.
+        try:
+            created = await orch.joplin_client.create_folder("00 - Inbox")
+            created_id = created.get("id")
+            if created_id:
+                logger.info("Created default folder '00 - Inbox' (%s)", created_id)
+                return created_id, []
+        except Exception as exc:
+            logger.warning("Failed to auto-create default inbox folder: %s", exc)
+        return None, []
+
+    def _fallback_inbox_id() -> Optional[str]:
+        # Preferred explicit folder name
+        for f in folders:
+            title = (f.get("title") or "").strip().lower()
+            if title == "00 - inbox":
+                return f.get("id")
+
+        # Common variants
+        for f in folders:
+            title = (f.get("title") or "").strip().lower()
+            if title in {"inbox", "00-inbox", "00 inbox"}:
+                return f.get("id")
+            if "inbox" in title and title.startswith("00"):
+                return f.get("id")
+            if "inbox" in title:
+                return f.get("id")
+        return None
+
+    by_id = {f.get("id"): f for f in folders if f.get("id")}
+    if requested_folder in by_id:
+        return requested_folder, []
+
+    requested_lower = requested_folder.lower()
+    by_title_lower = {
+        (f.get("title") or "").strip().lower(): f
+        for f in folders
+        if f.get("title")
+    }
+
+    # Exact title match (case-insensitive)
+    exact = by_title_lower.get(requested_lower)
+    if exact:
+        return exact.get("id"), []
+
+    # Empty folder hint -> default inbox immediately.
+    if not requested_lower:
+        inbox_id = _fallback_inbox_id()
+        if inbox_id:
+            logger.info("Resolved empty folder hint to inbox folder id '%s'", inbox_id)
+            return inbox_id, []
+
+    # Ask LLM to pick the best existing folder when user gives vague input
+    # like "I trust you" or a non-existent folder.
+    try:
+        folder_text = ""
+        for f in folders:
+            fid = f.get("id")
+            title = f.get("title")
+            if fid and title:
+                folder_text += f"- {fid}: {title}\n"
+
+        note_with_hint = f"Preferred folder from user: {requested_folder}\n\n{note_body or ''}"
+        classification = await orch.llm_orchestrator.classify_note(
+            note_title or "Untitled",
+            note_with_hint,
+            folder_text,
+        )
+
+        suggested_folder_id = classification.get("suggested_folder_id")
+        try:
+            confidence = float(classification.get("confidence", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+
+        if suggested_folder_id in by_id and confidence >= 0.55:
+            logger.info(
+                "Resolved folder via LLM: requested='%s' -> folder_id='%s' (confidence=%.2f)",
+                requested_folder,
+                suggested_folder_id,
+                confidence,
+            )
+            return suggested_folder_id, []
+    except Exception as exc:
+        logger.warning("LLM folder resolution failed for '%s': %s", requested_folder, exc)
+
+    titles = [f.get("title", "") for f in folders if f.get("title")]
+    title_map = {t.lower(): t for t in titles}
+
+    candidates: list[str] = []
+
+    # Prefer substring matches
+    for t in titles:
+        tl = t.lower()
+        if requested_lower and (requested_lower in tl or tl in requested_lower):
+            candidates.append(t)
+
+    # Add fuzzy matches
+    fuzzy = difflib.get_close_matches(
+        requested_lower, list(title_map.keys()), n=5, cutoff=0.3
+    )
+    for f in fuzzy:
+        candidates.append(title_map[f])
+
+    # Deduplicate while preserving order
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            deduped.append(c)
+
+    # Ensure 3-5 suggestions when possible
+    if len(deduped) < 3:
+        for t in sorted(titles):
+            if t not in seen:
+                deduped.append(t)
+                seen.add(t)
+            if len(deduped) >= 5:
+                break
+
+    # Final fallback: if we still can't resolve, use/create inbox folder.
+    inbox_id = _fallback_inbox_id()
+    if inbox_id:
+        logger.info(
+            "Falling back to inbox folder for unresolved hint '%s' (id '%s')",
+            requested_folder,
+            inbox_id,
+        )
+        return inbox_id, []
+
+    # No inbox exists yet; create one and continue.
+    try:
+        created = await orch.joplin_client.create_folder("00 - Inbox")
+        created_id = created.get("id")
+        if created_id:
+            logger.info(
+                "Created missing default inbox folder for unresolved hint '%s' (id '%s')",
+                requested_folder,
+                created_id,
+            )
+            return created_id, []
+    except Exception as exc:
+        logger.warning("Failed to create fallback inbox folder: %s", exc)
+
+    return None, deduped[:5]
 
 
 def _format_tag_display(tag_info: Dict[str, Any]) -> str:
@@ -397,3 +745,153 @@ def _log_tag_creation(
             orch.logging_service.log_tag_creation(user_id=user_id, note_id=note_id, tag_name=name, is_new=False)
     except Exception as exc:
         logger.warning("Failed to log tag creation: %s", exc)
+
+
+async def _build_url_context(validated_text: str) -> Dict[str, Any]:
+    """
+    Build enrichment context for the first URL in text.
+
+    Keeps LLM payload bounded while still improving note quality.
+    """
+    urls = extract_urls(validated_text)
+    if not urls:
+        return {}
+
+    first_url = urls[0]
+    context = await fetch_url_context(first_url)
+    if context.get("error"):
+        logger.info("URL enrichment fallback for %s: %s", first_url, context["error"])
+    else:
+        logger.info(
+            "URL enrichment ready (%s, template=%s)",
+            context.get("domain", "unknown"),
+            context.get("template_name", "unknown"),
+        )
+    return context
+
+
+def _schedule_joplin_sync() -> None:
+    """
+    Schedule a best-effort Joplin sync.
+
+    Debounces concurrent note creations by allowing only one sync task at a time.
+    """
+    global _sync_task
+    if _sync_task and not _sync_task.done():
+        return
+    _sync_task = asyncio.create_task(_run_joplin_sync())
+
+
+async def _run_joplin_sync() -> None:
+    profile = os.environ.get("JOPLIN_PROFILE")
+    if not profile and os.path.isdir("/app/data/joplin"):
+        profile = "/app/data/joplin"
+
+    cmd = ["joplin"]
+    if profile:
+        cmd.extend(["--profile", profile])
+    cmd.append("sync")
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=90)
+    except FileNotFoundError:
+        logger.warning("Joplin CLI not found; skipping post-note sync")
+        return
+    except asyncio.TimeoutError:
+        logger.warning("Joplin sync timed out after note creation")
+        return
+    except Exception as exc:
+        logger.warning("Failed to run post-note Joplin sync: %s", exc)
+        return
+
+    if proc.returncode == 0:
+        logger.info("Post-note Joplin sync completed")
+    else:
+        err = stderr.decode("utf-8", errors="ignore").strip()
+        out = stdout.decode("utf-8", errors="ignore").strip()
+        logger.warning(
+            "Post-note Joplin sync failed (code=%s): %s",
+            proc.returncode,
+            err or out or "unknown error",
+        )
+
+
+async def _ensure_project_status_tag(
+    orch: "TelegramOrchestrator",
+    folder_id: str,
+    tags: Any,
+    title: str,
+    body: str,
+) -> list[str]:
+    """
+    Ensure project notes have exactly one status/* tag.
+
+    Applies only when note goes into 01 - Projects subtree.
+    """
+    tag_list = [str(t).strip() for t in (tags or []) if str(t).strip()]
+    lowered = [t.lower() for t in tag_list]
+
+    # Keep non-status tags and preserve first valid status tag if present.
+    existing_status = [t for t in lowered if t in PROJECT_STATUS_TAGS]
+    kept_non_status = [t for t in tag_list if t.lower() not in PROJECT_STATUS_TAGS]
+
+    try:
+        folders = await orch.joplin_client.get_folders()
+    except Exception as exc:
+        logger.warning("Could not fetch folders for status-tag policy: %s", exc)
+        return tag_list
+
+    by_id = {f.get("id"): f for f in folders if f.get("id")}
+    project_root_id = None
+    for f in folders:
+        if (f.get("title") or "").strip().lower() == "01 - projects":
+            project_root_id = f.get("id")
+            break
+    if not project_root_id:
+        return tag_list
+
+    # Walk up parents: if folder is not inside 01 - Projects, leave tags untouched.
+    cur = folder_id
+    in_projects = False
+    visited: set[str] = set()
+    while cur and cur not in visited:
+        visited.add(cur)
+        if cur == project_root_id:
+            in_projects = True
+            break
+        node = by_id.get(cur)
+        if not node:
+            break
+        cur = node.get("parent_id", "")
+    if not in_projects:
+        return tag_list
+
+    status_tag = existing_status[0] if existing_status else _infer_status_tag(title, body)
+    final_tags = kept_non_status + [status_tag]
+
+    # Deduplicate while preserving order.
+    out: list[str] = []
+    seen: set[str] = set()
+    for tag in final_tags:
+        key = tag.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(tag)
+    return out
+
+
+def _infer_status_tag(title: str, body: str) -> str:
+    text = f"{title}\n{body}".lower()
+    if any(k in text for k in ["blocked", "on hold", "back burner", "waiting on", "stuck"]):
+        return "status/blocked"
+    if any(k in text for k in ["done", "completed", "finished", "released", "shipped"]):
+        return "status/done"
+    if any(k in text for k in ["plan", "planning", "discovery", "research", "backlog", "idea", "todo"]):
+        return "status/planning"
+    return "status/building"

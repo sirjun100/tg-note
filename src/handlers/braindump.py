@@ -122,7 +122,7 @@ async def handle_braindump_message(
     }
 
     try:
-        llm_response = orch.llm_orchestrator.process_message(
+        llm_response = await orch.llm_orchestrator.process_message(
             user_message=text, context=ctx, persona="gtd_expert", history=history
         )
 
@@ -172,7 +172,7 @@ async def _finish_session(
             history = state.get("conversation_history", [])
             if history:
                 await message.reply_text("📊 Generating summary of your session...")
-                llm_response = orch.llm_orchestrator.process_message(
+                llm_response = await orch.llm_orchestrator.process_message(
                     user_message="Please summarize everything we've talked about so far into an organized list.",
                     persona="gtd_expert",
                     history=history,
