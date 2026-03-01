@@ -425,6 +425,18 @@ class LoggingService:
             ''', (user_id,))
             return cursor.fetchall()
 
+    def get_successful_syncs(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get successful task synchronization entries"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = self._dict_factory
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM task_sync_history
+                WHERE user_id = ? AND sync_result = 'success'
+                ORDER BY created_at DESC
+            ''', (user_id,))
+            return cursor.fetchall()
+
     def delete_failed_syncs_no_token(self) -> int:
         """Remove failed sync rows that were logged only because user had no Google token.
         Used after BF-001 fix: those were not real sync attempts and should not count as failures.

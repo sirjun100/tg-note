@@ -100,18 +100,22 @@ class GoogleTasksClient:
         )
 
     def refresh_token(self) -> Optional[Dict[str, Any]]:
-        """Refresh expired access token"""
-        if not self.session:
+        """Refresh expired access token. Preserves refresh_token from the previous token
+        since Google's refresh response often only returns access_token and expires_in."""
+        if not self.session or not self.token:
             return None
 
         try:
-            token = self.session.refresh_token(
+            new_token = self.session.refresh_token(
                 token_url=self.TOKEN_URL,
                 client_id=self.client_id,
                 client_secret=self.client_secret
             )
-            self.token = token
-            return token
+            # Merge so we never lose refresh_token (Google does not return it on refresh)
+            if new_token and self.token.get("refresh_token") and not new_token.get("refresh_token"):
+                new_token = {**new_token, "refresh_token": self.token["refresh_token"]}
+            self.token = new_token
+            return self.token
         except Exception as e:
             logger.debug(f"Token refresh failed: {e}")
             return None

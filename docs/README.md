@@ -24,6 +24,16 @@ flowchart LR
     BOT --> DB[(SQLite logs/state)]
 ```
 
+## Workflow Guides
+
+- [GTD + Second Brain Workflow](for-users/gtd-second-brain-workflow.md) — How to use Google Tasks (GTD) and Joplin (Second Brain) together, with full project examples.
+- [Where things go in PARA](para-where-to-put.md) — Quick reference for deciding Projects vs Areas vs Resources vs Archive.
+
+## Reference
+
+- [Google Tasks OAuth and token refresh](google-tasks-oauth-and-token-refresh.md) — Why tokens expire, how we preserve the refresh token, when re-authorization is needed.
+- [Fly.io scheduled scaling](fly-scheduled-scaling.md) — Run 6am–10pm, scale to zero at night, wake on first request.
+
 ## Runtime and Root Hygiene
 
 - Runtime data should live under `data/` (for local development) or `/app/data` (in Fly.io).

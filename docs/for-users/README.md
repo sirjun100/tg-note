@@ -167,6 +167,16 @@ Switch between:
 - **OpenAI**: GPT models, requires API key
 - **Ollama**: Local models, no API costs
 
+## Workflow Guide
+
+See [GTD + Second Brain Workflow](gtd-second-brain-workflow.md) for a complete guide on using Google Tasks and Joplin together, including:
+
+- When to create a task vs a note
+- Full project walkthroughs (with the "Learn to Sing Harmonies" example)
+- Decision framework for where things go
+- Weekly review process
+- Quick reference for common scenarios
+
 ## Support
 
 For issues:

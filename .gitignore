@@ -46,7 +46,7 @@ logs/
 client-id.json
 credentials.json
 token.json
-gtd-*.md
+/gtd-*.md
 
 # Joplin local data
 joplin-data/

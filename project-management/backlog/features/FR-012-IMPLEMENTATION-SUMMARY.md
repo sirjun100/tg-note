@@ -115,7 +115,7 @@ get_user_tasks(user_id, task_list_id)
 ### 3. Telegram Commands (7 New)
 
 ```
-/authorize-google-tasks
+/authorize_google_tasks
   → Initiates OAuth2 authorization flow
   → Generates authorization URL
   → User authorizes and receives code
@@ -262,7 +262,7 @@ Confirm to user
 ### Configuration Decision Tree
 ```
 Is Google Tasks authorized?
-├─ No  → Show /authorize-google-tasks
+├─ No  → Show /authorize_google_tasks
 └─ Yes
     ├─ Use /google-tasks-config to manage
     ├─ Select task list with /set-task-list
@@ -345,7 +345,7 @@ Is Google Tasks authorized?
 
 ### Example 1: Setup & Authorization
 ```
-User: /authorize-google-tasks
+User: /authorize_google_tasks
 
 Bot: 🔐 Google Tasks Authorization
      Click here to authorize...

@@ -227,7 +227,21 @@ async def _finish_session(
                     await message.reply_text("🚀 Extracting action items to Google Tasks...")
                     created = orch.task_service.create_tasks_from_decision(decision, str(user_id))
                     if created:
-                        await message.reply_text(f"✅ Created {len(created)} task(s) in Google Tasks.")
+                        try:
+                            status = orch.task_service.get_task_sync_status(user_id)
+                            s, f = status.get("success_count", 0), status.get("failed_count", 0)
+                            status_line = f"\n\n📊 Sync: ✅ {s} successful, ❌ {f} failed — /google_tasks_status"
+                        except Exception:
+                            status_line = ""
+                        await message.reply_text(f"✅ Created {len(created)} task(s) in Google Tasks.{status_line}")
+                    else:
+                        has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+                        if has_token:
+                            await message.reply_text("❌ Could not create Google Tasks. Check /google_tasks_status for details.")
+                        else:
+                            await message.reply_text(
+                                "❌ Could not create Google Tasks. Use /authorize_google_tasks to connect your Google account first."
+                            )
             else:
                 await message.reply_text("❌ Failed to save note to Joplin.")
 

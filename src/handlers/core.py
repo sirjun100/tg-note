@@ -502,6 +502,19 @@ async def _send_typing(message: Message, context: ContextTypes.DEFAULT_TYPE) -> 
         pass
 
 
+def _task_sync_status_line(orch: "TelegramOrchestrator", user_id: int) -> str:
+    """Append a one-line sync status after task creation success."""
+    if not orch.task_service:
+        return ""
+    try:
+        status = orch.task_service.get_task_sync_status(user_id)
+        s = status.get("success_count", 0)
+        f = status.get("failed_count", 0)
+        return f"\n\n📊 Sync: ✅ {s} successful, ❌ {f} failed — /google_tasks_status"
+    except Exception:
+        return ""
+
+
 async def _handle_new_request(
     orch: "TelegramOrchestrator",
     user_id: int,
@@ -514,7 +527,7 @@ async def _handle_new_request(
     force_task: bool = False,
 ) -> None:
     if force_task:
-        # Explicit /task: create Google Task(s) only
+        # Explicit /task: create exactly one Google Task from the user's text
         if not orch.task_service:
             await message.reply_text(
                 "⚠️ Google Tasks integration is not available. "
@@ -522,24 +535,27 @@ async def _handle_new_request(
             )
             return
         try:
-            decision = Decision(
-                user_id=user_id,
-                telegram_message_id=telegram_message_id,
-                status="SUCCESS",
-                note_title=text,
-                note_body="",
-                tags=[],
-            )
-            created = orch.task_service.create_tasks_from_decision(decision, str(user_id))
-            count = len(created) if created else 0
-            if count > 0:
-                orch.logging_service.log_decision(decision)
-                await message.reply_text(format_success_message(f"✅ Created {count} Google Task(s): '{text[:80]}{'…' if len(text) > 80 else ''}'"))
+            created = orch.task_service.create_task_directly(text, str(user_id))
+            if created:
+                status_line = _task_sync_status_line(orch, user_id)
+                await message.reply_text(format_success_message(
+                    f"✅ Created Google Task: '{text[:80]}{'…' if len(text) > 80 else ''}'{status_line}"
+                ))
             else:
-                await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status"))
+                has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+                if has_token:
+                    await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
+                else:
+                    await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks to connect your Google account first."))
         except Exception as exc:
             logger.error("Error creating Google Task: %s", exc, exc_info=True)
-            await message.reply_text(format_error_message(f"Failed to create task: {exc}"))
+            has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+            if has_token:
+                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status for details."))
+            else:
+                await message.reply_text(format_error_message(
+                    f"Failed to create task: {exc}\n\nUse /authorize_google_tasks to connect your Google account first."
+                ))
         return
 
     if not force_note and is_action_item(text):
@@ -563,12 +579,23 @@ async def _handle_new_request(
             count = len(created) if created else 0
             if count > 0:
                 orch.logging_service.log_decision(decision)
-                await message.reply_text(format_success_message(f"✅ Created {count} Google Task(s): '{text}'"))
+                status_line = _task_sync_status_line(orch, user_id)
+                await message.reply_text(format_success_message(f"✅ Created {count} Google Task(s): '{text}'{status_line}"))
             else:
-                await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status"))
+                has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+                if has_token:
+                    await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
+                else:
+                    await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks to connect your Google account first."))
         except Exception as exc:
             logger.error("Error creating Google Task: %s", exc, exc_info=True)
-            await message.reply_text(format_error_message(f"Failed to create task: {exc}"))
+            has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+            if has_token:
+                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status for details."))
+            else:
+                await message.reply_text(format_error_message(
+                    f"Failed to create task: {exc}\n\nUse /authorize_google_tasks to connect your Google account first."
+                ))
         return
 
     logger.info("Processing as Joplin note for user %d", user_id)
@@ -632,11 +659,22 @@ async def _handle_clarification_reply(
             if count > 0:
                 orch.logging_service.log_decision(decision)
                 orch.state_manager.clear_state(user_id)
-                await message.reply_text(format_success_message(f"✅ Created {count} Google Task(s): '{combined}'"))
+                status_line = _task_sync_status_line(orch, user_id)
+                await message.reply_text(format_success_message(f"✅ Created {count} Google Task(s): '{combined}'{status_line}"))
             else:
-                await message.reply_text(format_error_message("Failed to create Google Task."))
+                has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+                if has_token:
+                    await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
+                else:
+                    await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks to connect your Google account first."))
         except Exception as exc:
-            await message.reply_text(format_error_message(f"Failed to create task: {exc}"))
+            has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+            if has_token:
+                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status for details."))
+            else:
+                await message.reply_text(format_error_message(
+                    f"Failed to create task: {exc}\n\nUse /authorize_google_tasks to connect your Google account first."
+                ))
         return
 
     existing_tags = state.get("existing_tags", [])

@@ -8,19 +8,22 @@ Tests for:
 - log_tag_creation() method in LoggingService
 """
 
+import asyncio
 import unittest
 import tempfile
 import os
 import sys
 import sqlite3
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, AsyncMock, patch
 from datetime import datetime
 
-# Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add project root to path
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-from joplin_client import JoplinClient
-from logging_service import LoggingService
+from src.joplin_client import JoplinClient
+from src.logging_service import LoggingService
 
 
 class TestApplyTagsAndTrackNew(unittest.TestCase):
@@ -29,17 +32,17 @@ class TestApplyTagsAndTrackNew(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.client = JoplinClient()
-        # Mock the _make_request method to avoid actual API calls
-        self.client._make_request = MagicMock()
+        # Mock the _request method to avoid actual API calls (async)
+        self.client._request = AsyncMock()
 
     def test_apply_tags_with_all_new_tags(self):
         """Test applying tags when all tags are new"""
-        # Mock fetch_tags to return empty list (no existing tags)
-        self.client.fetch_tags = MagicMock(return_value=[])
-        self.client._get_or_create_tag = MagicMock(side_effect=['tag1_id', 'tag2_id', 'tag3_id'])
-        self.client._link_tag_to_note = MagicMock(return_value=True)
+        # Mock async methods
+        self.client.fetch_tags = AsyncMock(return_value=[])
+        self.client._get_or_create_tag = AsyncMock(side_effect=['tag1_id', 'tag2_id', 'tag3_id'])
+        self.client._link_tag_to_note = AsyncMock(return_value=True)
 
-        result = self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai'])
+        result = asyncio.run(self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai']))
 
         # All tags should be marked as new
         self.assertTrue(result['success'])
@@ -49,17 +52,17 @@ class TestApplyTagsAndTrackNew(unittest.TestCase):
 
     def test_apply_tags_with_all_existing_tags(self):
         """Test applying tags when all tags already exist"""
-        # Mock fetch_tags to return existing tags
+        # Mock async methods
         existing_tags = [
             {'id': '1', 'title': 'urgent'},
             {'id': '2', 'title': 'project'},
             {'id': '3', 'title': 'ai'}
         ]
-        self.client.fetch_tags = MagicMock(return_value=existing_tags)
-        self.client._get_or_create_tag = MagicMock(side_effect=['tag1_id', 'tag2_id', 'tag3_id'])
-        self.client._link_tag_to_note = MagicMock(return_value=True)
+        self.client.fetch_tags = AsyncMock(return_value=existing_tags)
+        self.client._get_or_create_tag = AsyncMock(side_effect=['tag1_id', 'tag2_id', 'tag3_id'])
+        self.client._link_tag_to_note = AsyncMock(return_value=True)
 
-        result = self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai'])
+        result = asyncio.run(self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai']))
 
         # All tags should be marked as existing
         self.assertTrue(result['success'])
@@ -69,16 +72,16 @@ class TestApplyTagsAndTrackNew(unittest.TestCase):
 
     def test_apply_tags_with_mixed_tags(self):
         """Test applying tags when some are new and some already exist"""
-        # Mock fetch_tags with some existing tags
+        # Mock async methods
         existing_tags = [
             {'id': '1', 'title': 'urgent'},
             {'id': '2', 'title': 'ai'}
         ]
-        self.client.fetch_tags = MagicMock(return_value=existing_tags)
-        self.client._get_or_create_tag = MagicMock(side_effect=['tag1_id', 'tag2_id', 'tag3_id'])
-        self.client._link_tag_to_note = MagicMock(return_value=True)
+        self.client.fetch_tags = AsyncMock(return_value=existing_tags)
+        self.client._get_or_create_tag = AsyncMock(side_effect=['tag1_id', 'tag2_id', 'tag3_id'])
+        self.client._link_tag_to_note = AsyncMock(return_value=True)
 
-        result = self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai'])
+        result = asyncio.run(self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai']))
 
         # Should differentiate between new and existing
         self.assertTrue(result['success'])
@@ -88,9 +91,9 @@ class TestApplyTagsAndTrackNew(unittest.TestCase):
 
     def test_apply_tags_with_empty_list(self):
         """Test applying empty tag list"""
-        self.client.fetch_tags = MagicMock(return_value=[])
+        self.client.fetch_tags = AsyncMock(return_value=[])
 
-        result = self.client.apply_tags_and_track_new('note_123', [])
+        result = asyncio.run(self.client.apply_tags_and_track_new('note_123', []))
 
         self.assertTrue(result['success'])
         self.assertEqual(result['new_tags'], [])
@@ -99,11 +102,11 @@ class TestApplyTagsAndTrackNew(unittest.TestCase):
 
     def test_apply_tags_failure_handling(self):
         """Test handling when tag application fails"""
-        self.client.fetch_tags = MagicMock(return_value=[])
-        self.client._get_or_create_tag = MagicMock(side_effect=['tag1_id', None, 'tag3_id'])
-        self.client._link_tag_to_note = MagicMock(return_value=True)
+        self.client.fetch_tags = AsyncMock(return_value=[])
+        self.client._get_or_create_tag = AsyncMock(side_effect=['tag1_id', None, 'tag3_id'])
+        self.client._link_tag_to_note = AsyncMock(return_value=True)
 
-        result = self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai'])
+        result = asyncio.run(self.client.apply_tags_and_track_new('note_123', ['urgent', 'project', 'ai']))
 
         # Should mark as failed but still return partial results
         # When _get_or_create_tag returns None, the tag is not added to new_tags or existing_tags
@@ -113,11 +116,11 @@ class TestApplyTagsAndTrackNew(unittest.TestCase):
 
     def test_apply_tags_single_tag(self):
         """Test applying a single tag"""
-        self.client.fetch_tags = MagicMock(return_value=[])
-        self.client._get_or_create_tag = MagicMock(return_value='tag_id')
-        self.client._link_tag_to_note = MagicMock(return_value=True)
+        self.client.fetch_tags = AsyncMock(return_value=[])
+        self.client._get_or_create_tag = AsyncMock(return_value='tag_id')
+        self.client._link_tag_to_note = AsyncMock(return_value=True)
 
-        result = self.client.apply_tags_and_track_new('note_123', ['urgent'])
+        result = asyncio.run(self.client.apply_tags_and_track_new('note_123', ['urgent']))
 
         self.assertTrue(result['success'])
         self.assertEqual(result['new_tags'], ['urgent'])

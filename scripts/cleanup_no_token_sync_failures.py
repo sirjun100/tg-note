@@ -7,8 +7,8 @@ attempts and should not appear in sync status.
 Run from project root so .env is loaded:
   python scripts/cleanup_no_token_sync_failures.py
 
-On Fly.io:
-  fly ssh console -C "cd /app && python scripts/cleanup_no_token_sync_failures.py"
+On Fly.io (use sh -c so cd runs in a shell):
+  fly ssh console -C "sh -c 'cd /app && python scripts/cleanup_no_token_sync_failures.py'"
 """
 
 import os

@@ -1,0 +1,66 @@
+# Schedule Fly.io app: 1 machine 6am–10pm, 0 machines 10pm–6am (UTC).
+# Outside the window the app still wakes on first request (auto_start_machines).
+#
+# Required: Add secret FLY_API_TOKEN (run: fly tokens create deploy).
+# To use your local 6am–10pm, set SCALE_UP_UTC_HOUR and SCALE_DOWN_UTC_HOUR below
+# (e.g. Pacific 6am = 14 UTC, 10pm = 6 UTC; Paris 6am = 5 UTC, 10pm = 21 UTC).
+
+name: Fly schedule scale
+
+on:
+  schedule:
+    # Montreal (Eastern): 6am = 11 UTC, 10pm = 3 UTC
+    - cron: '0 3,11 * * *'
+  workflow_dispatch:
+    inputs:
+      scale:
+        description: 'Scale to (0 or 1)'
+        required: true
+        default: '1'
+        type: choice
+        options:
+          - '0'
+          - '1'
+
+env:
+  FLY_APP_NAME: telegram-joplin
+  # Montreal (Eastern): 6am = scale up, 10pm = scale down
+  SCALE_UP_UTC_HOUR: '11'   # 6am Eastern (EST/EDT ≈ 10–11 UTC)
+  SCALE_DOWN_UTC_HOUR: '3'  # 10pm Eastern ≈ 2–3 UTC
+
+jobs:
+  scale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install flyctl
+        run: |
+          curl -L https://fly.io/install.sh | sh
+          echo "$HOME/.fly/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.fly/bin:$PATH"
+          fly version
+
+      - name: Resolve scale target
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ]; then
+            echo "count=${{ inputs.scale }}" >> $GITHUB_OUTPUT
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" = "${{ env.SCALE_UP_UTC_HOUR }}" ]; then
+              echo "count=1" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "${{ env.SCALE_DOWN_UTC_HOUR }}" ]; then
+              echo "count=0" >> $GITHUB_OUTPUT
+            else
+              echo "count=skip" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Scale Fly app
+        if: steps.resolve.outputs.count != 'skip'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          export PATH="$HOME/.fly/bin:$PATH"
+          fly scale count ${{ steps.resolve.outputs.count }} --app ${{ env.FLY_APP_NAME }}

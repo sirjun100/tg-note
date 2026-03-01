@@ -5,10 +5,13 @@ Analyzes AI decisions and creates Google Tasks for action items.
 Integrates with the logging service to track task-note relationships.
 """
 
+import logging
 import re
 from typing import List, Dict, Any, Optional
 from src.google_tasks_client import GoogleTasksClient
 from src.logging_service import LoggingService, Decision
+
+logger = logging.getLogger(__name__)
 
 
 class TaskService:
@@ -147,6 +150,53 @@ class TaskService:
         else:
             return "normal"
 
+    def create_task_directly(self, title: str, user_id: str) -> List[Dict[str, Any]]:
+        """Create a single Google Task directly from user text (used by /task command).
+        Bypasses action-item extraction — the user explicitly asked to create this task."""
+        logger.info("Direct task creation for user %s: %s", user_id, title[:80])
+
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            logger.warning("No Google token for user %s; cannot create task", user_id)
+            return []
+
+        config = self.logging_service.get_google_tasks_config(int(user_id))
+        if not config or not config.get('enabled'):
+            logger.warning("Google Tasks disabled for user %s", user_id)
+            return []
+
+        self.tasks_client.set_token(token)
+
+        task_list_id = config.get('task_list_id')
+        if not task_list_id:
+            try:
+                task_list_id = self.tasks_client.get_default_task_list()
+            except Exception as e:
+                logger.warning("User %s: Failed to get task list: %s", user_id, e)
+                return []
+
+        try:
+            task = self.tasks_client.create_task(title=title, task_list_id=task_list_id)
+            if task:
+                logger.info("Created Google Task for user %s: %s (ID: %s)", user_id, title[:50], task.get('id'))
+                self.logging_service.log_task_sync(
+                    user_id=int(user_id), task_link_id=None,
+                    google_task_id=task.get('id', ''), action="created",
+                    old_status=None, new_status="needsAction",
+                    sync_direction="joplin_to_google", sync_result="success",
+                )
+                if self.tasks_client.token and self.tasks_client.token != token:
+                    self.logging_service.save_google_token(user_id, self.tasks_client.token)
+                return [task]
+            else:
+                logger.warning("User %s: API returned empty response for task: %s", user_id, title[:50])
+                return []
+        except Exception as e:
+            logger.warning("User %s: Error creating task: %s", user_id, e)
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+            return []
+
     def create_tasks_from_decision(self, decision: Decision, user_id: str) -> List[Dict[str, Any]]:
         """Create Google Tasks from a decision with enhanced error handling and linking
 
@@ -158,24 +208,24 @@ class TaskService:
             List of created task dictionaries
         """
         created_tasks = []
+        logger.info("Creating Google Tasks for user %s, title: %s", user_id, (decision.note_title or "")[:80])
 
         try:
             # Load user's Google token
             token = self.logging_service.load_google_token(user_id)
             if not token:
-                # Do not log as "failed" sync: no sync was attempted (user must link account first)
-                print(f"⚠️ No Google token for user {user_id}; skipping task creation. User can /authorize_google_tasks to link.")
+                logger.warning("No Google token for user %s; skipping task creation", user_id)
                 return []
 
             # Load user's Google Tasks configuration
             config = self.logging_service.get_google_tasks_config(int(user_id))
             if not config or not config.get('enabled'):
-                print(f"⚠️ Google Tasks is disabled for user {user_id}")
+                logger.warning("Google Tasks disabled for user %s", user_id)
                 return []
 
             # Check if auto task creation is enabled
             if not config.get('auto_create_tasks'):
-                print(f"⚠️ Auto task creation is disabled for user {user_id}")
+                logger.warning("Auto task creation disabled for user %s", user_id)
                 return []
 
             # Check privacy mode
@@ -214,7 +264,7 @@ class TaskService:
                         self.logging_service.save_google_tasks_config(int(user_id), config)
                 except Exception as e:
                     error_msg = f"Failed to get task list: {e}"
-                    print(f"❌ {error_msg}")
+                    logger.warning("User %s: %s", user_id, error_msg)
                     self.logging_service.log_task_sync(
                         user_id, None, "", "none", None, None,
                         "joplin_to_google", "failed", error_msg
@@ -223,6 +273,8 @@ class TaskService:
 
             # Analyze decision for tasks
             potential_tasks = self.analyze_decision_for_tasks(decision)
+            if not potential_tasks:
+                logger.info("No action items extracted for user %s (title: %s)", user_id, (decision.note_title or "")[:50])
 
             for task_data in potential_tasks:
                 try:
@@ -261,10 +313,10 @@ class TaskService:
                                 sync_result="success"
                             )
 
-                        print(f"✅ Created Google Task: {task_data['title']} (ID: {google_task_id})")
+                        logger.info("Created Google Task for user %s: %s (ID: %s)", user_id, task_data['title'][:50], google_task_id)
                     else:
                         error_msg = f"API returned empty response for task: {task_data['title']}"
-                        print(f"❌ {error_msg}")
+                        logger.warning("User %s: %s", user_id, error_msg)
                         self.logging_service.log_task_sync(
                             int(user_id), None, "", "create", None, None,
                             "joplin_to_google", "failed", error_msg
@@ -272,7 +324,7 @@ class TaskService:
 
                 except Exception as e:
                     error_msg = f"Error creating task '{task_data['title']}': {str(e)}"
-                    print(f"❌ {error_msg}")
+                    logger.warning("User %s: %s", user_id, error_msg)
                     self.logging_service.log_task_sync(
                         int(user_id), None, "", "create", None, None,
                         "joplin_to_google", "failed", error_msg
@@ -280,12 +332,18 @@ class TaskService:
 
         except Exception as e:
             error_msg = f"Unexpected error in task creation: {str(e)}"
-            print(f"❌ {error_msg}")
+            logger.warning("User %s: %s", user_id, error_msg)
             self.logging_service.log_task_sync(
                 int(user_id), None, "", "create", None, None,
                 "joplin_to_google", "failed", error_msg
             )
 
+        # Persist refreshed token so DB has the new access_token (refresh_token is preserved in client)
+        if self.tasks_client.token and self.tasks_client.token != token:
+            self.logging_service.save_google_token(user_id, self.tasks_client.token)
+
+        if created_tasks:
+            logger.info("Created %d Google Task(s) for user %s", len(created_tasks), user_id)
         return created_tasks
 
     def get_user_tasks(self, user_id: str, task_list_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -299,7 +357,10 @@ class TaskService:
         try:
             if not task_list_id:
                 task_list_id = self.tasks_client.get_default_task_list()
-            return self.tasks_client.get_tasks(task_list_id)
+            result = self.tasks_client.get_tasks(task_list_id)
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+            return result
         except Exception as e:
             error_msg = f"Error getting tasks for user {user_id}: {e}"
             print(f"❌ {error_msg}")
@@ -318,7 +379,10 @@ class TaskService:
         self.tasks_client.set_token(token)
 
         try:
-            return self.tasks_client.get_task_lists()
+            result = self.tasks_client.get_task_lists()
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+            return result
         except Exception as e:
             error_msg = f"Error getting task lists for user {user_id}: {e}"
             print(f"❌ {error_msg}")
@@ -394,12 +458,12 @@ class TaskService:
         """Get task synchronization status for a user"""
         try:
             sync_history = self.logging_service.get_sync_history(user_id, limit=10)
-            task_links = self.logging_service.get_all_task_links(user_id)
             failed_syncs = self.logging_service.get_failed_syncs(user_id)
+            successful_syncs = self.logging_service.get_successful_syncs(user_id)
 
-            total_synced = len(task_links)
+            success_count = len(successful_syncs)
             failed_count = len(failed_syncs)
-            success_count = max(total_synced - failed_count, 0)
+            total_synced = success_count + failed_count
 
             return {
                 "total_synced": total_synced,
@@ -409,7 +473,7 @@ class TaskService:
                 "failed_syncs": failed_syncs[:5]
             }
         except Exception as e:
-            print(f"❌ Error getting sync status: {e}")
+            logger.warning("Error getting sync status for user %s: %s", user_id, e)
             return {"error": str(e)}
 
 

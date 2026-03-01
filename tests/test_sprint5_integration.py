@@ -8,18 +8,21 @@ This test verifies the complete flow:
 3. Log tag creation to database for audit trail
 """
 
+import asyncio
 import unittest
 import tempfile
 import os
 import sys
 import sqlite3
 from datetime import datetime
+from unittest.mock import MagicMock, AsyncMock
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-from joplin_client import JoplinClient
-from logging_service import LoggingService
-from unittest.mock import MagicMock, Mock
+from src.joplin_client import JoplinClient
+from src.logging_service import LoggingService
 
 
 class TestSprintFiveIntegration(unittest.TestCase):
@@ -33,9 +36,9 @@ class TestSprintFiveIntegration(unittest.TestCase):
 
         self.logging_service = LoggingService(db_path=self.db_path)
         self.joplin_client = JoplinClient()
-        self.joplin_client.fetch_tags = MagicMock()
-        self.joplin_client._get_or_create_tag = MagicMock()
-        self.joplin_client._link_tag_to_note = MagicMock()
+        self.joplin_client.fetch_tags = AsyncMock()
+        self.joplin_client._get_or_create_tag = AsyncMock()
+        self.joplin_client._link_tag_to_note = AsyncMock(return_value=True)
 
     def tearDown(self):
         """Clean up"""
@@ -62,11 +65,11 @@ class TestSprintFiveIntegration(unittest.TestCase):
             {'id': '1', 'title': 'urgent'},
             {'id': '2', 'title': 'ai'}
         ]
-        self.joplin_client.fetch_tags.return_value = existing_tags
-        self.joplin_client._get_or_create_tag.side_effect = lambda t: f'tag_{t}'
-        self.joplin_client._link_tag_to_note.return_value = True
+        self.joplin_client.fetch_tags = AsyncMock(return_value=existing_tags)
+        self.joplin_client._get_or_create_tag = AsyncMock(side_effect=lambda t: f'tag_{t}')
+        self.joplin_client._link_tag_to_note = AsyncMock(return_value=True)
 
-        tag_info = self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm)
+        tag_info = asyncio.run(self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm))
 
         print(f"\n2. Applied tags to note:")
         print(f"   New tags: {tag_info['new_tags']}")
@@ -157,11 +160,11 @@ class TestSprintFiveIntegration(unittest.TestCase):
             {'id': '1', 'title': 'urgent'},
             {'id': '2', 'title': 'important'}
         ]
-        self.joplin_client.fetch_tags.return_value = existing_tags
-        self.joplin_client._get_or_create_tag.side_effect = lambda t: f'tag_{t}'
-        self.joplin_client._link_tag_to_note.return_value = True
+        self.joplin_client.fetch_tags = AsyncMock(return_value=existing_tags)
+        self.joplin_client._get_or_create_tag = AsyncMock(side_effect=lambda t: f'tag_{t}')
+        self.joplin_client._link_tag_to_note = AsyncMock(return_value=True)
 
-        tag_info = self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm)
+        tag_info = asyncio.run(self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm))
 
         print(f"Applied tags: {tag_info['all_tags']}")
         print(f"New tags: {tag_info['new_tags']}")
@@ -184,9 +187,9 @@ class TestSprintFiveIntegration(unittest.TestCase):
         note_id = "note_ghi789"
         tags_from_llm = []
 
-        self.joplin_client.fetch_tags.return_value = []
+        self.joplin_client.fetch_tags = AsyncMock(return_value=[])
 
-        tag_info = self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm)
+        tag_info = asyncio.run(self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm))
 
         print(f"Applied tags: {tag_info['all_tags']}")
 
@@ -209,11 +212,11 @@ class TestSprintFiveIntegration(unittest.TestCase):
         note_id = "note_jkl012"
         tags_from_llm = ['urgent/high', 'project-alpha', 'v2.0']
 
-        self.joplin_client.fetch_tags.return_value = []
-        self.joplin_client._get_or_create_tag.side_effect = lambda t: f'tag_{t}'
-        self.joplin_client._link_tag_to_note.return_value = True
+        self.joplin_client.fetch_tags = AsyncMock(return_value=[])
+        self.joplin_client._get_or_create_tag = AsyncMock(side_effect=lambda t: f'tag_{t}')
+        self.joplin_client._link_tag_to_note = AsyncMock(return_value=True)
 
-        tag_info = self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm)
+        tag_info = asyncio.run(self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm))
 
         print(f"Applied tags: {tag_info['all_tags']}")
 
