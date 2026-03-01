@@ -155,7 +155,15 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
     async with application:
         await application.start()
 
+        # Bind port first so Fly.io health checks pass (app is "listening")
         await server.start()
+        logger.info("Webhook server listening on 0.0.0.0:%d", port)
+
+        try:
+            await orchestrator.joplin_client.ensure_project_status_tags()
+        except Exception as exc:
+            logger.warning("Failed to ensure project status tags: %s", exc)
+
         await application.bot.set_webhook(
             url=full_url,
             secret_token=secret,
@@ -184,6 +192,10 @@ def _run_polling(application: Application, orchestrator: TelegramOrchestrator) -
     """Polling mode — used for local development."""
 
     async def _startup(context: object) -> None:
+        try:
+            await orchestrator.joplin_client.ensure_project_status_tags()
+        except Exception as exc:
+            logger.warning("Failed to ensure project status tags: %s", exc)
         try:
             await orchestrator.scheduler.start()
         except Exception as exc:

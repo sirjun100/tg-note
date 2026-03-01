@@ -6,6 +6,8 @@ primary_region = 'lax'
 
 [env]
   PORT = '8080'
+  # Force webhook mode so the app listens on PORT (Fly Doctor: must listen on internal_port)
+  FLY_APP_NAME = 'telegram-joplin'
   # Joplin runs inside the same container — always localhost
   JOPLIN_WEB_CLIPPER_BASE_URL = 'http://localhost:41184'
 
@@ -24,12 +26,12 @@ primary_region = 'lax'
   [[http_service.checks]]
     interval = '30s'
     timeout = '5s'
-    grace_period = '30s'
+    grace_period = '60s'
     method = 'GET'
     path = '/health'
 
+# Tier 1: smallest shared CPU (1 vCPU, 1GB RAM)
 [[vm]]
+  size = 'shared-cpu-1x'
   memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
   memory_mb = 1024

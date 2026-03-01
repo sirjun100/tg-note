@@ -517,6 +517,39 @@ Remember: Be helpful, accurate, and ask for clarification when needed rather tha
             if len(extracted_text) > 2200:
                 extracted_text = extracted_text[:2200] + "..."
 
+            recipe_block = ""
+            if url_ctx.get("content_type") == "recipe":
+                title_line = ""
+                if url_ctx.get("recipe_title"):
+                    title_line = f"- Recipe title (use for note): {url_ctx.get('recipe_title')}\n"
+                ingredients = url_ctx.get("recipe_ingredients") or []
+                ingredients_text = "\n".join(f"  - {i}" for i in ingredients) if ingredients else "  (extract from page text)"
+                instructions = url_ctx.get("recipe_instructions") or []
+                instructions_text = "\n".join(f"  {i + 1}. {s}" for i, s in enumerate(instructions)) if instructions else "  (extract from page text)"
+                nutrition = url_ctx.get("recipe_nutrition")
+                if nutrition:
+                    nutrition_lines = "\n".join(f"  - {k}: {v}" for k, v in nutrition.items())
+                    nutrition_text = f"Use these values in the Nutrition section (do not re-estimate):\n{nutrition_lines}"
+                else:
+                    nutrition_text = "No structured nutrition provided; estimate calories and macros from the ingredient list and label as 'estimated' in the note."
+                recipe_block = f"""
+Structured recipe data (use when present, otherwise extract from page text below):
+{title_line}
+Ingredients:
+{ingredients_text}
+
+Preparation / Cooking steps:
+{instructions_text}
+
+Nutrition: {nutrition_text}
+
+Default folder for this recipe note: Set parent_id to the folder whose title is "03 - Resources", or "Recipes" if that folder exists in the folders list (recipe notes belong in Resources).
+
+Tags for recipe notes: Always include the tag "recipe". Also add 1–3 tags from the content (e.g. cooking, baking, dessert, vegetarian, vegan, cuisine type, meal type such as breakfast or dinner).
+
+Language: Write the entire recipe note (title, sections, ingredients, steps, nutrition) in the same language as the source page. Do not mix languages (e.g. if the recipe is in French, keep everything in French).
+"""
+
             prompt += f"""
 
 ## URL Enrichment Context
@@ -528,7 +561,7 @@ The user message includes this URL:
 - Author: {url_ctx.get("author", "")}
 - Published: {url_ctx.get("published_at", "")}
 - URL type: {url_ctx.get("content_type", "knowledge")}
-
+{recipe_block}
 Template requirement for this URL:
 - Template: {url_ctx.get("template_name", "Knowledge Enrichment")} (#{url_ctx.get("template_id", "2")})
 - Instructions: {url_ctx.get("template_instructions", "")}
@@ -541,6 +574,7 @@ When URL context is provided:
 2) Prefer extracted topics and entities when generating tags.
 3) Keep the source URL visible in the note body.
 4) Follow the required template sections for the selected template.
+5) Write the entire note (title, body, and all section headings) in the same language as the source content — do not mix languages. If the page is in French, write the whole note in French; if in English, in English; etc.
 """
 
         return prompt

@@ -90,12 +90,21 @@ class JoplinClient:
 
     # -- notes --
 
-    async def create_note(self, folder_id: str, title: str, body: str) -> str:
-        result = await self._request(
-            "POST",
-            "/notes",
-            json={"title": title, "body": body, "parent_id": folder_id},
-        )
+    async def create_note(
+        self,
+        folder_id: str,
+        title: str,
+        body: str,
+        image_data_url: Optional[str] = None,
+    ) -> str:
+        payload: Dict[str, Any] = {
+            "title": title,
+            "body": body,
+            "parent_id": folder_id,
+        }
+        if image_data_url:
+            payload["image_data_url"] = image_data_url
+        result = await self._request("POST", "/notes", json=payload)
         if result and "id" in result:
             logger.info("Created note '%s' (%s)", title, result["id"])
             return result["id"]
@@ -250,6 +259,21 @@ class JoplinClient:
             return True
         except JoplinError:
             return False
+
+    PROJECT_STATUS_TAG_NAMES = (
+        "status/planning",
+        "status/building",
+        "status/blocked",
+        "status/done",
+    )
+
+    async def ensure_project_status_tags(self) -> None:
+        """Create the four project status tags in Joplin if they do not exist."""
+        for name in self.PROJECT_STATUS_TAG_NAMES:
+            try:
+                await self._get_or_create_tag(name)
+            except Exception as exc:
+                logger.warning("Failed to ensure tag '%s': %s", name, exc)
 
     async def _paginated_items(self, endpoint: str) -> List[Dict[str, Any]]:
         """

@@ -80,6 +80,7 @@ class GoogleSettings(BaseSettings):
         default="urn:ietf:wg:oauth:2.0:oob",
         alias="GOOGLE_REDIRECT_URI",
     )
+    gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
 
     @property
     def is_configured(self) -> bool:

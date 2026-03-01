@@ -12,6 +12,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from telegram import Message, Update
+from telegram.constants import ChatAction
 from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.constants import is_action_item
@@ -322,9 +323,9 @@ def _message(orch: "TelegramOrchestrator"):
                 if pending.get("active_persona") == "GTD_EXPERT":
                     await _handle_braindump_message(orch, user_id, validated, message)
                 else:
-                    await _handle_clarification_reply(orch, user_id, validated, message)
+                    await _handle_clarification_reply(orch, user_id, validated, message, context)
             else:
-                await _handle_new_request(orch, user_id, validated, message, telegram_message_id)
+                await _handle_new_request(orch, user_id, validated, message, telegram_message_id, context)
 
         except Exception as exc:
             logger.error("Error handling message from user %d: %s", user_id, exc)
@@ -338,12 +339,21 @@ def _message(orch: "TelegramOrchestrator"):
 # ---------------------------------------------------------------------------
 
 
+async def _send_typing(message: Message, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send typing indicator; ignore errors so they don't break the flow."""
+    try:
+        await context.bot.send_chat_action(chat_id=message.chat_id, action=ChatAction.TYPING)
+    except Exception:
+        pass
+
+
 async def _handle_new_request(
     orch: "TelegramOrchestrator",
     user_id: int,
     text: str,
     message: Message,
     telegram_message_id: Optional[int],
+    context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     if is_action_item(text):
         logger.info("Detected action item from user %d", user_id)
@@ -375,6 +385,7 @@ async def _handle_new_request(
         return
 
     logger.info("Processing as Joplin note for user %d", user_id)
+    await _send_typing(message, context)
     if not await ping_joplin_api():
         await message.reply_text(
             "❌ I'm ready, but Joplin isn't accessible. "
@@ -389,15 +400,31 @@ async def _handle_new_request(
     except Exception as exc:
         logger.warning("Failed to fetch tags: %s", exc)
 
+    # Status: fetching link when message contains a URL
+    urls = extract_urls(text)
+    if urls:
+        await _send_typing(message, context)
+        await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=text)
+
+    await _send_typing(message, context)
+    await message.reply_text("🤖 Analyzing...")
     folders = await orch.joplin_client.get_folders()
     ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
     llm_response = await orch.llm_orchestrator.process_message(text, ctx)
-    await _process_llm_response(orch, user_id, llm_response, message, telegram_message_id)
+
+    await _process_llm_response(
+        orch, user_id, llm_response, message, telegram_message_id,
+        url_context=url_context, context=context,
+    )
 
 
 async def _handle_clarification_reply(
-    orch: "TelegramOrchestrator", user_id: int, text: str, message: Message
+    orch: "TelegramOrchestrator",
+    user_id: int,
+    text: str,
+    message: Message,
+    context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     state = orch.state_manager.get_state(user_id)
     if not state:
@@ -423,11 +450,20 @@ async def _handle_clarification_reply(
         return
 
     existing_tags = state.get("existing_tags", [])
+    urls = extract_urls(combined)
+    if urls:
+        await _send_typing(message, context)
+        await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=combined)
+    await _send_typing(message, context)
+    await message.reply_text("🤖 Analyzing...")
     folders = await orch.joplin_client.get_folders()
     ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
     llm_response = await orch.llm_orchestrator.process_message(combined, ctx)
-    await _process_llm_response(orch, user_id, llm_response, message, clear_state=True)
+    await _process_llm_response(
+        orch, user_id, llm_response, message,
+        clear_state=True, url_context=url_context, context=context,
+    )
 
 
 async def _handle_braindump_message(
@@ -444,9 +480,16 @@ async def _process_llm_response(
     message: Message,
     telegram_message_id: Optional[int] = None,
     clear_state: bool = False,
+    url_context: Optional[Dict[str, Any]] = None,
+    context: Optional[ContextTypes.DEFAULT_TYPE] = None,
 ) -> None:
     if llm_response.status == "SUCCESS" and llm_response.note:
-        note_result = await create_note_in_joplin(orch, llm_response.note)
+        if context:
+            await _send_typing(message, context)
+        await message.reply_text("📝 Saving to Joplin...")
+        note_result = await create_note_in_joplin(
+            orch, llm_response.note, url_context=url_context, message=message,
+        )
         if note_result:
             if note_result.get("error") == "folder_not_found":
                 requested = note_result.get("requested_folder") or "(empty)"
@@ -488,7 +531,7 @@ async def _process_llm_response(
 
             _schedule_joplin_sync()
 
-            folder_id = llm_response.note.get("parent_id")
+            folder_id = note_result.get("folder_id") or llm_response.note.get("parent_id")
             folder_name = "Unknown"
             if folder_id:
                 try:
@@ -521,7 +564,10 @@ async def _process_llm_response(
 
 
 async def create_note_in_joplin(
-    orch: "TelegramOrchestrator", note_data: Dict[str, Any]
+    orch: "TelegramOrchestrator",
+    note_data: Dict[str, Any],
+    url_context: Optional[Dict[str, Any]] = None,
+    message: Optional[Message] = None,
 ) -> Optional[Dict[str, Any]]:
     try:
         requested_folder = (note_data.get("parent_id") or "").strip()
@@ -531,6 +577,17 @@ async def create_note_in_joplin(
             note_title=note_data.get("title", ""),
             note_body=note_data.get("body", ""),
         )
+        # For recipe notes, fall back to default recipe folder when resolution fails
+        if not resolved_folder_id and url_context and url_context.get("content_type") == "recipe":
+            for fallback_name in ("03 - Resources", "Recipes"):
+                resolved_folder_id, _ = await _resolve_folder_id_or_suggestions(
+                    orch,
+                    fallback_name,
+                    note_title=note_data.get("title", ""),
+                    note_body=note_data.get("body", ""),
+                )
+                if resolved_folder_id:
+                    break
         if not resolved_folder_id:
             return {
                 "error": "folder_not_found",
@@ -554,10 +611,38 @@ async def create_note_in_joplin(
             logger.error("Note validation failed: %s", errors)
             return None
 
+        image_data_url: Optional[str] = None
+        needs_image = (
+            (url_context and url_context.get("content_type") == "recipe")
+            or (
+                url_context
+                and url_context.get("url")
+                and not url_context.get("skip_screenshot")
+            )
+        )
+        if needs_image and message:
+            await message.reply_text("🖼️ Adding image...")
+        if url_context and url_context.get("url") and url_context.get("skip_screenshot") and message:
+            await message.reply_text("⚠️ Screenshot skipped (site uses security verification).")
+        if url_context and url_context.get("content_type") == "recipe":
+            from src.recipe_image import generate_recipe_image
+            image_data_url = await generate_recipe_image(normalized_note["title"])
+        if (
+            image_data_url is None
+            and url_context
+            and url_context.get("url")
+            and not url_context.get("skip_screenshot")
+        ):
+            from src.url_screenshot import capture_url_screenshot
+            image_data_url = await capture_url_screenshot(url_context["url"])
+            if image_data_url is None and message:
+                await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
+
         note_id = await orch.joplin_client.create_note(
             folder_id=resolved_folder_id,
             title=normalized_note["title"],
             body=normalized_note["body"],
+            image_data_url=image_data_url,
         )
 
         tags = normalized_note.get("tags", [])
@@ -565,7 +650,7 @@ async def create_note_in_joplin(
         if tags:
             tag_info = await orch.joplin_client.apply_tags_and_track_new(note_id, tags)
 
-        return {"note_id": note_id, "tag_info": tag_info}
+        return {"note_id": note_id, "tag_info": tag_info, "folder_id": resolved_folder_id}
     except Exception as exc:
         logger.error("Error creating note: %s", exc, exc_info=True)
         return None
