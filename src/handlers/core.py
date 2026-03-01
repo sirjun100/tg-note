@@ -45,6 +45,7 @@ def register_core_handlers(application: Any, orch: "TelegramOrchestrator") -> No
     application.add_handler(CommandHandler("start", _start(orch)))
     application.add_handler(CommandHandler("status", _status(orch)))
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
+    application.add_handler(CommandHandler("sync", _sync(orch)))
     application.add_handler(CommandHandler("helpme", _helpme(orch)))
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, _message(orch))
@@ -76,6 +77,7 @@ def _start(orch: "TelegramOrchestrator"):
             "/start - Show this message\n"
             "/helpme - Show detailed help with all commands\n"
             "/status - Check bot status\n"
+            "/sync - Force Joplin sync with Dropbox\n"
             "/project_status - Show project status tag summary\n"
             "/list_inbox_tasks - List pending Google Tasks\n\n"
             "For more commands, use: /helpme"
@@ -115,6 +117,61 @@ def _status(orch: "TelegramOrchestrator"):
         if not joplin_ok:
             msg += "\n⚠️ Make sure Joplin is running with Web Clipper enabled."
         await update.message.reply_text(msg)
+
+    return handler
+
+
+def _sync(orch: "TelegramOrchestrator"):
+    """Force a Joplin sync with the configured target (e.g. Dropbox)."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        await update.message.reply_chat_action(ChatAction.TYPING)
+        dropbox_ok, sync_target_msg = await _get_joplin_dropbox_sync_status()
+        target_label = "Dropbox" if dropbox_ok else sync_target_msg
+
+        await update.message.reply_text(
+            f"🔄 Syncing Joplin with {target_label}… This may take up to a minute."
+        )
+
+        profile = os.environ.get("JOPLIN_PROFILE")
+        if not profile and os.path.isdir("/app/data/joplin"):
+            profile = "/app/data/joplin"
+        cmd = ["joplin"] + (["--profile", profile] if profile else []) + ["sync"]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=90)
+        except FileNotFoundError:
+            await update.message.reply_text(
+                format_error_message("Joplin CLI not found; sync unavailable.")
+            )
+            return
+        except asyncio.TimeoutError:
+            await update.message.reply_text(
+                format_error_message("Sync timed out after 90 seconds.")
+            )
+            return
+        except Exception as exc:
+            logger.exception("Sync command failed")
+            await update.message.reply_text(format_error_message(f"Sync failed: {exc}"))
+            return
+
+        if proc.returncode == 0:
+            await update.message.reply_text(
+                f"✅ Sync with {target_label} completed successfully."
+            )
+        else:
+            err = (stderr or stdout).decode("utf-8", errors="ignore").strip()
+            await update.message.reply_text(
+                format_error_message(f"Sync failed (exit {proc.returncode}): {err or 'unknown error'}")
+            )
+        logger.info("User %d ran /sync", user.id)
 
     return handler
 
@@ -172,6 +229,7 @@ def _helpme(orch: "TelegramOrchestrator"):
             "📋 **Commands**\n"
             "/start - Welcome message & quick command list\n"
             "/status - Check if Joplin & Google Tasks are connected\n"
+            "/sync - Force Joplin sync with Dropbox (or configured sync target)\n"
             "/project_status - Show counts by project status tags\n"
             "/helpme - Show this detailed help message\n\n"
             "📅 **Google Tasks Management**\n"

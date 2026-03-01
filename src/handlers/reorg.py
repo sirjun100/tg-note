@@ -107,7 +107,7 @@ def _init(orch: "TelegramOrchestrator"):
                 return
 
             await update.message.reply_text(f"🏗️ Initializing PARA structure with template: {template}")
-            success = orch.reorg_orchestrator.initialize_structure(template)
+            success = await orch.reorg_orchestrator.initialize_structure(template)
 
             if success:
                 await update.message.reply_text(
@@ -141,12 +141,13 @@ def _preview(orch: "TelegramOrchestrator"):
             summary = plan.get("summary", {})
             moves = plan.get("moves", [])
 
+            sampled = summary.get("analysis_sample_size", len(moves))
             resp = (
                 "📋 *Migration Plan Preview*\n\n"
                 f"📊 Summary:\n"
                 f"  • Total notes: {summary.get('total_notes', 0)}\n"
                 f"  • Notes to move: {summary.get('notes_to_move', 0)}\n"
-                f"  • Sampled for analysis: {len(moves)}\n\n"
+                f"  • Sampled for analysis: {sampled}\n\n"
             )
 
             if moves:
@@ -198,7 +199,7 @@ def _execute(orch: "TelegramOrchestrator"):
             label = "simulating" if dry_run else "executing"
             await update.message.reply_text(f"🔄 {label.capitalize()} reorganization of {len(moves)} notes...")
 
-            results = orch.reorg_orchestrator.execute_migration_plan(moves, dry_run=dry_run)
+            results = await orch.reorg_orchestrator.execute_migration_plan(moves, dry_run=dry_run)
 
             if dry_run:
                 await update.message.reply_text(
@@ -328,7 +329,7 @@ def _audit_tags(orch: "TelegramOrchestrator"):
 
         try:
             await update.message.reply_text("🔍 Auditing your tags...")
-            audit = orch.reorg_orchestrator.audit_tags()
+            audit = await orch.reorg_orchestrator.audit_tags()
 
             resp = f"📊 *Tag Audit Report*\n\nTotal tags: {audit.get('total_tags', 0)}\n"
             dups = audit.get("duplicate_names", [])
@@ -358,7 +359,7 @@ def _detect_conflicts(orch: "TelegramOrchestrator"):
             await update.message.reply_text("🔍 Scanning for potential conflicts...")
             plan = await orch.reorg_orchestrator.generate_migration_plan()
             moves = plan.get("moves", [])
-            conflicts = orch.reorg_orchestrator.detect_conflicts(moves)
+            conflicts = await orch.reorg_orchestrator.detect_conflicts(moves)
 
             resp = "📋 *Conflict Detection Report*\n\n"
             if conflicts["total_conflicts"] == 0:

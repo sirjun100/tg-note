@@ -21,7 +21,7 @@ from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
 
 
-class TestReorgOrchestrator(unittest.TestCase):
+class TestReorgOrchestrator(unittest.IsolatedAsyncioTestCase):
     """Test suite for ReorgOrchestrator"""
 
     def setUp(self):
@@ -36,119 +36,123 @@ class TestReorgOrchestrator(unittest.TestCase):
 
         self.assertIsInstance(templates, list)
         self.assertGreater(len(templates), 0)
-        self.assertIn("PARA+ (Status-Based)", templates)
-        self.assertIn("PARA Context (Role-Based)", templates)
+        self.assertIn("status", templates)
+        self.assertIn("roles", templates)
 
-    def test_initialize_structure_valid_template(self):
+    async def test_initialize_structure_valid_template(self):
         """Test successful PARA structure initialization"""
-        # Mock folder creation
-        self.mock_joplin.get_or_create_folder_by_path.return_value = "folder_id_123"
+        self.mock_joplin.get_or_create_folder_by_path = AsyncMock(return_value="folder_id_123")
 
-        result = self.orchestrator.initialize_structure("PARA+ (Status-Based)")
+        result = await self.orchestrator.initialize_structure("status")
 
         self.assertTrue(result)
-        # Should create folders for Projects, Areas, Resources, Archive
         self.assertGreater(self.mock_joplin.get_or_create_folder_by_path.call_count, 0)
 
-    def test_initialize_structure_invalid_template(self):
+    async def test_initialize_structure_invalid_template(self):
         """Test initialization with invalid template name"""
         with self.assertRaises(TemplateFolderException):
-            self.orchestrator.initialize_structure("Invalid Template")
+            await self.orchestrator.initialize_structure("Invalid Template")
 
-    def test_initialize_structure_folder_creation_failure(self):
+    async def test_initialize_structure_folder_creation_failure(self):
         """Test initialization when folder creation fails"""
-        self.mock_joplin.get_or_create_folder_by_path.return_value = None
+        self.mock_joplin.get_or_create_folder_by_path = AsyncMock(return_value=None)
 
         with self.assertRaises(TemplateFolderException):
-            self.orchestrator.initialize_structure("PARA+ (Status-Based)")
+            await self.orchestrator.initialize_structure("status")
 
-    def test_audit_tags_no_duplicates(self):
+    async def test_audit_tags_no_duplicates(self):
         """Test tag audit when no duplicates exist"""
-        self.mock_joplin.fetch_tags.return_value = [
+        self.mock_joplin.fetch_tags = AsyncMock(return_value=[
             {'id': '1', 'title': 'urgent'},
             {'id': '2', 'title': 'important'},
             {'id': '3', 'title': 'review'}
-        ]
+        ])
 
-        audit = self.orchestrator.audit_tags()
+        audit = await self.orchestrator.audit_tags()
 
         self.assertEqual(audit['total_tags'], 3)
         self.assertEqual(len(audit['duplicate_names']), 0)
 
-    def test_audit_tags_with_duplicates(self):
+    async def test_audit_tags_with_duplicates(self):
         """Test tag audit detects case-insensitive duplicates"""
-        self.mock_joplin.fetch_tags.return_value = [
+        self.mock_joplin.fetch_tags = AsyncMock(return_value=[
             {'id': '1', 'title': 'Urgent'},
-            {'id': '2', 'title': 'urgent'},  # Duplicate (case-insensitive)
+            {'id': '2', 'title': 'urgent'},
             {'id': '3', 'title': 'Important'}
-        ]
+        ])
 
-        audit = self.orchestrator.audit_tags()
+        audit = await self.orchestrator.audit_tags()
 
         self.assertEqual(audit['total_tags'], 3)
         self.assertGreater(len(audit['duplicate_names']), 0)
 
-    def test_detect_conflicts_no_issues(self):
+    async def test_detect_conflicts_no_issues(self):
         """Test conflict detection when no conflicts exist"""
-        self.mock_joplin.get_all_notes.return_value = [
+        self.mock_joplin.get_all_notes = AsyncMock(return_value=[
             {'id': '1', 'title': 'Note 1', 'parent_id': 'folder_a'},
             {'id': '2', 'title': 'Note 2', 'parent_id': 'folder_b'}
-        ]
-        self.mock_joplin.get_folders.return_value = [
+        ])
+        self.mock_joplin.get_folders = AsyncMock(return_value=[
             {'id': 'folder_a', 'title': 'Folder A'},
             {'id': 'folder_b', 'title': 'Folder B'},
             {'id': 'folder_target', 'title': 'Target Folder'}
-        ]
+        ])
+        self.mock_joplin.fetch_tags = AsyncMock(return_value=[])
 
         plan = [
             {'note_id': '1', 'target_folder_id': 'folder_target', 'note_title': 'Note 1'},
             {'note_id': '2', 'target_folder_id': 'folder_target', 'note_title': 'Note 2'}
         ]
 
-        conflicts = self.orchestrator.detect_conflicts(plan)
+        conflicts = await self.orchestrator.detect_conflicts(plan)
 
         self.assertEqual(conflicts['total_conflicts'], 0)
 
-    def test_detect_conflicts_duplicate_titles(self):
+    async def test_detect_conflicts_duplicate_titles(self):
         """Test conflict detection for duplicate titles in target folder"""
-        self.mock_joplin.get_all_notes.return_value = [
+        self.mock_joplin.get_all_notes = AsyncMock(return_value=[
             {'id': '1', 'title': 'Same Name', 'parent_id': 'folder_a'},
             {'id': '2', 'title': 'Same Name', 'parent_id': 'folder_b'}
-        ]
-        self.mock_joplin.get_folders.return_value = [
+        ])
+        self.mock_joplin.get_folders = AsyncMock(return_value=[
             {'id': 'folder_a', 'title': 'Folder A'},
             {'id': 'folder_b', 'title': 'Folder B'},
             {'id': 'folder_target', 'title': 'Target Folder'}
-        ]
+        ])
+        self.mock_joplin.fetch_tags = AsyncMock(return_value=[])
 
         plan = [
             {'note_id': '1', 'target_folder_id': 'folder_target', 'note_title': 'Same Name'},
             {'note_id': '2', 'target_folder_id': 'folder_target', 'note_title': 'Same Name'}
         ]
 
-        conflicts = self.orchestrator.detect_conflicts(plan)
+        conflicts = await self.orchestrator.detect_conflicts(plan)
 
         self.assertGreater(conflicts['total_conflicts'], 0)
         self.assertGreater(len(conflicts['duplicate_titles_in_folder']), 0)
 
-    def test_execute_migration_plan_success(self):
+    async def test_execute_migration_plan_success(self):
         """Test successful execution of migration plan"""
-        self.mock_joplin.move_note.return_value = True
+        self.mock_joplin.move_note = AsyncMock(return_value=None)
+        self.mock_joplin.get_folders = AsyncMock(return_value=[])
+        self.mock_joplin.apply_tags = AsyncMock(return_value=True)
 
         plan = [
             {'note_id': '1', 'target_folder_id': 'target_1', 'note_title': 'Note 1'},
             {'note_id': '2', 'target_folder_id': 'target_2', 'note_title': 'Note 2'}
         ]
 
-        results = self.orchestrator.execute_migration_plan(plan)
+        results = await self.orchestrator.execute_migration_plan(plan)
 
         self.assertEqual(results['success'], 2)
         self.assertEqual(results['failed'], 0)
         self.assertEqual(self.mock_joplin.move_note.call_count, 2)
 
-    def test_execute_migration_plan_with_failures(self):
+    async def test_execute_migration_plan_with_failures(self):
         """Test migration execution with some failures"""
-        self.mock_joplin.move_note.side_effect = [True, False, True]
+        self.mock_joplin.move_note = AsyncMock(side_effect=[None, Exception("API error"), None])
+        self.mock_joplin.get_folders = AsyncMock(return_value=[])
+        self.mock_joplin.apply_tags = AsyncMock(return_value=True)
 
         plan = [
             {'note_id': '1', 'target_folder_id': 'target_1', 'note_title': 'Note 1'},
@@ -156,14 +160,14 @@ class TestReorgOrchestrator(unittest.TestCase):
             {'note_id': '3', 'target_folder_id': 'target_3', 'note_title': 'Note 3'}
         ]
 
-        results = self.orchestrator.execute_migration_plan(plan)
+        results = await self.orchestrator.execute_migration_plan(plan)
 
         self.assertEqual(results['success'], 2)
         self.assertEqual(results['failed'], 1)
 
-    def test_execute_migration_plan_empty(self):
+    async def test_execute_migration_plan_empty(self):
         """Test migration execution with empty plan"""
-        results = self.orchestrator.execute_migration_plan([])
+        results = await self.orchestrator.execute_migration_plan([])
 
         self.assertEqual(results['success'], 0)
         self.assertEqual(results['failed'], 0)
@@ -333,28 +337,22 @@ class TestIntegrationWorkflow(unittest.IsolatedAsyncioTestCase):
         self.reorg = ReorgOrchestrator(self.mock_joplin, self.mock_llm)
         self.enrichment = EnrichmentService(self.mock_joplin, self.mock_llm)
 
-    def test_complete_reorganization_workflow(self):
+    async def test_complete_reorganization_workflow(self):
         """Test complete workflow: init → preview → detect → execute"""
-        # Step 1: Initialize structure
-        self.mock_joplin.get_or_create_folder_by_path.return_value = "folder_id"
-        init_result = self.reorg.initialize_structure("PARA+ (Status-Based)")
+        self.mock_joplin.get_or_create_folder_by_path = AsyncMock(return_value="folder_id")
+        self.mock_joplin.get_all_notes = AsyncMock(return_value=[])
+        self.mock_joplin.get_folders = AsyncMock(return_value=[])
+        self.mock_joplin.fetch_tags = AsyncMock(return_value=[])
+        self.mock_joplin.move_note = AsyncMock(return_value=None)
+
+        init_result = await self.reorg.initialize_structure("status")
         self.assertTrue(init_result)
 
-        # Step 2: Would generate migration plan (mocked as async)
-        # In real scenario, would call generate_migration_plan()
-
-        # Step 3: Detect conflicts
-        self.mock_joplin.get_all_notes.return_value = []
-        self.mock_joplin.get_folders.return_value = []
-        self.mock_joplin.fetch_tags.return_value = []
-
-        conflicts = self.reorg.detect_conflicts([])
+        conflicts = await self.reorg.detect_conflicts([])
         self.assertEqual(conflicts['total_conflicts'], 0)
 
-        # Step 4: Execute migration
-        self.mock_joplin.move_note.return_value = True
-        results = self.reorg.execute_migration_plan([])
-        self.assertEqual(results['success'], 0)  # No moves in plan
+        results = await self.reorg.execute_migration_plan([])
+        self.assertEqual(results['success'], 0)
 
 
 if __name__ == '__main__':

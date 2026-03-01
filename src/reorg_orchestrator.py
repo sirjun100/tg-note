@@ -73,7 +73,7 @@ class ReorgOrchestrator:
         """Get list of available PARA templates"""
         return list(self.PARA_TEMPLATES.keys())
 
-    def initialize_structure(self, template_name: str) -> bool:
+    async def initialize_structure(self, template_name: str) -> bool:
         """Create the top-level folder structure based on template"""
         try:
             template = self.PARA_TEMPLATES.get(template_name)
@@ -87,7 +87,7 @@ class ReorgOrchestrator:
             for main_folder, sub_folders in template.items():
                 try:
                     # Create main folder
-                    main_folder_id = self.joplin_client.get_or_create_folder_by_path([main_folder])
+                    main_folder_id = await self.joplin_client.get_or_create_folder_by_path([main_folder])
                     if not main_folder_id:
                         raise TemplateFolderException(f"Failed to create main folder '{main_folder}'")
 
@@ -97,7 +97,7 @@ class ReorgOrchestrator:
                     # Create sub-folders
                     for sub in sub_folders:
                         try:
-                            self.joplin_client.get_or_create_folder_by_path([main_folder, sub])
+                            await self.joplin_client.get_or_create_folder_by_path([main_folder, sub])
                             folders_created += 1
                             logger.debug(f"  ✓ Created sub-folder: {sub}")
                         except Exception as e:
@@ -122,8 +122,8 @@ class ReorgOrchestrator:
         Scan all notes and suggest migration to PARA structure using LLM classification.
         """
         try:
-            notes = self.joplin_client.get_all_notes()
-            folders = self.joplin_client.get_folders()
+            notes = await self.joplin_client.get_all_notes()
+            folders = await self.joplin_client.get_folders()
 
             logger.debug(f"Migration plan: Found {len(notes)} notes and {len(folders)} folders")
 
@@ -195,9 +195,9 @@ class ReorgOrchestrator:
                 "moves": []
             }
 
-    def audit_tags(self) -> Dict[str, Any]:
+    async def audit_tags(self) -> Dict[str, Any]:
         """Audit tags for duplicates, unused tags, or inconsistent casing"""
-        tags = self.joplin_client.fetch_tags()
+        tags = await self.joplin_client.fetch_tags()
         
         audit = {
             "duplicate_names": [],
@@ -224,7 +224,7 @@ class ReorgOrchestrator:
 
         return audit
 
-    def detect_conflicts(self, plan: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def detect_conflicts(self, plan: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Detect potential conflicts in a migration plan.
 
@@ -240,8 +240,8 @@ class ReorgOrchestrator:
         }
 
         # Get all notes for reference
-        all_notes = self.joplin_client.get_all_notes()
-        all_folders = self.joplin_client.get_folders()
+        all_notes = await self.joplin_client.get_all_notes()
+        all_folders = await self.joplin_client.get_folders()
 
         # Create lookup maps
         notes_by_id = {n['id']: n for n in all_notes}
@@ -294,7 +294,7 @@ class ReorgOrchestrator:
                 conflicts["total_conflicts"] += len(conflicts["duplicate_titles_in_folder"])
 
         # Check for tag conflicts
-        audit = self.audit_tags()
+        audit = await self.audit_tags()
         if audit.get("duplicate_names"):
             conflicts["tag_conflicts"] = audit["duplicate_names"]
             conflicts["total_conflicts"] += len(audit["duplicate_names"])
@@ -335,10 +335,10 @@ class ReorgOrchestrator:
             logger.error(f"Failed to resolve conflict: {e}")
             return False
 
-    def _extract_tags_from_folder_path(self, folder_id: str) -> List[str]:
+    async def _extract_tags_from_folder_path(self, folder_id: str) -> List[str]:
         """Extract suggested tags from folder hierarchy"""
         try:
-            folders = self.joplin_client.get_folders()
+            folders = await self.joplin_client.get_folders()
             folders_by_id = {f['id']: f for f in folders}
 
             tags = []
@@ -381,7 +381,7 @@ class ReorgOrchestrator:
             logger.warning(f"Failed to extract tags from folder {folder_id}: {e}")
             return []
 
-    def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False) -> Dict[str, Any]:
+    async def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False) -> Dict[str, Any]:
         """
         Execute a series of note moves with automatic tag application.
 
@@ -417,22 +417,19 @@ class ReorgOrchestrator:
 
                     logger.debug(f"Moving note {i}/{len(plan)}: '{note_title}' → folder {target_id[:8]}...")
 
-                    if self.joplin_client.move_note(note_id, target_id):
-                        results["success"] += 1
-                        logger.debug(f"  ✓ Successfully moved: {note_title}")
+                    await self.joplin_client.move_note(note_id, target_id)
+                    results["success"] += 1
+                    logger.debug(f"  ✓ Successfully moved: {note_title}")
 
-                        # Add tags based on destination folder
-                        try:
-                            suggested_tags = self._extract_tags_from_folder_path(target_id)
-                            if suggested_tags:
-                                self.joplin_client.apply_tags(note_id, suggested_tags)
-                                results["tags_added"] += len(suggested_tags)
-                                logger.debug(f"  ✓ Added tags to '{note_title}': {suggested_tags}")
-                        except Exception as e:
-                            logger.warning(f"  ⚠️ Failed to add tags to note '{note_title}': {e}")
-                    else:
-                        results["failed"] += 1
-                        logger.warning(f"  ✗ Failed to move: {note_title}")
+                    # Add tags based on destination folder
+                    try:
+                        suggested_tags = await self._extract_tags_from_folder_path(target_id)
+                        if suggested_tags:
+                            await self.joplin_client.apply_tags(note_id, suggested_tags)
+                            results["tags_added"] += len(suggested_tags)
+                            logger.debug(f"  ✓ Added tags to '{note_title}': {suggested_tags}")
+                    except Exception as e:
+                        logger.warning(f"  ⚠️ Failed to add tags to note '{note_title}': {e}")
 
                 except Exception as e:
                     results["failed"] += 1
