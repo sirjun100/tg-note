@@ -56,7 +56,7 @@ class EnrichmentService:
         """Fetch a note, get AI enrichment, and update the note with error handling"""
         try:
             # Fetch the note
-            note = self.joplin_client.get_note(note_id)
+            note = await self.joplin_client.get_note(note_id)
             if not note:
                 logger.error(f"Note {note_id} not found for enrichment")
                 return False
@@ -118,7 +118,8 @@ class EnrichmentService:
 
             # Update note with metadata and augmented content
             try:
-                success = self.joplin_client.update_note(note_id, {"body": final_body})
+                await self.joplin_client.update_note(note_id, {"body": final_body})
+                success = True
                 if not success:
                     logger.warning(f"Failed to update note body for '{title}'")
                     return False
@@ -130,7 +131,7 @@ class EnrichmentService:
             try:
                 suggested_tags = metadata.get('suggested_tags', [])
                 if suggested_tags:
-                    self.joplin_client.apply_tags(note_id, suggested_tags)
+                    await self.joplin_client.apply_tags(note_id, suggested_tags)
                     logger.debug(f"Applied {len(suggested_tags)} tags to note '{title}'")
             except Exception as e:
                 logger.warning(f"Failed to apply tags to note '{title}': {e}")
@@ -167,7 +168,7 @@ class EnrichmentService:
 
         # Fetch notes if not provided
         if notes is None:
-            notes = self.joplin_client.get_all_notes()
+            notes = await self.joplin_client.get_all_notes()
             logger.info(f"Fetched {len(notes)} notes for batch enrichment")
 
         # Apply filter if provided
@@ -209,7 +210,7 @@ class EnrichmentService:
             # Call progress callback if provided
             if progress_callback:
                 try:
-                    progress_callback(stats)
+                    await progress_callback(stats)
                 except Exception as e:
                     logger.warning(f"Error in progress callback: {e}")
 
@@ -220,10 +221,10 @@ class EnrichmentService:
         """Get a filter function to find notes without enrichment metadata"""
         return lambda note: not self._is_already_enriched(note.get('body', ''))
 
-    def get_enrichment_summary(self, notes: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    async def get_enrichment_summary(self, notes: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """Get summary of enrichment status across notes"""
         if notes is None:
-            notes = self.joplin_client.get_all_notes()
+            notes = await self.joplin_client.get_all_notes()
 
         enriched_count = sum(1 for n in notes if self._is_already_enriched(n.get('body', '')))
         total_count = len(notes)

@@ -19,6 +19,8 @@ from typing import Optional
 from telegram.ext import Application
 
 from config import TELEGRAM_BOT_TOKEN
+from src.security_utils import ping_joplin_api
+from src.settings import get_settings
 from src.enrichment_service import EnrichmentService
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
@@ -95,6 +97,50 @@ def _resolve_webhook_url() -> Optional[str]:
     if app_name:
         return f"https://{app_name}.fly.dev"
     return None
+
+
+# ---------------------------------------------------------------------------
+# Startup notification
+# ---------------------------------------------------------------------------
+
+async def _send_startup_message(
+    application: Application,
+    orchestrator: TelegramOrchestrator,
+    mode: str,
+    port: Optional[int] = None,
+) -> None:
+    """Send a detailed startup message to whitelisted users (when NOTIFY_STARTUP is not disabled)."""
+    if os.environ.get("NOTIFY_STARTUP", "1").strip().lower() in ("0", "false", "no"):
+        return
+    allowed = get_settings().telegram.allowed_ids
+    if not allowed:
+        logger.debug("No allowed user IDs — skipping startup notification")
+        return
+
+    joplin_ok = await ping_joplin_api()
+    scheduler_running = getattr(
+        getattr(orchestrator.scheduler, "scheduler", None), "running", False
+    )
+
+    lines = [
+        "🟢 Bot started",
+        "",
+        f"• Mode: {mode}",
+    ]
+    if port is not None:
+        lines.append(f"• Port: {port}")
+    lines.extend([
+        f"• Scheduler: {'running' if scheduler_running else 'stopped'}",
+        f"• Joplin: {'OK' if joplin_ok else '⚠️ unreachable'}",
+    ])
+    text = "\n".join(lines)
+
+    for chat_id in allowed:
+        try:
+            await application.bot.send_message(chat_id=chat_id, text=text)
+            logger.info("Startup message sent to %s", chat_id)
+        except Exception as exc:
+            logger.warning("Could not send startup message to %s: %s", chat_id, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +223,7 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
             logger.error("Scheduler start failed: %s", exc)
 
         logger.info("Bot running in WEBHOOK mode on port %d", port)
+        await _send_startup_message(application, orchestrator, "WEBHOOK", port=port)
         await stop_event.wait()
         logger.info("Shutdown signal received, stopping gracefully...")
 
@@ -191,7 +238,7 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
 def _run_polling(application: Application, orchestrator: TelegramOrchestrator) -> None:
     """Polling mode — used for local development."""
 
-    async def _startup(context: object) -> None:
+    async def _startup(app: Application) -> None:
         try:
             await orchestrator.joplin_client.ensure_project_status_tags()
         except Exception as exc:
@@ -200,6 +247,7 @@ def _run_polling(application: Application, orchestrator: TelegramOrchestrator) -
             await orchestrator.scheduler.start()
         except Exception as exc:
             logger.error("Scheduler start failed: %s", exc)
+        await _send_startup_message(app, orchestrator, "POLLING")
 
     async def _shutdown(context: object) -> None:
         try:

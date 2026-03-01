@@ -59,7 +59,7 @@ def _status(orch: "TelegramOrchestrator"):
                     name = next((f["title"] for f in folders if f["id"] == fid), "Unknown")
                     msg += f"  • {name}: {count} notes\n"
 
-                summary = orch.enrichment_service.get_enrichment_summary(all_notes)
+                summary = await orch.enrichment_service.get_enrichment_summary(all_notes)
                 msg += (
                     f"\nEnrichment Progress:\n"
                     f"  • Enriched: {summary['enriched_notes']}/{summary['total_notes']}\n"
@@ -232,6 +232,8 @@ def _enrich(orch: "TelegramOrchestrator"):
         user = update.effective_user
         if not user or not check_whitelist(user.id):
             return
+        if not update.message:
+            return
 
         try:
             limit = 10
@@ -243,7 +245,7 @@ def _enrich(orch: "TelegramOrchestrator"):
                     elif arg.isdigit():
                         limit = int(arg)
 
-            summary = orch.enrichment_service.get_enrichment_summary()
+            summary = await orch.enrichment_service.get_enrichment_summary()
             await update.message.reply_text(
                 f"Enrichment Status\n"
                 f"Total notes: {summary['total_notes']}\n"
@@ -258,14 +260,43 @@ def _enrich(orch: "TelegramOrchestrator"):
                 return
 
             filter_func = None
+            to_process = notes
             if filter_unenriched:
                 filter_func = orch.enrichment_service.get_unenriched_notes_filter()
-                count = len([n for n in notes if filter_func(n)])
-                await update.message.reply_text(f"🔍 Found {count} notes awaiting enrichment...\nStarting enrichment process...")
+                to_process = [n for n in notes if filter_func(n)]
+                count = len(to_process)
+                await update.message.reply_text(
+                    f"🔍 Found {count} notes awaiting enrichment.\nStarting enrichment process..."
+                )
+            else:
+                await update.message.reply_text(
+                    f"⏳ Starting enrichment (up to {min(limit, len(notes))} notes)..."
+                )
+
+            progress_interval = 5  # send a chat update every N notes
+            last_sent_at = [0]  # use list so closure can mutate
 
             async def progress_callback(stats: Any) -> None:
-                if stats.enriched % 3 == 1:
-                    logger.debug("Enrichment progress: %d/%d", stats.enriched + stats.skipped, stats.total)
+                processed = stats.enriched + stats.skipped + stats.failed
+                if stats.total == 0:
+                    return
+                # Send progress at 1st note, then every progress_interval, then at end
+                should_send = (
+                    processed == 1
+                    or processed % progress_interval == 0
+                    or processed == stats.total
+                )
+                if should_send and processed != last_sent_at[0]:
+                    last_sent_at[0] = processed
+                    msg = (
+                        f"📊 Progress: {processed}/{stats.total}\n"
+                        f"  ✓ Enriched: {stats.enriched}  ⊘ Skipped: {stats.skipped}  ✗ Failed: {stats.failed}"
+                    )
+                    try:
+                        await update.message.reply_text(msg)
+                    except Exception as e:
+                        logger.warning("Progress callback send failed: %s", e)
+                logger.debug("Enrichment progress: %d/%d", processed, stats.total)
 
             stats = await orch.enrichment_service.enrich_notes_batch(
                 notes=notes, limit=limit, filter_func=filter_func, progress_callback=progress_callback
@@ -287,7 +318,8 @@ def _enrich(orch: "TelegramOrchestrator"):
             )
             logger.info("User %d completed batch enrichment: %d/%d", user.id, stats.enriched, stats.total)
         except Exception as exc:
-            await update.message.reply_text("❌ Error enriching notes.")
+            if update.message:
+                await update.message.reply_text("❌ Error enriching notes.")
             logger.error("Error in enrich_notes: %s", exc)
 
     return handler

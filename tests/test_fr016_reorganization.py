@@ -310,16 +310,17 @@ class TestEnrichmentService(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.service._is_already_enriched(enriched_body))
         self.assertFalse(self.service._is_already_enriched(not_enriched_body))
 
-    def test_get_enrichment_summary(self):
+    async def test_get_enrichment_summary(self):
         """Test enrichment summary generation"""
-        self.mock_joplin.get_all_notes.return_value = [
+        notes = [
             {'body': 'Regular content'},
             {'body': '---\nStatus: Active\n---\nContent'},
             {'body': 'More regular content'},
             {'body': '---\nStatus: Done\n---\nContent'}
         ]
+        self.mock_joplin.get_all_notes = AsyncMock(return_value=notes)
 
-        summary = self.service.get_enrichment_summary()
+        summary = await self.service.get_enrichment_summary()
 
         self.assertEqual(summary['total_notes'], 4)
         self.assertEqual(summary['enriched_notes'], 2)
