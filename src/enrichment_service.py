@@ -12,6 +12,9 @@ from src.llm_orchestrator import LLMOrchestrator
 
 logger = logging.getLogger(__name__)
 
+# Tag applied to notes that have been AI-enriched; used to avoid re-enriching.
+ENRICH_TAG = "enrich"
+
 
 @dataclass
 class EnrichmentStats:
@@ -65,9 +68,13 @@ class EnrichmentService:
             body = note.get('body', '')
             logger.debug(f"Enriching note: '{title}'")
 
-            # Check if already enriched
+            # Check if already enriched (body frontmatter or "enrich" tag)
             if self._is_already_enriched(body):
-                logger.debug(f"Note {note_id} already enriched, skipping")
+                logger.debug(f"Note {note_id} already enriched (body), skipping")
+                return True
+            existing_tags = await self.joplin_client.get_note_tags(note_id)
+            if any(t.get('title') == ENRICH_TAG for t in existing_tags):
+                logger.debug(f"Note {note_id} already has tag '{ENRICH_TAG}', skipping")
                 return True
 
             # Get enrichment from LLM
@@ -127,12 +134,14 @@ class EnrichmentService:
                 logger.error(f"Failed to update note '{title}': {e}")
                 return False
 
-            # Apply suggested tags
+            # Apply suggested tags (reuse when exists, create only when needed) and mark as enriched
             try:
-                suggested_tags = metadata.get('suggested_tags', [])
+                suggested_tags = list(metadata.get('suggested_tags', []))
+                if ENRICH_TAG not in suggested_tags:
+                    suggested_tags.append(ENRICH_TAG)
                 if suggested_tags:
                     await self.joplin_client.apply_tags(note_id, suggested_tags)
-                    logger.debug(f"Applied {len(suggested_tags)} tags to note '{title}'")
+                    logger.debug(f"Applied {len(suggested_tags)} tags (incl. '{ENRICH_TAG}') to note '{title}'")
             except Exception as e:
                 logger.warning(f"Failed to apply tags to note '{title}': {e}")
                 # Don't fail enrichment if tag application fails

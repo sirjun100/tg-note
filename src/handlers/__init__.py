@@ -7,6 +7,7 @@ from src.handlers.core import register_core_handlers
 from src.handlers.google_tasks import register_google_tasks_handlers
 from src.handlers.reorg import register_reorg_handlers
 from src.handlers.reports import register_report_handlers
+from src.handlers.stoic import register_stoic_handlers
 
 __all__ = [
     "register_core_handlers",
@@ -14,4 +15,5 @@ __all__ = [
     "register_report_handlers",
     "register_braindump_handlers",
     "register_reorg_handlers",
+    "register_stoic_handlers",
 ]

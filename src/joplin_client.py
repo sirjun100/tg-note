@@ -205,6 +205,14 @@ class JoplinClient:
         """Return the list of tags attached to a note (each dict has at least 'id' and 'title')."""
         return await self._paginated_items(f"/notes/{note_id}/tags")
 
+    async def get_tag_id_by_name(self, tag_name: str) -> Optional[str]:
+        """Return tag id if a tag with this name (case-insensitive) exists; else None. Does not create."""
+        tags = await self.fetch_tags()
+        for tag in tags:
+            if self._tag_title_matches(tag, tag_name):
+                return tag["id"]
+        return None
+
     async def apply_tags(self, note_id: str, tag_names: List[str]) -> bool:
         success = True
         for name in tag_names:
@@ -213,6 +221,22 @@ class JoplinClient:
                 if not await self._link_tag_to_note(tag_id, note_id):
                     success = False
             else:
+                success = False
+        return success
+
+    async def apply_existing_tags_only(self, note_id: str, tag_names: List[str]) -> bool:
+        """Apply only tags that already exist in Joplin (reuse, never create)."""
+        if not tag_names:
+            return True
+        tags = await self.fetch_tags()
+        success = True
+        for name in tag_names:
+            tag_id = None
+            for tag in tags:
+                if self._tag_title_matches(tag, name):
+                    tag_id = tag["id"]
+                    break
+            if tag_id and not await self._link_tag_to_note(tag_id, note_id):
                 success = False
         return success
 
@@ -247,15 +271,32 @@ class JoplinClient:
         )
         return result is not None
 
+    def _tag_title_matches(self, tag: Dict[str, Any], name: str) -> bool:
+        """Match tag title to name case-insensitively (avoids duplicate 'AI' vs 'ai' etc.)."""
+        t = (tag.get("title") or "").strip()
+        n = (name or "").strip()
+        return t.lower() == n.lower()
+
     async def _get_or_create_tag(self, tag_name: str) -> Optional[str]:
         tags = await self.fetch_tags()
         for tag in tags:
-            if tag.get("title") == tag_name:
+            if self._tag_title_matches(tag, tag_name):
                 return tag["id"]
-        result = await self._request("POST", "/tags", json={"title": tag_name})
-        if result and "id" in result:
-            logger.info("Created tag '%s' (%s)", tag_name, result["id"])
-            return result["id"]
+        try:
+            result = await self._request("POST", "/tags", json={"title": tag_name})
+            if result and "id" in result:
+                logger.info("Created tag '%s' (%s)", tag_name, result["id"])
+                return result["id"]
+        except JoplinError as exc:
+            err = str(exc).lower()
+            if "already exists" in err or "choose a different name" in err:
+                # Tag exists but wasn't found (e.g. case/pagination); fetch again and use it
+                tags = await self.fetch_tags()
+                for tag in tags:
+                    if self._tag_title_matches(tag, tag_name):
+                        logger.debug("Using existing tag '%s' after create conflict", tag_name)
+                        return tag["id"]
+            raise  # re-raise if not "already exists" or tag still not found
         logger.error("Failed to create tag '%s'", tag_name)
         return None
 

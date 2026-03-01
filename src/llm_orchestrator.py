@@ -6,6 +6,7 @@ Supports multiple LLM providers through abstraction layer.
 
 import json
 import logging
+from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from src.llm_providers import registry as provider_registry
@@ -386,6 +387,85 @@ class LLMOrchestrator:
 
         logger.warning(f"No augmented content generated for '{note_title}'")
         return ""
+
+    async def format_stoic_reflection(
+        self, mode: str, qa_pairs: List[Dict[str, str]]
+    ) -> Optional[str]:
+        """
+        Format Q&A pairs into Stoic journal markdown (morning or evening).
+        Returns the formatted string, or None if LLM fails (caller should fall back to rule-based).
+        """
+        if not qa_pairs:
+            return None
+        ts = datetime.now().strftime("%H:%M")
+        if mode == "morning":
+            structure = """Output ONLY valid markdown in this exact structure (use the timestamp given):
+### 🌞 Morning (TIMESTAMP)
+
+- **Intention:**
+  USER_ANSWER_OR_DASH
+
+- **Focus:**
+  USER_ANSWER_OR_DASH
+
+- **Virtue:**
+  USER_ANSWER_OR_DASH
+
+- **Gratitude:**
+  - item 1
+  - item 2 (or single line if one answer)
+
+- **Top 3 Tasks:**
+  1. [ ] task one
+  2. [ ] task two
+  3. [ ] task three
+
+Replace TIMESTAMP with the time, and fill each section from the user's Q&A. Use " -" for empty. For tasks, add "[ ] " if the user didn't. Keep it concise."""
+        else:
+            structure = """Output ONLY valid markdown in this exact structure (use the timestamp given):
+### 🌙 Evening (TIMESTAMP)
+
+- **Wins:**
+  - USER_ANSWER_OR_DASH
+
+- **Challenges:**
+  - USER_ANSWER_OR_DASH
+
+- **Lesson Learned:**
+  - USER_ANSWER_OR_DASH
+
+- **Gratitude:** (only if the user gave a gratitude answer)
+  - USER_ANSWER
+
+Replace TIMESTAMP with the time. Fill each section from the user's Q&A. Use " -" for empty. Keep it concise."""
+
+        system_prompt = f"""You format a Stoic journal reflection from a list of question-answer pairs into clean markdown.
+
+{structure}
+
+Output nothing else: no preamble, no explanation, only the markdown block. Use timestamp: {ts}."""
+
+        qa_text = "\n".join(
+            f"Q: {p.get('q', '').strip()}\nA: {(p.get('a') or '').strip()}" for p in qa_pairs
+        )
+        user_message = f"Format this {mode} reflection:\n\n{qa_text}"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+        try:
+            response = await self.provider.generate_response(
+                messages=messages,
+                temperature=0.2,
+                max_tokens=600,
+            )
+            content = (response.get("content") or "").strip()
+            if content and ("### " in content or "**" in content):
+                return content
+        except Exception as e:
+            logger.warning("Stoic reflection LLM format failed: %s", e)
+        return None
 
     def _build_system_prompt(self, context: Dict[str, Any] = None) -> str:
         """Build the system prompt for the LLM"""

@@ -319,6 +319,8 @@ def _helpme(orch: "TelegramOrchestrator"):
             "🧠 **GTD Brain Dump**\n"
             "/braindump - Start an interactive mind sweep session\n"
             "/braindump_stop - End the session early\n\n"
+            "📓 **Stoic Journal**\n"
+            "/stoic [morning|evening] - Guided reflection; /stoic_done to save\n\n"
             "🏗️ **Joplin Database Organization**\n"
             "/reorg_status - Check notes, folders, and organization health\n"
             "/reorg_init status|roles - Initialize PARA structure\n"
@@ -456,6 +458,8 @@ def _message(orch: "TelegramOrchestrator"):
             if pending:
                 if pending.get("active_persona") == "GTD_EXPERT":
                     await _handle_braindump_message(orch, user_id, validated, message)
+                elif pending.get("active_persona") == "STOIC_JOURNAL":
+                    await _handle_stoic_message(orch, user_id, validated, message)
                 else:
                     await _handle_clarification_reply(orch, user_id, validated, message, context)
             else:
@@ -659,6 +663,13 @@ async def _handle_braindump_message(
 ) -> None:
     from src.handlers.braindump import handle_braindump_message
     await handle_braindump_message(orch, user_id, text, message)
+
+
+async def _handle_stoic_message(
+    orch: "TelegramOrchestrator", user_id: int, text: str, message: Message
+) -> None:
+    from src.handlers.stoic import handle_stoic_message
+    await handle_stoic_message(orch, user_id, text, message)
 
 
 async def _process_llm_response(

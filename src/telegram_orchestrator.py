@@ -163,11 +163,13 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
         register_google_tasks_handlers,
         register_reorg_handlers,
         register_report_handlers,
+        register_stoic_handlers,
     )
 
     register_google_tasks_handlers(application, orchestrator)
     register_report_handlers(application, orchestrator)
     register_braindump_handlers(application, orchestrator)
+    register_stoic_handlers(application, orchestrator)
     register_reorg_handlers(application, orchestrator)
     register_core_handlers(application, orchestrator)
 
