@@ -90,7 +90,7 @@ def _init(orch: "TelegramOrchestrator"):
                     "🏗️ *Initialize PARA Structure*\n\n"
                     "Usage: /reorg_init <template>\n\n"
                     "Available templates:\n"
-                    "  status - Organize by project status (Active, Planned, On Hold, Stalled)\n"
+                    "  status - Project template (Overview, Backlog, Execution, Decisions, Assets, References)\n"
                     "  roles  - Organize by roles (Professional, Personal, Volunteer)\n\n"
                     "Examples:\n"
                     "  /reorg_init status\n"
@@ -113,6 +113,9 @@ def _init(orch: "TelegramOrchestrator"):
                 await update.message.reply_text(
                     f"✅ PARA structure initialized successfully!\n"
                     f"Template: {template}\n\n"
+                    "Projects include *Project Template* (Overview, Backlog, Execution, Decisions, Assets, References). "
+                    "Duplicate that folder when you add a new project.\n"
+                    "Areas include *📓 Journaling* (Dream Journal, Stoic Journal, Other) for journals.\n\n"
                     "Next steps:\n"
                     "1. Use `/reorg_preview` to see migration plan\n"
                     "2. Use `/reorg_execute` to reorganize your notes"

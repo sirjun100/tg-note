@@ -1,4 +1,4 @@
-# Improving Your "03 - Resources" Folder (Second Brain / PARA)
+# Improving Your Resources Folder (Second Brain / PARA)
 
 This doc helps you tidy and structure the **Resources** bucket so it stays useful and consistent with Second Brain / PARA.
 
@@ -29,7 +29,7 @@ fly ssh console -C "cd /app && python scripts/inspect_resources_folder.py"
 
 This prints:
 
-- The "03 - Resources" folder and how many notes sit in the root
+- The Resources folder and how many notes sit in the root
 - All subfolders and their note counts
 - Up to 20 note titles in the root
 
@@ -64,8 +64,8 @@ Create any missing subfolders in Joplin (by hand or via `/reorg_init status` or 
 | **Too many notes in the root** | Move them into subfolders (e.g. Books, Templates, Reference). Use `/reorg_preview` then `/reorg_execute` to let the bot suggest and apply moves. |
 | **Vague or duplicate subfolders** | Merge or rename (e.g. "Stuff", "Misc" → "Reference" or "Knowledge"). Prefer the names from the templates so the bot’s classification stays consistent. |
 | **Mixed content** | Keep “how I do X” and templates in **Templates**, links and references in **Reference**, books/courses in **Books & Articles** or **Knowledge**. |
-| **Project/area stuff in Resources** | Move notes that are tied to a project or an area of responsibility into **01 - Projects** or **02 - Areas**; leave only reference material in Resources. |
-| **Naming** | Stick to one convention: either "03 - Resources" as the main folder (with or without subfolders) or "Resources" — the bot looks for both. |
+| **Project/area stuff in Resources** | Move notes that are tied to a project or an area of responsibility into **Projects** or **Areas**; leave only reference material in Resources. |
+| **Naming** | Use "Resources" as the main folder (with or without subfolders); the bot looks for that name. |
 
 ---
 
@@ -78,7 +78,7 @@ If you want a clean, template-based tree (including Resources subfolders):
 3. This creates/ensures **Projects**, **Areas**, **Resources**, **Archive** and their subfolders (e.g. under Resources: 📖 Books & Articles, 📋 Templates, 🔗 Reference).
 4. Then use `/reorg_preview` and `/reorg_execute` to move existing notes into the new structure.
 
-If you already have a "03 - Resources" you like, you can keep it and only add the **subfolders** from the template (by hand in Joplin) so the bot has clear targets when classifying new notes.
+If you already have a Resources folder you like, you can keep it and only add the **subfolders** from the template (by hand in Joplin) so the bot has clear targets when classifying new notes.
 
 ---
 

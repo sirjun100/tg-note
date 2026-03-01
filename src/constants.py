@@ -52,9 +52,30 @@ ACTION_INDICATORS = frozenset([
     "remind",
 ])
 
+# Phrases that mean the user explicitly wants a Joplin note (not a Google Task)
+NOTE_INTENT_PHRASES = frozenset([
+    "joplin note",
+    "add note",
+    "save to joplin",
+    "add to joplin",
+    "save to notes",
+    "add to notes",
+    "add url",
+    "save url",
+    "save link",
+])
+
+
+def has_explicit_note_intent(text: str) -> bool:
+    """Return True if the user clearly asked for a note (e.g. 'add a joplin note', 'add url')."""
+    lower = text.lower().strip()
+    return any(phrase in lower for phrase in NOTE_INTENT_PHRASES)
+
 
 def is_action_item(text: str) -> bool:
-    """Return True if *text* looks like it contains an action item."""
+    """Return True if *text* looks like it contains an action item (and not explicit note intent)."""
+    if has_explicit_note_intent(text):
+        return False
     lower = text.lower()
     return any(indicator in lower for indicator in ACTION_INDICATORS)
 

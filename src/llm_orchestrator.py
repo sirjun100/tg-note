@@ -414,17 +414,17 @@ Your task is to analyze user messages and either:
 The user organizes notes in these folders:
 {folder_list}
 The system follows a Second Brain/PARA structure with these main roots:
-- 00 - Inbox
-- 01 - Projects
-- 02 - Areas
-- 03 - Resources
-- 04 - Archives
+- Inbox
+- Projects
+- Areas
+- Resources
+- Archive
 
 Folder selection policy:
 - You MUST choose the best folder from the provided folder list above.
 - Return the exact folder ID in `note.parent_id`.
 - Prefer the PARA roots and their children when applicable.
-- If content is valid but folder is uncertain, default to Inbox (00 - Inbox) rather than asking for folder clarification.
+- If content is valid but folder is uncertain, default to Inbox rather than asking for folder clarification.
 - Only use NEED_INFO when note content itself is unclear.
 - Never choose Archives unless user explicitly asks to archive.
 
@@ -464,8 +464,8 @@ Folder selection policy:
 - For URL messages, enrich the note using extracted website content when available
 - For URL messages, generate tags from BOTH user intent and extracted website topics/entities
 - Keep tags concrete and searchable (topics, format, source, domain-specific terms)
-- If the selected folder is in the 01 - Projects subtree, include exactly one status tag:
-  status/planning, status/building, status/blocked, or status/done.
+- Use tags to describe project status: for notes in Projects, include exactly one status tag:
+  status/planning, status/building, status/blocked, or status/done. This is how project status is tracked (not by folder).
 
 ### Confidence Scoring:
 - 0.9-1.0: Very clear, no ambiguity
@@ -543,7 +543,7 @@ Preparation / Cooking steps:
 
 Nutrition: {nutrition_text}
 
-Default folder for this recipe note: Set parent_id to the folder whose title is "03 - Resources", or "Recipes" if that folder exists in the folders list (recipe notes belong in Resources).
+Default folder for this recipe note: Set parent_id to the folder whose title is "Resources", or "Recipes" if that folder exists in the folders list (recipe notes belong in Resources).
 
 Tags for recipe notes: Always include the tag "recipe". Also add 1–3 tags from the content (e.g. cooking, baking, dessert, vegetarian, vegan, cuisine type, meal type such as breakfast or dinner).
 

@@ -5,11 +5,14 @@ Core handlers: /start, /status, /helpme, and message routing.
 from __future__ import annotations
 
 import asyncio
+import base64
 import difflib
 import logging
 import os
 import re
 from typing import TYPE_CHECKING, Any, Dict, Optional
+
+import httpx
 
 from telegram import Message, Update
 from telegram.constants import ChatAction
@@ -46,6 +49,8 @@ def register_core_handlers(application: Any, orch: "TelegramOrchestrator") -> No
     application.add_handler(CommandHandler("status", _status(orch)))
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
     application.add_handler(CommandHandler("sync", _sync(orch)))
+    application.add_handler(CommandHandler("note", _note(orch)))
+    application.add_handler(CommandHandler("task", _task(orch)))
     application.add_handler(CommandHandler("helpme", _helpme(orch)))
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, _message(orch))
@@ -74,11 +79,13 @@ def _start(orch: "TelegramOrchestrator"):
             "Just send me what you'd like to note, and I'll figure out the details.\n\n"
             "If I need clarification, I'll ask questions. You can also reply to my questions.\n\n"
             "Quick Commands:\n"
+            "/note <content> - Save as Joplin note only\n"
+            "/task <item> - Create Google Task only\n"
             "/start - Show this message\n"
             "/helpme - Show detailed help with all commands\n"
             "/status - Check bot status\n"
             "/sync - Force Joplin sync with Dropbox\n"
-            "/project_status - Show project status tag summary\n"
+            "/project_status - Show project status (planning, building, blocked, done)\n"
             "/list_inbox_tasks - List pending Google Tasks\n\n"
             "For more commands, use: /helpme"
         )
@@ -176,6 +183,70 @@ def _sync(orch: "TelegramOrchestrator"):
     return handler
 
 
+def _note(orch: "TelegramOrchestrator"):
+    """Create a Joplin note only (no task). Usage: /note <content or URL>."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        parts = (update.message.text or "").strip().split(maxsplit=1)
+        payload = parts[1].strip() if len(parts) > 1 else ""
+        if not payload:
+            await update.message.reply_text(
+                "📝 *Use /note to save as a Joplin note only*\n\n"
+                "Example:\n"
+                "  /note https://example.com/article\n"
+                "  /note Meeting notes from standup\n\n"
+                "Everything after /note is saved as a note (URLs are fetched).",
+                parse_mode="Markdown",
+            )
+            return
+        validated = validate_message_text(payload)
+        if not validated:
+            await update.message.reply_text(format_error_message("Content too long or empty."))
+            return
+        telegram_msg = TelegramMessage(user_id=user.id, message_text=validated)
+        telegram_message_id = orch.logging_service.log_telegram_message(telegram_msg)
+        await _handle_new_request(
+            orch, user.id, validated, update.message, telegram_message_id, context,
+            force_note=True,
+        )
+
+    return handler
+
+
+def _task(orch: "TelegramOrchestrator"):
+    """Create a Google Task only (no note). Usage: /task <action item>."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        parts = (update.message.text or "").strip().split(maxsplit=1)
+        payload = parts[1].strip() if len(parts) > 1 else ""
+        if not payload:
+            await update.message.reply_text(
+                "✅ *Use /task to create a Google Task only*\n\n"
+                "Example:\n"
+                "  /task Call John tomorrow\n"
+                "  /task Review PR #42\n\n"
+                "Everything after /task becomes a task (no Joplin note).",
+                parse_mode="Markdown",
+            )
+            return
+        validated = validate_message_text(payload)
+        if not validated:
+            await update.message.reply_text(format_error_message("Content too long or empty."))
+            return
+        telegram_msg = TelegramMessage(user_id=user.id, message_text=validated)
+        telegram_message_id = orch.logging_service.log_telegram_message(telegram_msg)
+        await _handle_new_request(
+            orch, user.id, validated, update.message, telegram_message_id, context,
+            force_task=True,
+        )
+
+    return handler
+
+
 async def _get_joplin_dropbox_sync_status() -> tuple[bool, str]:
     """Return whether Joplin sync target is configured to Dropbox (target=7)."""
     profile = os.environ.get("JOPLIN_PROFILE")
@@ -223,15 +294,19 @@ def _helpme(orch: "TelegramOrchestrator"):
         help_message = (
             "🆘 Help - Available Commands\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "📝 **Two Systems**\n"
-            "🔹 Regular messages → Creates NOTES in Joplin\n"
-            "🔹 Action items → Creates TASKS in Google Tasks\n\n"
+            "📝 **Note vs Task**\n"
+            "🔹 /note <content> → Joplin note only (URLs fetched)\n"
+            "🔹 /task <item> → Google Task only\n"
+            "🔹 Plain message → Bot chooses (note or task by keywords)\n\n"
             "📋 **Commands**\n"
             "/start - Welcome message & quick command list\n"
             "/status - Check if Joplin & Google Tasks are connected\n"
             "/sync - Force Joplin sync with Dropbox (or configured sync target)\n"
             "/project_status - Show counts by project status tags\n"
             "/helpme - Show this detailed help message\n\n"
+            "📌 **Project status tags**\n"
+            "Notes in Projects can use tags to describe status: status/planning, status/building, status/blocked, status/done. "
+            "The bot adds one when creating or moving project notes. Use /project_status to see the summary.\n\n"
             "📅 **Google Tasks Management**\n"
             "/authorize_google_tasks - Connect your Google account\n"
             "/list_inbox_tasks - View your pending Google Tasks\n"
@@ -272,12 +347,13 @@ def _project_status(orch: "TelegramOrchestrator"):
 
             project_root_id = None
             for f in folders:
-                if (f.get("title") or "").strip().lower() == "01 - projects":
+                title_lower = (f.get("title") or "").strip().lower()
+                if title_lower in ("01 - projects", "projects"):
                     project_root_id = f.get("id")
                     break
 
             if not project_root_id:
-                await update.message.reply_text("❌ I couldn't find folder `01 - Projects`.")
+                await update.message.reply_text("❌ I couldn't find folder `Projects`.")
                 return
 
             def in_projects(folder_id: str) -> bool:
@@ -397,6 +473,23 @@ def _message(orch: "TelegramOrchestrator"):
 # ---------------------------------------------------------------------------
 
 
+async def _fetch_image_as_data_url(image_url: str) -> Optional[str]:
+    """Fetch an image from a URL and return a data URL (data:image/...;base64,...) or None."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.get(image_url)
+            resp.raise_for_status()
+            raw = resp.content
+            ctype = (resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip()
+            if "image" not in ctype.lower():
+                return None
+            b64 = base64.b64encode(raw).decode("ascii")
+            return f"data:{ctype};base64,{b64}"
+    except Exception as exc:
+        logger.warning("Failed to fetch recipe image from %s: %s", image_url[:60], exc)
+        return None
+
+
 async def _send_typing(message: Message, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send typing indicator; ignore errors so they don't break the flow."""
     try:
@@ -412,8 +505,40 @@ async def _handle_new_request(
     message: Message,
     telegram_message_id: Optional[int],
     context: ContextTypes.DEFAULT_TYPE,
+    *,
+    force_note: bool = False,
+    force_task: bool = False,
 ) -> None:
-    if is_action_item(text):
+    if force_task:
+        # Explicit /task: create Google Task(s) only
+        if not orch.task_service:
+            await message.reply_text(
+                "⚠️ Google Tasks integration is not available. "
+                "Use /authorize_google_tasks first."
+            )
+            return
+        try:
+            decision = Decision(
+                user_id=user_id,
+                telegram_message_id=telegram_message_id,
+                status="SUCCESS",
+                note_title=text,
+                note_body="",
+                tags=[],
+            )
+            created = orch.task_service.create_tasks_from_decision(decision, str(user_id))
+            count = len(created) if created else 0
+            if count > 0:
+                orch.logging_service.log_decision(decision)
+                await message.reply_text(format_success_message(f"✅ Created {count} Google Task(s): '{text[:80]}{'…' if len(text) > 80 else ''}'"))
+            else:
+                await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status"))
+        except Exception as exc:
+            logger.error("Error creating Google Task: %s", exc, exc_info=True)
+            await message.reply_text(format_error_message(f"Failed to create task: {exc}"))
+        return
+
+    if not force_note and is_action_item(text):
         logger.info("Detected action item from user %d", user_id)
         if not orch.task_service:
             await message.reply_text(
@@ -465,6 +590,9 @@ async def _handle_new_request(
         await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=text)
 
+    if url_context and url_context.get("content_type") == "recipe":
+        await message.reply_text("🍳 Recipe detected — saving to Resources and adding an image.")
+
     await _send_typing(message, context)
     await message.reply_text("🤖 Analyzing...")
     folders = await orch.joplin_client.get_folders()
@@ -513,6 +641,8 @@ async def _handle_clarification_reply(
         await _send_typing(message, context)
         await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=combined)
+    if url_context and url_context.get("content_type") == "recipe":
+        await message.reply_text("🍳 Recipe detected — saving to Resources and adding an image.")
     await _send_typing(message, context)
     await message.reply_text("🤖 Analyzing...")
     folders = await orch.joplin_client.get_folders()
@@ -613,7 +743,7 @@ async def _process_llm_response(
         }
         orch.state_manager.update_state(user_id, state)
         await message.reply_text(
-            "🧠 Second Brain folders: 00 - Inbox, 01 - Projects, 02 - Areas, 03 - Resources, 04 - Archives.\n\n"
+            "🧠 Second Brain folders: Inbox, Projects, Areas, Resources, Archive.\n\n"
             f"🤔 {llm_response.question}"
         )
     else:
@@ -637,7 +767,7 @@ async def create_note_in_joplin(
         )
         # For recipe notes, fall back to default recipe folder when resolution fails
         if not resolved_folder_id and url_context and url_context.get("content_type") == "recipe":
-            for fallback_name in ("03 - Resources", "Recipes"):
+            for fallback_name in ("Resources", "Recipes"):
                 resolved_folder_id, _ = await _resolve_folder_id_or_suggestions(
                     orch,
                     fallback_name,
@@ -695,6 +825,8 @@ async def create_note_in_joplin(
             image_data_url = await capture_url_screenshot(url_context["url"])
             if image_data_url is None and message:
                 await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
+        if image_data_url is None and url_context and url_context.get("content_type") == "recipe" and url_context.get("image_url"):
+            image_data_url = await _fetch_image_as_data_url(url_context["image_url"])
 
         note_id = await orch.joplin_client.create_note(
             folder_id=resolved_folder_id,
@@ -724,10 +856,10 @@ async def _resolve_folder_id_or_suggestions(
     if not folders:
         # Self-heal first-run/empty setups by creating a default Inbox folder.
         try:
-            created = await orch.joplin_client.create_folder("00 - Inbox")
+            created = await orch.joplin_client.create_folder("Inbox")
             created_id = created.get("id")
             if created_id:
-                logger.info("Created default folder '00 - Inbox' (%s)", created_id)
+                logger.info("Created default folder 'Inbox' (%s)", created_id)
                 return created_id, []
         except Exception as exc:
             logger.warning("Failed to auto-create default inbox folder: %s", exc)
@@ -737,7 +869,7 @@ async def _resolve_folder_id_or_suggestions(
         # Preferred explicit folder name
         for f in folders:
             title = (f.get("title") or "").strip().lower()
-            if title == "00 - inbox":
+            if title == "inbox":
                 return f.get("id")
 
         # Common variants
@@ -855,7 +987,7 @@ async def _resolve_folder_id_or_suggestions(
 
     # No inbox exists yet; create one and continue.
     try:
-        created = await orch.joplin_client.create_folder("00 - Inbox")
+        created = await orch.joplin_client.create_folder("Inbox")
         created_id = created.get("id")
         if created_id:
             logger.info(
@@ -974,7 +1106,7 @@ async def _ensure_project_status_tag(
     """
     Ensure project notes have exactly one status/* tag.
 
-    Applies only when note goes into 01 - Projects subtree.
+    Applies only when note goes into Projects subtree.
     """
     tag_list = [str(t).strip() for t in (tags or []) if str(t).strip()]
     lowered = [t.lower() for t in tag_list]
@@ -992,13 +1124,14 @@ async def _ensure_project_status_tag(
     by_id = {f.get("id"): f for f in folders if f.get("id")}
     project_root_id = None
     for f in folders:
-        if (f.get("title") or "").strip().lower() == "01 - projects":
+        title_lower = (f.get("title") or "").strip().lower()
+        if title_lower in ("01 - projects", "projects"):
             project_root_id = f.get("id")
             break
     if not project_root_id:
         return tag_list
 
-    # Walk up parents: if folder is not inside 01 - Projects, leave tags untouched.
+    # Walk up parents: if folder is not inside Projects, leave tags untouched.
     cur = folder_id
     in_projects = False
     visited: set[str] = set()

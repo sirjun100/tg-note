@@ -171,12 +171,14 @@ class JoplinClient:
         current_parent = ""
         for part in path_parts:
             folders = await self.get_folders()
+            # Normalize parent_id: Joplin may use None or "" for root
+            want_parent = current_parent or ""
             found = next(
                 (
                     f
                     for f in folders
                     if f.get("title") == part
-                    and f.get("parent_id", "") == current_parent
+                    and (f.get("parent_id") or "") == want_parent
                 ),
                 None,
             )
@@ -198,6 +200,10 @@ class JoplinClient:
 
     async def get_notes_with_tag(self, tag_id: str) -> List[Dict[str, Any]]:
         return await self._paginated_items(f"/tags/{tag_id}/notes")
+
+    async def get_note_tags(self, note_id: str) -> List[Dict[str, Any]]:
+        """Return the list of tags attached to a note (each dict has at least 'id' and 'title')."""
+        return await self._paginated_items(f"/notes/{note_id}/tags")
 
     async def apply_tags(self, note_id: str, tag_names: List[str]) -> bool:
         success = True

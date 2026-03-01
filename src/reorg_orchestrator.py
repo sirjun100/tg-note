@@ -49,16 +49,48 @@ class OperationLog:
 class ReorgOrchestrator:
     """Orchestrates database reorganization based on PARA methodology"""
 
+    # Project subfolder template: duplicate this structure for each new project
+    PROJECT_SUBFOLDERS = [
+        "Overview",
+        "Backlog",
+        "Execution",
+        "Decisions",
+        "Assets",
+        "References",
+    ]
+
     PARA_TEMPLATES = {
         "status": {
-            "Projects": ["🟢 Active", "🟡 Planned", "🔵 On Hold", "❌ Stalled"],
-            "Areas": ["💼 Work & Career", "💪 Health & Fitness", "💰 Finance & Investing", "📚 Learning", "🏠 Home"],
+            "Inbox": [],
+            "Projects": [
+                {"Project Template": PROJECT_SUBFOLDERS},
+            ],
+            "Areas": [
+                "💼 Work & Career",
+                "💪 Health & Fitness",
+                "💰 Finance & Investing",
+                "📚 Learning",
+                "🏠 Home",
+                {"📓 Journaling": ["Dream Journal", "Stoic Journal", "Other"]},
+            ],
             "Resources": ["📖 Books & Articles", "📋 Templates", "🔗 Reference"],
             "Archive": []
         },
         "roles": {
-            "Projects": ["Professional", "Personal", "Volunteer"],
-            "Areas": ["Work", "Life", "Creative", "Health"],
+            "Inbox": [],
+            "Projects": [
+                "Professional",
+                "Personal",
+                "Volunteer",
+                {"Project Template": PROJECT_SUBFOLDERS},
+            ],
+            "Areas": [
+                "Work",
+                "Life",
+                "Creative",
+                "Health",
+                {"📓 Journaling": ["Dream Journal", "Stoic Journal", "Other"]},
+            ],
             "Resources": ["Tools", "Templates", "Knowledge"],
             "Archive": []
         }
@@ -84,8 +116,17 @@ class ReorgOrchestrator:
             logger.info(f"🏗️ Initializing PARA structure using template: {template_name}")
 
             folders_created = 0
+            # Ensure Inbox exists first (root folder; parent_id None vs "" can prevent match in Joplin)
+            if "Inbox" in template:
+                await self.joplin_client.get_or_create_folder_by_path(["Inbox"])
+                folders_created += 1
+                logger.debug("✓ Created main folder: Inbox")
+
             for main_folder, sub_folders in template.items():
                 try:
+                    if main_folder == "Inbox":
+                        # Already created above
+                        continue
                     # Create main folder
                     main_folder_id = await self.joplin_client.get_or_create_folder_by_path([main_folder])
                     if not main_folder_id:
@@ -94,12 +135,25 @@ class ReorgOrchestrator:
                     folders_created += 1
                     logger.debug(f"✓ Created main folder: {main_folder}")
 
-                    # Create sub-folders
+                    # Create sub-folders (plain names or nested {name: [children]})
                     for sub in sub_folders:
                         try:
-                            await self.joplin_client.get_or_create_folder_by_path([main_folder, sub])
-                            folders_created += 1
-                            logger.debug(f"  ✓ Created sub-folder: {sub}")
+                            if isinstance(sub, dict):
+                                for folder_name, children in sub.items():
+                                    await self.joplin_client.get_or_create_folder_by_path([main_folder, folder_name])
+                                    folders_created += 1
+                                    logger.debug(f"  ✓ Created sub-folder: {folder_name}")
+                                    for child in children:
+                                        try:
+                                            await self.joplin_client.get_or_create_folder_by_path([main_folder, folder_name, child])
+                                            folders_created += 1
+                                            logger.debug(f"    ✓ Created: {folder_name}/{child}")
+                                        except Exception as e:
+                                            logger.warning(f"    ⚠️ Failed to create {folder_name}/{child}: {e}")
+                            else:
+                                await self.joplin_client.get_or_create_folder_by_path([main_folder, sub])
+                                folders_created += 1
+                                logger.debug(f"  ✓ Created sub-folder: {sub}")
                         except Exception as e:
                             logger.warning(f"  ⚠️ Failed to create sub-folder {sub}: {e}")
 
@@ -335,6 +389,34 @@ class ReorgOrchestrator:
             logger.error(f"Failed to resolve conflict: {e}")
             return False
 
+    async def _is_folder_under_projects(self, folder_id: str) -> bool:
+        """Return True if folder_id is under the Projects root."""
+        try:
+            folders = await self.joplin_client.get_folders()
+            folders_by_id = {f["id"]: f for f in folders}
+            project_root_id = None
+            for f in folders:
+                title_lower = (f.get("title") or "").strip().lower()
+                if title_lower in ("01 - projects", "projects"):
+                    project_root_id = f["id"]
+                    break
+            if not project_root_id:
+                return False
+            current_id = folder_id
+            visited = set()
+            while current_id and current_id not in visited:
+                visited.add(current_id)
+                if current_id == project_root_id:
+                    return True
+                folder = folders_by_id.get(current_id)
+                if not folder:
+                    return False
+                current_id = folder.get("parent_id") or ""
+            return False
+        except Exception as e:
+            logger.warning("Could not check Projects subtree: %s", e)
+            return False
+
     async def _extract_tags_from_folder_path(self, folder_id: str) -> List[str]:
         """Extract suggested tags from folder hierarchy"""
         try:
@@ -421,9 +503,15 @@ class ReorgOrchestrator:
                     results["success"] += 1
                     logger.debug(f"  ✓ Successfully moved: {note_title}")
 
-                    # Add tags based on destination folder
+                    # Add tags based on destination folder; ensure project notes get a status tag
                     try:
                         suggested_tags = await self._extract_tags_from_folder_path(target_id)
+                        if await self._is_folder_under_projects(target_id):
+                            note_tags = await self.joplin_client.get_note_tags(note_id)
+                            note_tag_titles = {t.get("title", "").strip() for t in note_tags}
+                            status_tags = set(self.joplin_client.PROJECT_STATUS_TAG_NAMES)
+                            if not (note_tag_titles & status_tags):
+                                suggested_tags = list(suggested_tags) + ["status/planning"]
                         if suggested_tags:
                             await self.joplin_client.apply_tags(note_id, suggested_tags)
                             results["tags_added"] += len(suggested_tags)

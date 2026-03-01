@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Inspect the "03 - Resources" folder in Joplin: list subfolders and note counts.
+Inspect the Resources folder in Joplin: list subfolders and note counts.
 
 Run from project root (so .env and Joplin URL are found). On Fly.io:
   fly ssh console -C "cd /app && python scripts/inspect_resources_folder.py"
@@ -36,7 +36,7 @@ async def main() -> None:
         sys.exit(1)
 
     # Find Resources folder (common names)
-    candidates = ["03 - Resources", "03 - resources", "Resources", "resources"]
+    candidates = ["Resources", "resources"]
     resources_folder = None
     for title in candidates:
         for f in folders:
@@ -47,7 +47,7 @@ async def main() -> None:
             break
 
     if not resources_folder:
-        print("No '03 - Resources' (or 'Resources') folder found.")
+        print("No 'Resources' folder found.")
         print("Top-level folders present:")
         roots = [f for f in folders if not f.get("parent_id")]
         for f in sorted(roots, key=lambda x: (x.get("title") or "")):

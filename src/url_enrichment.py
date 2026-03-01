@@ -223,11 +223,22 @@ def _parse_recipe_jsonld(html_text: str) -> Optional[Dict[str, Any]]:
                     recipe_ingredients.append(ing.strip())
         recipe_instructions = _normalize_recipe_instructions(recipe.get("recipeInstructions"))
         recipe_nutrition = _extract_nutrition(recipe.get("nutrition"))
+        recipe_image_url: Optional[str] = None
+        img = recipe.get("image")
+        if isinstance(img, str) and img.strip().startswith("http"):
+            recipe_image_url = img.strip()
+        elif isinstance(img, list) and img:
+            first = img[0]
+            if isinstance(first, str) and first.strip().startswith("http"):
+                recipe_image_url = first.strip()
+            elif isinstance(first, dict) and first.get("url"):
+                recipe_image_url = first["url"].strip()
         return {
             "recipe_title": recipe_title,
             "recipe_ingredients": recipe_ingredients,
             "recipe_instructions": recipe_instructions,
             "recipe_nutrition": recipe_nutrition,
+            "recipe_image_url": recipe_image_url,
         }
     return None
 
@@ -340,6 +351,13 @@ async def fetch_url_context(url: str) -> Dict[str, Any]:
             result["recipe_ingredients"] = recipe_data["recipe_ingredients"] if recipe_data else []
             result["recipe_instructions"] = recipe_data["recipe_instructions"] if recipe_data else []
             result["recipe_nutrition"] = recipe_data["recipe_nutrition"] if recipe_data else None
+            img_url = (recipe_data or {}).get("recipe_image_url") if recipe_data else None
+            if img_url:
+                result["image_url"] = img_url
+        if not result.get("image_url"):
+            og_image = _extract_meta(html_text, ["og:image", "twitter:image"])
+            if og_image and og_image.strip().startswith("http"):
+                result["image_url"] = og_image.strip()
     except Exception as exc:
         logger.warning("Failed to fetch URL context for %s: %s", url, exc)
         result["error"] = str(exc)
