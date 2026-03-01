@@ -1,6 +1,6 @@
 # Bug Fix: BF-001 - Google Tasks Sync Fails with "No Google token found for user"
 
-**Status**: ⏳ In Progress  
+**Status**: ✅ Completed  
 **Priority**: 🟠 High  
 **Story Points**: 2  
 **Created**: 2026-03-01  
@@ -96,3 +96,4 @@ In `TaskService.create_tasks_from_decision`, when the user has no Google token t
 - 2026-03-01 - Created
 - 2026-03-01 - Branch fix/BF-001-google-tasks-sync-no-token; stop logging "failed" when no token in create_tasks_from_decision (task_service.py)
 - 2026-03-01 - Added LoggingService.delete_failed_syncs_no_token() and scripts/cleanup_no_token_sync_failures.py for one-off DB cleanup
+- 2026-03-01 - Fix committed on branch fix/BF-001-google-tasks-sync-no-token (dd4c132)
