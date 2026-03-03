@@ -20,12 +20,10 @@ Usage:
     task = client.create_task("Buy groceries", "Milk, bread, eggs")
 """
 
-import os
-import json
 import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-import requests
+import os
+from typing import Any
+
 from requests_oauthlib import OAuth2Session
 
 logger = logging.getLogger(__name__)
@@ -43,7 +41,7 @@ class GoogleTasksClient:
     def scope(self):
         return self.SCOPE
 
-    def __init__(self, client_id: Optional[str] = None, client_secret: Optional[str] = None, redirect_uri: Optional[str] = None):
+    def __init__(self, client_id: str | None = None, client_secret: str | None = None, redirect_uri: str | None = None):
         self.client_id = client_id or os.getenv("GOOGLE_CLIENT_ID") or ""
         self.client_secret = client_secret or os.getenv("GOOGLE_CLIENT_SECRET") or ""
         self.redirect_uri = redirect_uri or os.getenv("GOOGLE_REDIRECT_URI", "urn:ietf:wg:oauth:2.0:oob")
@@ -51,8 +49,8 @@ class GoogleTasksClient:
         if not self.client_id or not self.client_secret:
             raise ValueError("Google OAuth2 credentials not configured")
 
-        self.session: Optional[OAuth2Session] = None
-        self.token: Optional[Dict[str, Any]] = None
+        self.session: OAuth2Session | None = None
+        self.token: dict[str, Any] | None = None
 
     def get_authorization_url(self) -> tuple[str, str]:
         """Get OAuth2 authorization URL and state"""
@@ -70,7 +68,7 @@ class GoogleTasksClient:
 
         return authorization_url, state
 
-    def exchange_code_for_token(self, authorization_code: str) -> Dict[str, Any]:
+    def exchange_code_for_token(self, authorization_code: str) -> dict[str, Any]:
         """Exchange authorization code for access token"""
         session = OAuth2Session(
             client_id=self.client_id,
@@ -91,7 +89,7 @@ class GoogleTasksClient:
 
         return token
 
-    def set_token(self, token: Dict[str, Any]):
+    def set_token(self, token: dict[str, Any]):
         """Set access token for authenticated requests"""
         self.token = token
         self.session = OAuth2Session(
@@ -99,7 +97,7 @@ class GoogleTasksClient:
             token=token
         )
 
-    def refresh_token(self) -> Optional[Dict[str, Any]]:
+    def refresh_token(self) -> dict[str, Any] | None:
         """Refresh expired access token. Preserves refresh_token from the previous token
         since Google's refresh response often only returns access_token and expires_in."""
         if not self.session or not self.token:
@@ -120,7 +118,7 @@ class GoogleTasksClient:
             logger.debug(f"Token refresh failed: {e}")
             return None
 
-    def get_task_lists(self) -> List[Dict[str, Any]]:
+    def get_task_lists(self) -> list[dict[str, Any]]:
         """Get all user's task lists"""
         if not self.session:
             raise ValueError("Not authenticated")
@@ -157,7 +155,7 @@ class GoogleTasksClient:
             return task_lists[0]["id"]
         raise ValueError("No task lists found")
 
-    def create_task(self, title: str, notes: str = "", task_list_id: Optional[str] = None, due_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def create_task(self, title: str, notes: str = "", task_list_id: str | None = None, due_date: str | None = None) -> dict[str, Any] | None:
         """Create a new task in Google Tasks"""
         if not self.session:
             raise ValueError("Not authenticated")
@@ -202,7 +200,7 @@ class GoogleTasksClient:
                 logger.debug(f"Failed to create task: {e}")
                 return None
 
-    def update_task(self, task_id: str, task_list_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_task(self, task_id: str, task_list_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
         """Update an existing task"""
         if not self.session:
             raise ValueError("Not authenticated")
@@ -264,11 +262,8 @@ class GoogleTasksClient:
             else:
                 logger.debug(f"Failed to delete task: {e}")
                 return False
-        except Exception as e:
-            logger.debug(f"Failed to delete task: {e}")
-            return False
 
-    def get_tasks(self, task_list_id: str, show_completed: bool = False, max_results: int = 100) -> List[Dict[str, Any]]:
+    def get_tasks(self, task_list_id: str, show_completed: bool = False, max_results: int = 100) -> list[dict[str, Any]]:
         """Get tasks from a task list"""
         if not self.session:
             raise ValueError("Not authenticated")

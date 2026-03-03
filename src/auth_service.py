@@ -5,13 +5,13 @@ Handles OAuth2 flow for Google Tasks API integration.
 Provides authorization URLs and token management.
 """
 
-import os
 import json
+import os
 import secrets
-from typing import Dict, Any, Optional, Tuple
+from typing import Any
 from urllib.parse import urlencode
+
 import requests
-from requests_oauthlib import OAuth2Session
 
 
 class GoogleAuthService:
@@ -29,7 +29,7 @@ class GoogleAuthService:
         if not self.client_id or not self.client_secret:
             raise ValueError("Google OAuth2 credentials not configured")
 
-    def get_authorization_url(self, state: str = None) -> Tuple[str, str]:
+    def get_authorization_url(self, state: str = None) -> tuple[str, str]:
         """Generate OAuth2 authorization URL
 
         Returns:
@@ -51,7 +51,7 @@ class GoogleAuthService:
         auth_url = f"{self.AUTH_URL}?{urlencode(params)}"
         return auth_url, state
 
-    def exchange_code_for_token(self, authorization_code: str) -> Dict[str, Any]:
+    def exchange_code_for_token(self, authorization_code: str) -> dict[str, Any]:
         """Exchange authorization code for access token
 
         Args:
@@ -74,7 +74,7 @@ class GoogleAuthService:
         token = response.json()
         return token
 
-    def refresh_access_token(self, refresh_token: str) -> Optional[Dict[str, Any]]:
+    def refresh_access_token(self, refresh_token: str) -> dict[str, Any] | None:
         """Refresh an expired access token
 
         Args:
@@ -105,10 +105,10 @@ class GoogleAuthService:
         return response.status_code == 200
 
     @staticmethod
-    def save_token(user_id: str, token: Dict[str, Any], token_file: str = "google_tokens.json"):
+    def save_token(user_id: str, token: dict[str, Any], token_file: str = "google_tokens.json"):
         """Save token for a user to file"""
         try:
-            with open(token_file, 'r') as f:
+            with open(token_file) as f:
                 tokens = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             tokens = {}
@@ -119,10 +119,10 @@ class GoogleAuthService:
             json.dump(tokens, f, indent=2)
 
     @staticmethod
-    def load_token(user_id: str, token_file: str = "google_tokens.json") -> Optional[Dict[str, Any]]:
+    def load_token(user_id: str, token_file: str = "google_tokens.json") -> dict[str, Any] | None:
         """Load token for a user from file"""
         try:
-            with open(token_file, 'r') as f:
+            with open(token_file) as f:
                 tokens = json.load(f)
             return tokens.get(user_id)
         except (FileNotFoundError, json.JSONDecodeError):
@@ -132,7 +132,7 @@ class GoogleAuthService:
     def delete_token(user_id: str, token_file: str = "google_tokens.json"):
         """Delete token for a user"""
         try:
-            with open(token_file, 'r') as f:
+            with open(token_file) as f:
                 tokens = json.load(f)
             if user_id in tokens:
                 del tokens[user_id]
@@ -148,7 +148,7 @@ class TelegramOAuthHandler:
 
     def __init__(self, auth_service: GoogleAuthService):
         self.auth_service = auth_service
-        self.pending_auths: Dict[str, str] = {}  # state -> user_id
+        self.pending_auths: dict[str, str] = {}  # state -> user_id
 
     def start_oauth_flow(self, user_id: str) -> str:
         """Start OAuth2 flow and return authorization URL"""
@@ -156,7 +156,7 @@ class TelegramOAuthHandler:
         self.pending_auths[state] = user_id
         return auth_url
 
-    def complete_oauth_flow(self, authorization_code: str) -> Optional[str]:
+    def complete_oauth_flow(self, authorization_code: str) -> str | None:
         """Complete OAuth2 flow with authorization code"""
         try:
             token = self.auth_service.exchange_code_for_token(authorization_code)

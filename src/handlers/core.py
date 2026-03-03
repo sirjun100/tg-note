@@ -6,14 +6,14 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import difflib
 import logging
 import os
 import re
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 import httpx
-
 from telegram import Message, Update
 from telegram.constants import ChatAction
 from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
 
 logger = logging.getLogger(__name__)
-_sync_task: Optional[asyncio.Task] = None
+_sync_task: asyncio.Task | None = None
 PROJECT_STATUS_TAGS = {
     "status/planning",
     "status/building",
@@ -44,7 +44,7 @@ PROJECT_STATUS_TAGS = {
 }
 
 
-def register_core_handlers(application: Any, orch: "TelegramOrchestrator") -> None:
+def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("start", _start(orch)))
     application.add_handler(CommandHandler("status", _status(orch)))
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
@@ -62,7 +62,7 @@ def register_core_handlers(application: Any, orch: "TelegramOrchestrator") -> No
 # ---------------------------------------------------------------------------
 
 
-def _start(orch: "TelegramOrchestrator"):
+def _start(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user:
@@ -95,7 +95,7 @@ def _start(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _status(orch: "TelegramOrchestrator"):
+def _status(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -128,7 +128,7 @@ def _status(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _sync(orch: "TelegramOrchestrator"):
+def _sync(orch: TelegramOrchestrator):
     """Force a Joplin sync with the configured target (e.g. Dropbox)."""
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
@@ -159,7 +159,7 @@ def _sync(orch: "TelegramOrchestrator"):
                 format_error_message("Joplin CLI not found; sync unavailable.")
             )
             return
-        except asyncio.TimeoutError:
+        except TimeoutError:
             await update.message.reply_text(
                 format_error_message("Sync timed out after 90 seconds.")
             )
@@ -183,7 +183,7 @@ def _sync(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _note(orch: "TelegramOrchestrator"):
+def _note(orch: TelegramOrchestrator):
     """Create a Joplin note only (no task). Usage: /note <content or URL>."""
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
@@ -215,7 +215,7 @@ def _note(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _task(orch: "TelegramOrchestrator"):
+def _task(orch: TelegramOrchestrator):
     """Create a Google Task only (no note). Usage: /task <action item>."""
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
@@ -268,7 +268,7 @@ async def _get_joplin_dropbox_sync_status() -> tuple[bool, str]:
 
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=6)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         proc.kill()
         return False, "status check timeout"
 
@@ -285,7 +285,7 @@ async def _get_joplin_dropbox_sync_status() -> tuple[bool, str]:
     return False, f"target={target}"
 
 
-def _helpme(orch: "TelegramOrchestrator"):
+def _helpme(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -337,7 +337,7 @@ def _helpme(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _project_status(orch: "TelegramOrchestrator"):
+def _project_status(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -428,7 +428,7 @@ def _project_status(orch: "TelegramOrchestrator"):
 # ---------------------------------------------------------------------------
 
 
-def _message(orch: "TelegramOrchestrator"):
+def _message(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         message = update.message
@@ -477,7 +477,7 @@ def _message(orch: "TelegramOrchestrator"):
 # ---------------------------------------------------------------------------
 
 
-async def _fetch_image_as_data_url(image_url: str) -> Optional[str]:
+async def _fetch_image_as_data_url(image_url: str) -> str | None:
     """Fetch an image from a URL and return a data URL (data:image/...;base64,...) or None."""
     try:
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
@@ -496,13 +496,11 @@ async def _fetch_image_as_data_url(image_url: str) -> Optional[str]:
 
 async def _send_typing(message: Message, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send typing indicator; ignore errors so they don't break the flow."""
-    try:
+    with contextlib.suppress(Exception):
         await context.bot.send_chat_action(chat_id=message.chat_id, action=ChatAction.TYPING)
-    except Exception:
-        pass
 
 
-def _task_sync_status_line(orch: "TelegramOrchestrator", user_id: int) -> str:
+def _task_sync_status_line(orch: TelegramOrchestrator, user_id: int) -> str:
     """Append a one-line sync status after task creation success."""
     if not orch.task_service:
         return ""
@@ -516,11 +514,11 @@ def _task_sync_status_line(orch: "TelegramOrchestrator", user_id: int) -> str:
 
 
 async def _handle_new_request(
-    orch: "TelegramOrchestrator",
+    orch: TelegramOrchestrator,
     user_id: int,
     text: str,
     message: Message,
-    telegram_message_id: Optional[int],
+    telegram_message_id: int | None,
     context: ContextTypes.DEFAULT_TYPE,
     *,
     force_note: bool = False,
@@ -637,7 +635,7 @@ async def _handle_new_request(
 
 
 async def _handle_clarification_reply(
-    orch: "TelegramOrchestrator",
+    orch: TelegramOrchestrator,
     user_id: int,
     text: str,
     message: Message,
@@ -697,28 +695,28 @@ async def _handle_clarification_reply(
 
 
 async def _handle_braindump_message(
-    orch: "TelegramOrchestrator", user_id: int, text: str, message: Message
+    orch: TelegramOrchestrator, user_id: int, text: str, message: Message
 ) -> None:
     from src.handlers.braindump import handle_braindump_message
     await handle_braindump_message(orch, user_id, text, message)
 
 
 async def _handle_stoic_message(
-    orch: "TelegramOrchestrator", user_id: int, text: str, message: Message
+    orch: TelegramOrchestrator, user_id: int, text: str, message: Message
 ) -> None:
     from src.handlers.stoic import handle_stoic_message
     await handle_stoic_message(orch, user_id, text, message)
 
 
 async def _process_llm_response(
-    orch: "TelegramOrchestrator",
+    orch: TelegramOrchestrator,
     user_id: int,
     llm_response: Any,
     message: Message,
-    telegram_message_id: Optional[int] = None,
+    telegram_message_id: int | None = None,
     clear_state: bool = False,
-    url_context: Optional[Dict[str, Any]] = None,
-    context: Optional[ContextTypes.DEFAULT_TYPE] = None,
+    url_context: dict[str, Any] | None = None,
+    context: ContextTypes.DEFAULT_TYPE | None = None,
 ) -> None:
     if llm_response.status == "SUCCESS" and llm_response.note:
         if context:
@@ -801,11 +799,11 @@ async def _process_llm_response(
 
 
 async def create_note_in_joplin(
-    orch: "TelegramOrchestrator",
-    note_data: Dict[str, Any],
-    url_context: Optional[Dict[str, Any]] = None,
-    message: Optional[Message] = None,
-) -> Optional[Dict[str, Any]]:
+    orch: TelegramOrchestrator,
+    note_data: dict[str, Any],
+    url_context: dict[str, Any] | None = None,
+    message: Message | None = None,
+) -> dict[str, Any] | None:
     try:
         requested_folder = (note_data.get("parent_id") or "").strip()
         resolved_folder_id, suggestions = await _resolve_folder_id_or_suggestions(
@@ -848,7 +846,7 @@ async def create_note_in_joplin(
             logger.error("Note validation failed: %s", errors)
             return None
 
-        image_data_url: Optional[str] = None
+        image_data_url: str | None = None
         needs_image = (
             (url_context and url_context.get("content_type") == "recipe")
             or (
@@ -885,7 +883,7 @@ async def create_note_in_joplin(
         )
 
         tags = normalized_note.get("tags", [])
-        tag_info: Dict[str, Any] = {"new_tags": [], "existing_tags": [], "all_tags": []}
+        tag_info: dict[str, Any] = {"new_tags": [], "existing_tags": [], "all_tags": []}
         if tags:
             tag_info = await orch.joplin_client.apply_tags_and_track_new(note_id, tags)
 
@@ -896,11 +894,11 @@ async def create_note_in_joplin(
 
 
 async def _resolve_folder_id_or_suggestions(
-    orch: "TelegramOrchestrator",
+    orch: TelegramOrchestrator,
     requested_folder: str,
     note_title: str = "",
     note_body: str = "",
-) -> tuple[Optional[str], list[str]]:
+) -> tuple[str | None, list[str]]:
     folders = await orch.joplin_client.get_folders()
     if not folders:
         # Self-heal first-run/empty setups by creating a default Inbox folder.
@@ -914,7 +912,7 @@ async def _resolve_folder_id_or_suggestions(
             logger.warning("Failed to auto-create default inbox folder: %s", exc)
         return None, []
 
-    def _fallback_inbox_id() -> Optional[str]:
+    def _fallback_inbox_id() -> str | None:
         # Preferred explicit folder name
         for f in folders:
             title = (f.get("title") or "").strip().lower()
@@ -1051,7 +1049,7 @@ async def _resolve_folder_id_or_suggestions(
     return None, deduped[:5]
 
 
-def _format_tag_display(tag_info: Dict[str, Any]) -> str:
+def _format_tag_display(tag_info: dict[str, Any]) -> str:
     if not tag_info.get("all_tags"):
         return ""
     new_set = set(tag_info.get("new_tags", []))
@@ -1060,7 +1058,7 @@ def _format_tag_display(tag_info: Dict[str, Any]) -> str:
 
 
 def _log_tag_creation(
-    orch: "TelegramOrchestrator", user_id: int, note_id: str, tag_info: Dict[str, Any]
+    orch: TelegramOrchestrator, user_id: int, note_id: str, tag_info: dict[str, Any]
 ) -> None:
     try:
         for name in tag_info.get("new_tags", []):
@@ -1071,7 +1069,7 @@ def _log_tag_creation(
         logger.warning("Failed to log tag creation: %s", exc)
 
 
-async def _build_url_context(validated_text: str) -> Dict[str, Any]:
+async def _build_url_context(validated_text: str) -> dict[str, Any]:
     """
     Build enrichment context for the first URL in text.
 
@@ -1126,7 +1124,7 @@ async def _run_joplin_sync() -> None:
     except FileNotFoundError:
         logger.warning("Joplin CLI not found; skipping post-note sync")
         return
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("Joplin sync timed out after note creation")
         return
     except Exception as exc:
@@ -1146,7 +1144,7 @@ async def _run_joplin_sync() -> None:
 
 
 async def _ensure_project_status_tag(
-    orch: "TelegramOrchestrator",
+    orch: TelegramOrchestrator,
     folder_id: str,
     tags: Any,
     title: str,

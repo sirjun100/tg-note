@@ -14,20 +14,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Optional
 
 from telegram.ext import Application
 
 from config import TELEGRAM_BOT_TOKEN
-from src.security_utils import ping_joplin_api
-from src.settings import get_settings
 from src.enrichment_service import EnrichmentService
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
 from src.logging_service import LoggingService
-from src.report_generator import ReportGenerator
 from src.reorg_orchestrator import ReorgOrchestrator
+from src.report_generator import ReportGenerator
 from src.scheduler_service import get_scheduler_service
+from src.security_utils import ping_joplin_api
+from src.settings import get_settings
 from src.state_manager import StateManager
 
 logger = logging.getLogger(__name__)
@@ -54,7 +53,7 @@ class TelegramOrchestrator:
         self.state_manager = StateManager(db_path=STATE_DB_PATH)
         self.logging_service = LoggingService(db_path=LOGS_DB_PATH)
 
-        self.task_service: Optional[object] = None
+        self.task_service: object | None = None
         if GOOGLE_TASKS_AVAILABLE:
             try:
                 from src.google_tasks_client import GoogleTasksClient
@@ -88,7 +87,7 @@ class TelegramOrchestrator:
 # Webhook URL resolution
 # ---------------------------------------------------------------------------
 
-def _resolve_webhook_url() -> Optional[str]:
+def _resolve_webhook_url() -> str | None:
     """Return the public webhook URL if we should run in webhook mode."""
     url = os.environ.get("WEBHOOK_URL")
     if url:
@@ -107,7 +106,7 @@ async def _send_startup_message(
     application: Application,
     orchestrator: TelegramOrchestrator,
     mode: str,
-    port: Optional[int] = None,
+    port: int | None = None,
 ) -> None:
     """Send a detailed startup message to whitelisted users (when NOTIFY_STARTUP is not disabled)."""
     if os.environ.get("NOTIFY_STARTUP", "1").strip().lower() in ("0", "false", "no"):

@@ -6,12 +6,14 @@ with timezone support.
 """
 
 import logging
-from typing import Optional, Callable, Any, Dict, Tuple
-from datetime import datetime, time
+from collections.abc import Callable
+from datetime import time
+from typing import Any
+
 import pytz
+from apscheduler.job import Job
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.job import Job
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ class SchedulerService:
     def __init__(self):
         """Initialize APScheduler"""
         self.scheduler = AsyncIOScheduler()
-        self.jobs: Dict[int, Job] = {}  # user_id -> Job mapping
+        self.jobs: dict[int, Job] = {}  # user_id -> Job mapping
         logger.info("SchedulerService initialized")
 
     async def start(self) -> None:
@@ -77,11 +79,11 @@ class SchedulerService:
         """
         try:
             return pytz.timezone(timezone_str)
-        except pytz.exceptions.UnknownTimeZoneError as e:
+        except pytz.exceptions.UnknownTimeZoneError:
             logger.warning(f"Unknown timezone: {timezone_str}, falling back to UTC")
             return pytz.UTC
 
-    def _time_to_cron(self, delivery_time: time) -> Tuple[int, int]:
+    def _time_to_cron(self, delivery_time: time) -> tuple[int, int]:
         """
         Convert time object to cron components
 
@@ -205,7 +207,7 @@ class SchedulerService:
             user_id, new_delivery_time, new_timezone, report_callback
         )
 
-    def get_scheduled_jobs(self) -> Dict[int, Dict[str, Any]]:
+    def get_scheduled_jobs(self) -> dict[int, dict[str, Any]]:
         """
         Get information about all scheduled jobs
 
@@ -226,7 +228,7 @@ class SchedulerService:
 
         return jobs_info
 
-    def get_user_schedule(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get_user_schedule(self, user_id: int) -> dict[str, Any] | None:
         """
         Get schedule information for a specific user
 
@@ -270,7 +272,7 @@ class SchedulerService:
         """
         return self.scheduler.get_jobs()
 
-    def get_scheduler_status(self) -> Dict[str, Any]:
+    def get_scheduler_status(self) -> dict[str, Any]:
         """
         Get current scheduler status
 
@@ -292,7 +294,7 @@ class SchedulerService:
 
 
 # Singleton instance
-_scheduler_service: Optional[SchedulerService] = None
+_scheduler_service: SchedulerService | None = None
 
 
 def get_scheduler_service() -> SchedulerService:

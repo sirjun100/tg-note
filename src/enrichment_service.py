@@ -5,8 +5,10 @@ Supports batch operations with progress tracking and filtering.
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
+
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
 
@@ -30,7 +32,7 @@ class EnrichmentStats:
             return 0.0
         return (self.enriched / self.total) * 100
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             'total': self.total,
             'enriched': self.enriched,
@@ -155,10 +157,10 @@ class EnrichmentService:
 
     async def enrich_notes_batch(
         self,
-        notes: Optional[List[Dict[str, Any]]] = None,
-        limit: Optional[int] = None,
-        filter_func: Optional[Callable[[Dict[str, Any]], bool]] = None,
-        progress_callback: Optional[Callable[[EnrichmentStats], None]] = None
+        notes: list[dict[str, Any]] | None = None,
+        limit: int | None = None,
+        filter_func: Callable[[dict[str, Any]], bool] | None = None,
+        progress_callback: Callable[[EnrichmentStats], None] | None = None
     ) -> EnrichmentStats:
         """
         Enrich multiple notes with progress tracking.
@@ -226,11 +228,11 @@ class EnrichmentService:
         logger.info(f"Batch enrichment complete: {stats.enriched} enriched, {stats.skipped} skipped, {stats.failed} failed")
         return stats
 
-    def get_unenriched_notes_filter(self) -> Callable[[Dict[str, Any]], bool]:
+    def get_unenriched_notes_filter(self) -> Callable[[dict[str, Any]], bool]:
         """Get a filter function to find notes without enrichment metadata"""
         return lambda note: not self._is_already_enriched(note.get('body', ''))
 
-    async def get_enrichment_summary(self, notes: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    async def get_enrichment_summary(self, notes: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """Get summary of enrichment status across notes"""
         if notes is None:
             notes = await self.joplin_client.get_all_notes()

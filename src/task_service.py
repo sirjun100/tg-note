@@ -7,9 +7,10 @@ Integrates with the logging service to track task-note relationships.
 
 import logging
 import re
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from src.google_tasks_client import GoogleTasksClient
-from src.logging_service import LoggingService, Decision
+from src.logging_service import Decision, LoggingService
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class TaskService:
         self.tasks_client = tasks_client
         self.logging_service = logging_service
 
-    def analyze_decision_for_tasks(self, decision: Decision) -> List[Dict[str, Any]]:
+    def analyze_decision_for_tasks(self, decision: Decision) -> list[dict[str, Any]]:
         """Analyze a decision to identify potential tasks
 
         Args:
@@ -47,7 +48,7 @@ class TaskService:
 
         return tasks
 
-    def _extract_action_items(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_action_items(self, text: str) -> list[dict[str, Any]]:
         """Extract action items from text using pattern matching
 
         Looks for:
@@ -82,7 +83,7 @@ class TaskService:
 
         return items
 
-    def _extract_action(self, text: str) -> Optional[str]:
+    def _extract_action(self, text: str) -> str | None:
         """Extract the main action from a line of text"""
         # Remove common prefixes
         text = re.sub(r'^(todo|task|action|reminder)[:\-]?\s*', '', text, flags=re.IGNORECASE)
@@ -115,7 +116,7 @@ class TaskService:
 
         return None
 
-    def _extract_date(self, text: str) -> Optional[str]:
+    def _extract_date(self, text: str) -> str | None:
         """Extract due dates from text"""
         # Look for date patterns
         date_patterns = [
@@ -129,10 +130,9 @@ class TaskService:
         for pattern in date_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                date_str = match.group(1) if match.groups() else match.group(0)
-                # In a real implementation, you'd parse this into RFC3339 format
-                # For now, return as-is or None
-                return None  # Placeholder
+                _date_str = match.group(1) if match.groups() else match.group(0)
+                # TODO: parse _date_str into RFC3339 format
+                return None
 
         return None
 
@@ -150,7 +150,7 @@ class TaskService:
         else:
             return "normal"
 
-    def create_task_directly(self, title: str, user_id: str) -> List[Dict[str, Any]]:
+    def create_task_directly(self, title: str, user_id: str) -> list[dict[str, Any]]:
         """Create a single Google Task directly from user text (used by /task command).
         Bypasses action-item extraction — the user explicitly asked to create this task."""
         logger.info("Direct task creation for user %s: %s", user_id, title[:80])
@@ -197,7 +197,7 @@ class TaskService:
                 self.logging_service.save_google_token(user_id, self.tasks_client.token)
             return []
 
-    def create_tasks_from_decision(self, decision: Decision, user_id: str) -> List[Dict[str, Any]]:
+    def create_tasks_from_decision(self, decision: Decision, user_id: str) -> list[dict[str, Any]]:
         """Create Google Tasks from a decision with enhanced error handling and linking
 
         Args:
@@ -234,7 +234,7 @@ class TaskService:
                 note_tags = decision.tags or []
                 sensitive_tags = ['personal', 'private', 'confidential', 'sensitive']
                 if any(tag.lower() in sensitive_tags for tag in note_tags):
-                    print(f"🔒 Privacy mode: Skipping task creation for sensitive note")
+                    print("🔒 Privacy mode: Skipping task creation for sensitive note")
                     return []
 
             # Check if only tagged notes should create tasks
@@ -243,7 +243,7 @@ class TaskService:
                 if task_creation_tags:
                     note_tags = decision.tags or []
                     if not any(tag in task_creation_tags for tag in note_tags):
-                        print(f"⚠️ Note doesn't have required tags for task creation")
+                        print("⚠️ Note doesn't have required tags for task creation")
                         return []
 
             # Set token on client
@@ -346,7 +346,7 @@ class TaskService:
             logger.info("Created %d Google Task(s) for user %s", len(created_tasks), user_id)
         return created_tasks
 
-    def get_user_tasks(self, user_id: str, task_list_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_user_tasks(self, user_id: str, task_list_id: str | None = None) -> list[dict[str, Any]]:
         """Get user's Google Tasks"""
         token = self.logging_service.load_google_token(user_id)
         if not token:
@@ -370,7 +370,7 @@ class TaskService:
             )
             return []
 
-    def get_available_task_lists(self, user_id: str) -> List[Dict[str, Any]]:
+    def get_available_task_lists(self, user_id: str) -> list[dict[str, Any]]:
         """Get all available task lists for a user"""
         token = self.logging_service.load_google_token(user_id)
         if not token:
@@ -438,7 +438,7 @@ class TaskService:
             print(f"❌ Error toggling privacy mode: {e}")
             return False
 
-    def set_task_creation_tags(self, user_id: int, tags: List[str]) -> bool:
+    def set_task_creation_tags(self, user_id: int, tags: list[str]) -> bool:
         """Set tags that trigger task creation (when include_only_tagged is True)"""
         try:
             config = self.logging_service.get_google_tasks_config(user_id)
@@ -454,7 +454,7 @@ class TaskService:
             print(f"❌ Error setting task creation tags: {e}")
             return False
 
-    def get_task_sync_status(self, user_id: int) -> Dict[str, Any]:
+    def get_task_sync_status(self, user_id: int) -> dict[str, Any]:
         """Get task synchronization status for a user"""
         try:
             sync_history = self.logging_service.get_sync_history(user_id, limit=10)

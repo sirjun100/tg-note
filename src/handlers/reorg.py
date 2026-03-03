@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def register_reorg_handlers(application: Any, orch: "TelegramOrchestrator") -> None:
+def register_reorg_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("reorg_status", _status(orch)))
     application.add_handler(CommandHandler("reorg_init", _init(orch)))
     application.add_handler(CommandHandler("reorg_preview", _preview(orch)))
@@ -32,7 +32,7 @@ def register_reorg_handlers(application: Any, orch: "TelegramOrchestrator") -> N
     application.add_handler(CommandHandler("reorg_help", _help(orch)))
 
 
-def _status(orch: "TelegramOrchestrator"):
+def _status(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -78,7 +78,7 @@ def _status(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _init(orch: "TelegramOrchestrator"):
+def _init(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -131,7 +131,7 @@ def _init(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _preview(orch: "TelegramOrchestrator"):
+def _preview(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -173,7 +173,7 @@ def _preview(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _execute(orch: "TelegramOrchestrator"):
+def _execute(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -227,7 +227,7 @@ def _execute(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _enrich(orch: "TelegramOrchestrator"):
+def _enrich(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -325,7 +325,7 @@ def _enrich(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _history(orch: "TelegramOrchestrator"):
+def _history(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -356,7 +356,7 @@ def _history(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _audit_tags(orch: "TelegramOrchestrator"):
+def _audit_tags(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -384,7 +384,7 @@ def _audit_tags(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _detect_conflicts(orch: "TelegramOrchestrator"):
+def _detect_conflicts(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -424,7 +424,7 @@ def _detect_conflicts(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _help(orch: "TelegramOrchestrator"):
+def _help(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):

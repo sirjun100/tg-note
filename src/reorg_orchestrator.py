@@ -5,12 +5,11 @@ Includes comprehensive error handling, logging, and conflict detection.
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 from src.joplin_client import JoplinClient
-from src.enrichment_service import EnrichmentService
 from src.llm_orchestrator import LLMOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -99,9 +98,9 @@ class ReorgOrchestrator:
     def __init__(self, joplin_client: JoplinClient, llm_orchestrator: LLMOrchestrator):
         self.joplin_client = joplin_client
         self.llm_orchestrator = llm_orchestrator
-        self.migration_history: List[OperationLog] = []
+        self.migration_history: list[OperationLog] = []
 
-    def get_available_templates(self) -> List[str]:
+    def get_available_templates(self) -> list[str]:
         """Get list of available PARA templates"""
         return list(self.PARA_TEMPLATES.keys())
 
@@ -169,9 +168,9 @@ class ReorgOrchestrator:
             raise
         except Exception as e:
             logger.error(f"Unexpected error during structure initialization: {e}", exc_info=True)
-            raise ReorgException(f"Failed to initialize PARA structure: {e}")
+            raise ReorgException(f"Failed to initialize PARA structure: {e}") from e
 
-    async def generate_migration_plan(self) -> Dict[str, Any]:
+    async def generate_migration_plan(self) -> dict[str, Any]:
         """
         Scan all notes and suggest migration to PARA structure using LLM classification.
         """
@@ -249,22 +248,22 @@ class ReorgOrchestrator:
                 "moves": []
             }
 
-    async def audit_tags(self) -> Dict[str, Any]:
+    async def audit_tags(self) -> dict[str, Any]:
         """Audit tags for duplicates, unused tags, or inconsistent casing"""
         tags = await self.joplin_client.fetch_tags()
-        
+
         audit = {
             "duplicate_names": [],
             "unused_tags": [],
             "total_tags": len(tags)
         }
-        
+
         # Check for case-insensitive duplicates
         seen_names = {} # lowercase -> original
         for tag in tags:
             name = tag['title']
             name_lower = name.lower()
-            
+
             if name_lower in seen_names:
                 audit["duplicate_names"].append({
                     "original": seen_names[name_lower],
@@ -273,12 +272,12 @@ class ReorgOrchestrator:
                 })
             else:
                 seen_names[name_lower] = name
-                
+
         # TODO: Add usage counts for unused tag detection
 
         return audit
 
-    async def detect_conflicts(self, plan: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def detect_conflicts(self, plan: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Detect potential conflicts in a migration plan.
 
@@ -356,7 +355,7 @@ class ReorgOrchestrator:
         logger.info(f"Conflict detection complete: {conflicts['total_conflicts']} conflicts found")
         return conflicts
 
-    def get_migration_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_migration_history(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent migration operations"""
         history = []
         for log in self.migration_history[-limit:]:
@@ -417,7 +416,7 @@ class ReorgOrchestrator:
             logger.warning("Could not check Projects subtree: %s", e)
             return False
 
-    async def _extract_tags_from_folder_path(self, folder_id: str) -> List[str]:
+    async def _extract_tags_from_folder_path(self, folder_id: str) -> list[str]:
         """Extract suggested tags from folder hierarchy"""
         try:
             folders = await self.joplin_client.get_folders()
@@ -463,7 +462,7 @@ class ReorgOrchestrator:
             logger.warning(f"Failed to extract tags from folder {folder_id}: {e}")
             return []
 
-    async def execute_migration_plan(self, plan: List[Dict[str, str]], dry_run: bool = False) -> Dict[str, Any]:
+    async def execute_migration_plan(self, plan: list[dict[str, str]], dry_run: bool = False) -> dict[str, Any]:
         """
         Execute a series of note moves with automatic tag application.
 
@@ -538,4 +537,4 @@ class ReorgOrchestrator:
 
         except Exception as e:
             logger.error(f"Migration execution failed: {e}", exc_info=True)
-            raise MigrationExecutionException(f"Failed to execute migration plan: {e}")
+            raise MigrationExecutionException(f"Failed to execute migration plan: {e}") from e

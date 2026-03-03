@@ -7,12 +7,14 @@ Supports multiple LLM providers through abstraction layer.
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
-from src.llm_providers import registry as provider_registry
-from config import LLM_PROVIDER
-from src.logging_service import LoggingService, LLMInteraction
 from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+from config import LLM_PROVIDER
+from src.llm_providers import registry as provider_registry
+from src.logging_service import LoggingService
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +22,9 @@ class JoplinNoteSchema(BaseModel):
     """Pydantic schema for LLM-generated note data"""
     status: str = Field(description="Either 'SUCCESS' or 'NEED_INFO'")
     confidence_score: float = Field(description="Confidence score between 0.0 and 1.0")
-    question: Optional[str] = Field(default=None, description="Clarification question if status is NEED_INFO")
+    question: str | None = Field(default=None, description="Clarification question if status is NEED_INFO")
     log_entry: str = Field(description="Log entry describing the AI decision")
-    note: Optional[Dict[str, Any]] = Field(default=None, description="Note data with title, body, parent_id, tags")
+    note: dict[str, Any] | None = Field(default=None, description="Note data with title, body, parent_id, tags")
 
 class LLMOrchestrator:
     """Orchestrates LLM interactions for note generation"""
@@ -52,9 +54,9 @@ class LLMOrchestrator:
     async def process_message(
         self,
         user_message: str,
-        context: Dict[str, Any] = None,
+        context: dict[str, Any] = None,
         persona: str = None,
-        history: List[Dict[str, str]] = None,
+        history: list[dict[str, str]] = None,
     ) -> JoplinNoteSchema:
         """
         Process user message and generate note data using LLM
@@ -76,16 +78,16 @@ class LLMOrchestrator:
                 system_prompt = self._get_persona_prompt(persona, context)
             else:
                 system_prompt = self._build_system_prompt(context)
-            
+
             logger.info(f"📝 System prompt ({len(system_prompt)} chars): {system_prompt[:200]}{'...' if len(system_prompt) > 200 else ''}")
 
             # Prepare messages
             messages = [{"role": "system", "content": system_prompt}]
-            
+
             # Add history if provided
             if history:
                 messages.extend(history)
-            
+
             # Add current user message
             messages.append({"role": "user", "content": user_message})
 
@@ -158,7 +160,7 @@ class LLMOrchestrator:
                                         log_entry=f"Conversational response from persona: {persona}",
                                         note=None
                                     )
-                                
+
                                 logger.warning("⚠️ No function call in LLM response and no JSON found in content")
                                 logger.debug(f"Raw response content: {content}")
                                 return self._create_error_response("No structured response from LLM")
@@ -170,10 +172,10 @@ class LLMOrchestrator:
                                     status="NEED_INFO",
                                     confidence_score=1.0,
                                     question=content,
-                                    log_entry=f"Fallback conversational response (JSON failed)",
+                                    log_entry="Fallback conversational response (JSON failed)",
                                     note=None
                                 )
-                            
+
                             logger.error(f"❌ Failed to parse JSON from content: {e}")
                             logger.debug(f"Raw content: {content}")
                             return self._create_error_response("Invalid JSON format in LLM response")
@@ -270,7 +272,7 @@ class LLMOrchestrator:
                                 log_entry=f"Ollama conversational response from persona: {persona}",
                                 note=None
                             )
-                        
+
                         logger.error("❌ No JSON found in Ollama response")
                         logger.debug(f"Full response: {content}")
                         return self._create_error_response("No structured response from Ollama")
@@ -282,10 +284,10 @@ class LLMOrchestrator:
                             status="NEED_INFO",
                             confidence_score=1.0,
                             question=content,
-                            log_entry=f"Ollama fallback conversational response",
+                            log_entry="Ollama fallback conversational response",
                             note=None
                         )
-                    
+
                     logger.error(f"❌ Failed to parse Ollama response: {e}")
                     logger.debug(f"Attempted JSON: {json_content}")
                     return self._create_error_response("Invalid response format from Ollama")
@@ -299,26 +301,26 @@ class LLMOrchestrator:
             logger.debug(f"Error details: {type(e).__name__}: {str(e)}", exc_info=True)
             return self._create_error_response(f"Unexpected error: {str(e)}")
 
-    async def classify_note(self, note_title: str, note_content: str, folder_list: str) -> Dict[str, Any]:
+    async def classify_note(self, note_title: str, note_content: str, folder_list: str) -> dict[str, Any]:
         """Classify a note into PARA structure using LLM"""
         system_prompt = self._get_persona_prompt("para_classifier")
         system_prompt = system_prompt.replace("{folder_list}", folder_list)
-        
+
         user_message = f"Title: {note_title}\n\nContent:\n{note_content[:1000]}"
-        
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
-        
+
         logger.info(f"🏷️ Classifying note: '{note_title}'")
-        
+
         response = await self.provider.generate_response(
             messages=messages,
             temperature=0.1,
             max_tokens=500
         )
-        
+
         content = response.get("content", "").strip()
         try:
             # Extract JSON
@@ -328,28 +330,28 @@ class LLMOrchestrator:
                 return json.loads(content[json_start:json_end])
         except Exception as e:
             logger.error(f"Failed to parse classification response: {e}")
-            
+
         return {"suggested_folder_id": None, "reasoning": "Failed to parse LLM response", "confidence": 0.0}
 
-    async def enrich_note(self, note_title: str, note_content: str) -> Dict[str, Any]:
+    async def enrich_note(self, note_title: str, note_content: str) -> dict[str, Any]:
         """Enrich a note with metadata using LLM"""
         system_prompt = self._get_persona_prompt("note_enricher")
-        
+
         user_message = f"Title: {note_title}\n\nContent:\n{note_content[:2000]}"
-        
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
-        
+
         logger.info(f"✨ Enriching note: '{note_title}'")
-        
+
         response = await self.provider.generate_response(
             messages=messages,
             temperature=0.3,
             max_tokens=1000
         )
-        
+
         content = response.get("content", "").strip()
         try:
             json_start = content.find('{')
@@ -389,8 +391,8 @@ class LLMOrchestrator:
         return ""
 
     async def format_stoic_reflection(
-        self, mode: str, qa_pairs: List[Dict[str, str]]
-    ) -> Optional[str]:
+        self, mode: str, qa_pairs: list[dict[str, str]]
+    ) -> str | None:
         """
         Format Q&A pairs into Stoic journal markdown (morning or evening).
         Returns the formatted string, or None if LLM fails (caller should fall back to rule-based).
@@ -467,7 +469,7 @@ Output nothing else: no preamble, no explanation, only the markdown block. Use t
             logger.warning("Stoic reflection LLM format failed: %s", e)
         return None
 
-    def _build_system_prompt(self, context: Dict[str, Any] = None) -> str:
+    def _build_system_prompt(self, context: dict[str, Any] = None) -> str:
         """Build the system prompt for the LLM"""
         context = context or {}
 
@@ -659,7 +661,7 @@ When URL context is provided:
 
         return prompt
 
-    def _get_persona_prompt(self, persona: str, context: Dict[str, Any] = None) -> str:
+    def _get_persona_prompt(self, persona: str, context: dict[str, Any] = None) -> str:
         """Get the system prompt for a specific persona"""
         # Check cache
         if persona in self._personas:
@@ -672,7 +674,7 @@ When URL context is provided:
             return self._build_system_prompt(context)
 
         try:
-            with open(prompt_path, "r") as f:
+            with open(prompt_path) as f:
                 prompt_content = f.read()
                 self._personas[persona] = prompt_content
                 return prompt_content
@@ -690,7 +692,7 @@ When URL context is provided:
             note=None
         )
 
-    def validate_note_data(self, note_data: Dict[str, Any]) -> bool:
+    def validate_note_data(self, note_data: dict[str, Any]) -> bool:
         """Validate that note data has required fields"""
         required_fields = ['title', 'body', 'parent_id']
         return all(field in note_data for field in required_fields)
@@ -717,7 +719,7 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format:
 
 Do not include any other text or explanation."""
 
-    def enhance_prompt_with_history(self, base_prompt: str, conversation_history: List[Dict[str, Any]]) -> str:
+    def enhance_prompt_with_history(self, base_prompt: str, conversation_history: list[dict[str, Any]]) -> str:
         """Enhance prompt with recent conversation history for context"""
         if not conversation_history:
             return base_prompt
@@ -731,7 +733,7 @@ Do not include any other text or explanation."""
 
         return base_prompt + history_text
 
-    def get_provider_info(self) -> Dict[str, Any]:
+    def get_provider_info(self) -> dict[str, Any]:
         """Get information about the current provider"""
         return {
             "provider_name": self.provider_name,

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
 
 import httpx
 
@@ -23,7 +22,7 @@ _MAX_RETRIES_429 = 2
 _RETRY_DELAY_SEC = 3.0
 
 
-async def generate_recipe_image(recipe_title: str) -> Optional[str]:
+async def generate_recipe_image(recipe_title: str) -> str | None:
     """
     Generate an appetizing food image for a recipe using Gemini image generation.
 
@@ -49,7 +48,7 @@ async def generate_recipe_image(recipe_title: str) -> Optional[str]:
         },
     }
 
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES_429 + 1):
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:

@@ -10,55 +10,54 @@ Provides SQLite database logging for:
 Uses SQLite for simplicity and reliability.
 """
 
-import sqlite3
 import json
-import os
 import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+import sqlite3
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class TelegramMessage:
-    id: Optional[int] = None
+    id: int | None = None
     user_id: int = 0
     message_text: str = ""
-    response_text: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    response_text: str | None = None
+    timestamp: datetime | None = None
     message_type: str = "user"
 
 
 @dataclass
 class LLMInteraction:
-    id: Optional[int] = None
+    id: int | None = None
     prompt: str = ""
     response: str = ""
     model: str = ""
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-    confidence_score: Optional[float] = None
-    processing_time: Optional[float] = None
-    timestamp: Optional[datetime] = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+    confidence_score: float | None = None
+    processing_time: float | None = None
+    timestamp: datetime | None = None
 
 
 @dataclass
 class Decision:
-    id: Optional[int] = None
+    id: int | None = None
     user_id: int = 0
-    telegram_message_id: Optional[int] = None
-    llm_interaction_id: Optional[int] = None
+    telegram_message_id: int | None = None
+    llm_interaction_id: int | None = None
     status: str = ""
-    folder_chosen: Optional[str] = None
-    note_title: Optional[str] = None
-    note_body: Optional[str] = None
-    tags: Optional[List[str]] = None
-    joplin_note_id: Optional[str] = None
-    error_message: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    folder_chosen: str | None = None
+    note_title: str | None = None
+    note_body: str | None = None
+    tags: list[str] | None = None
+    joplin_note_id: str | None = None
+    error_message: str | None = None
+    timestamp: datetime | None = None
 
 
 class LoggingService:
@@ -71,7 +70,7 @@ class LoggingService:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         schema_path = Path(__file__).resolve().parent.parent / "database_schema.sql"
         with sqlite3.connect(self.db_path) as conn:
-            with open(schema_path, "r", encoding="utf-8") as f:
+            with open(schema_path, encoding="utf-8") as f:
                 schema = f.read()
             conn.executescript(schema)
             conn.commit()
@@ -83,7 +82,7 @@ class LoggingService:
             d[col[0]] = row[idx]
         return d
 
-    def log_telegram_message(self, message: TelegramMessage) -> Optional[int]:
+    def log_telegram_message(self, message: TelegramMessage) -> int | None:
         """Log a Telegram message"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -100,7 +99,7 @@ class LoggingService:
             conn.commit()
             return cursor.lastrowid
 
-    def log_llm_interaction(self, interaction: LLMInteraction) -> Optional[int]:
+    def log_llm_interaction(self, interaction: LLMInteraction) -> int | None:
         """Log an LLM interaction"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -120,7 +119,7 @@ class LoggingService:
             conn.commit()
             return cursor.lastrowid
 
-    def log_decision(self, decision: Decision) -> Optional[int]:
+    def log_decision(self, decision: Decision) -> int | None:
         """Log a decision process"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -143,7 +142,7 @@ class LoggingService:
             conn.commit()
             return cursor.lastrowid
 
-    def log_system_event(self, level: str, module: str, message: str, extra_data: Optional[Dict[str, Any]] = None):
+    def log_system_event(self, level: str, module: str, message: str, extra_data: dict[str, Any] | None = None):
         """Log a system event"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -159,7 +158,7 @@ class LoggingService:
             ))
             conn.commit()
 
-    def get_recent_messages(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_messages(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent messages for a user"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -172,7 +171,7 @@ class LoggingService:
             ''', (user_id, limit))
             return cursor.fetchall()
 
-    def get_decisions_by_status(self, status: str, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_decisions_by_status(self, status: str, limit: int = 50) -> list[dict[str, Any]]:
         """Get decisions by status"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -185,7 +184,7 @@ class LoggingService:
             ''', (status, limit))
             return cursor.fetchall()
 
-    def get_llm_interactions_by_model(self, model: str, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_llm_interactions_by_model(self, model: str, limit: int = 20) -> list[dict[str, Any]]:
         """Get LLM interactions by model"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -225,7 +224,7 @@ class LoggingService:
 
             self.log_system_event('INFO', 'cleanup', f'Cleaned up old data: {deleted_messages} messages, {deleted_interactions} interactions, {deleted_decisions} decisions, {deleted_logs} logs')
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Get database statistics"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -239,7 +238,7 @@ class LoggingService:
 
             return stats
 
-    def save_google_token(self, user_id: str, token: Dict[str, Any]):
+    def save_google_token(self, user_id: str, token: dict[str, Any]):
         """Save Google OAuth token for a user"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -253,7 +252,7 @@ class LoggingService:
             ))
             conn.commit()
 
-    def load_google_token(self, user_id: str) -> Optional[Dict[str, Any]]:
+    def load_google_token(self, user_id: str) -> dict[str, Any] | None:
         """Load Google OAuth token for a user"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -278,7 +277,7 @@ class LoggingService:
 
     # Google Tasks Configuration Methods
 
-    def save_google_tasks_config(self, user_id: int, config: Dict[str, Any]):
+    def save_google_tasks_config(self, user_id: int, config: dict[str, Any]):
         """Save Google Tasks configuration for a user"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -300,7 +299,7 @@ class LoggingService:
             ))
             conn.commit()
 
-    def get_google_tasks_config(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get_google_tasks_config(self, user_id: int) -> dict[str, Any] | None:
         """Get Google Tasks configuration for a user"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -323,7 +322,7 @@ class LoggingService:
 
     def create_task_link(self, user_id: int, joplin_note_id: str, google_task_id: str,
                         google_task_list_id: str, joplin_note_title: str,
-                        google_task_title: str) -> Optional[int]:
+                        google_task_title: str) -> int | None:
         """Create a link between a Joplin note and Google Task"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -341,7 +340,7 @@ class LoggingService:
                 # Link already exists
                 return None
 
-    def get_task_link(self, user_id: int, joplin_note_id: str) -> Optional[Dict[str, Any]]:
+    def get_task_link(self, user_id: int, joplin_note_id: str) -> dict[str, Any] | None:
         """Get task link for a Joplin note"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -352,7 +351,7 @@ class LoggingService:
             ''', (user_id, joplin_note_id))
             return cursor.fetchone()
 
-    def get_all_task_links(self, user_id: int) -> List[Dict[str, Any]]:
+    def get_all_task_links(self, user_id: int) -> list[dict[str, Any]]:
         """Get all task links for a user"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -385,9 +384,9 @@ class LoggingService:
 
     # Task Sync History Methods
 
-    def log_task_sync(self, user_id: int, task_link_id: Optional[int], google_task_id: str,
-                     action: str, old_status: Optional[str], new_status: Optional[str],
-                     sync_direction: str, sync_result: str, error_message: Optional[str] = None):
+    def log_task_sync(self, user_id: int, task_link_id: int | None, google_task_id: str,
+                     action: str, old_status: str | None, new_status: str | None,
+                     sync_direction: str, sync_result: str, error_message: str | None = None):
         """Log a task synchronization event"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -400,7 +399,7 @@ class LoggingService:
                   sync_direction, sync_result, error_message))
             conn.commit()
 
-    def get_sync_history(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_sync_history(self, user_id: int, limit: int = 50) -> list[dict[str, Any]]:
         """Get task synchronization history for a user"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -413,7 +412,7 @@ class LoggingService:
             ''', (user_id, limit))
             return cursor.fetchall()
 
-    def get_failed_syncs(self, user_id: int) -> List[Dict[str, Any]]:
+    def get_failed_syncs(self, user_id: int) -> list[dict[str, Any]]:
         """Get failed task synchronization attempts"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -425,7 +424,7 @@ class LoggingService:
             ''', (user_id,))
             return cursor.fetchall()
 
-    def get_successful_syncs(self, user_id: int) -> List[Dict[str, Any]]:
+    def get_successful_syncs(self, user_id: int) -> list[dict[str, Any]]:
         """Get successful task synchronization entries"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -476,7 +475,7 @@ class LoggingService:
 
     # Report Configuration Methods
 
-    def save_report_configuration(self, user_id: int, config: Dict[str, Any]):
+    def save_report_configuration(self, user_id: int, config: dict[str, Any]):
         """Save report configuration for a user"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -503,7 +502,7 @@ class LoggingService:
             conn.commit()
             logger.debug(f"Saved report configuration for user {user_id}")
 
-    def get_report_configuration(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get_report_configuration(self, user_id: int) -> dict[str, Any] | None:
         """Get report configuration for a user"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = self._dict_factory
@@ -522,7 +521,7 @@ class LoggingService:
             conn.commit()
             logger.debug(f"Deleted report configuration for user {user_id}")
 
-    def log_daily_report(self, user_id: int, report_data: Dict[str, Any]):
+    def log_daily_report(self, user_id: int, report_data: dict[str, Any]):
         """Log a daily report generation event"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()

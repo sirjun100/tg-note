@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 from telegram import Message, Update
 from telegram.ext import CommandHandler, ContextTypes
@@ -29,13 +29,13 @@ except ImportError:
     pass
 
 
-def register_braindump_handlers(application: Any, orch: "TelegramOrchestrator") -> None:
+def register_braindump_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("braindump", _braindump(orch)))
     application.add_handler(CommandHandler("capture", _braindump(orch)))
     application.add_handler(CommandHandler("braindump_stop", _braindump_stop(orch)))
 
 
-def _braindump(orch: "TelegramOrchestrator"):
+def _braindump(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -52,7 +52,7 @@ def _braindump(orch: "TelegramOrchestrator"):
             )
             return
 
-        new_state: Dict[str, Any] = {
+        new_state: dict[str, Any] = {
             "active_persona": "GTD_EXPERT",
             "session_start": datetime.now().isoformat(),
             "captured_items": [],
@@ -83,7 +83,7 @@ def _braindump(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _braindump_stop(orch: "TelegramOrchestrator"):
+def _braindump_stop(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -109,7 +109,7 @@ def _braindump_stop(orch: "TelegramOrchestrator"):
 
 
 async def handle_braindump_message(
-    orch: "TelegramOrchestrator", user_id: int, text: str, message: Message
+    orch: TelegramOrchestrator, user_id: int, text: str, message: Message
 ) -> None:
     state = orch.state_manager.get_state(user_id)
     if not state:
@@ -154,10 +154,10 @@ async def handle_braindump_message(
 
 
 async def _finish_session(
-    orch: "TelegramOrchestrator",
+    orch: TelegramOrchestrator,
     user_id: int,
     message: Message,
-    note_data: Optional[Dict[str, Any]] = None,
+    note_data: dict[str, Any] | None = None,
 ) -> None:
     state = orch.state_manager.get_state(user_id)
     if not state:

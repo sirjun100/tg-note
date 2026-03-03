@@ -7,8 +7,8 @@ import json
 import logging
 import sqlite3
 import threading
-from typing import Dict, Any, Optional, List
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class StateManager:
             conn.commit()
             conn.close()
 
-    def get_state(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get_state(self, user_id: int) -> dict[str, Any] | None:
         """Get current state for a user"""
         with self._lock:
             try:
@@ -70,7 +70,7 @@ class StateManager:
                 logger.error(f"Error getting state for user {user_id}: {e}")
                 return None
 
-    def update_state(self, user_id: int, state: Dict[str, Any]) -> bool:
+    def update_state(self, user_id: int, state: dict[str, Any]) -> bool:
         """Update or create state for a user"""
         with self._lock:
             try:
@@ -131,10 +131,10 @@ class StateManager:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
 
-                cursor.execute('''
+                cursor.execute(f'''
                     DELETE FROM user_states
-                    WHERE updated_at < datetime('now', '-{} days')
-                '''.format(days_old))
+                    WHERE updated_at < datetime('now', '-{days_old} days')
+                ''')
 
                 deleted_count = cursor.rowcount
                 conn.commit()
@@ -149,7 +149,7 @@ class StateManager:
                 logger.error(f"Error cleaning up old states: {e}")
                 return 0
 
-    def get_all_active_users(self) -> List[int]:
+    def get_all_active_users(self) -> list[int]:
         """Get list of all users with active states"""
         with self._lock:
             try:
@@ -166,7 +166,7 @@ class StateManager:
                 logger.error(f"Error getting active users: {e}")
                 return []
 
-    def migrate_from_dict(self, dict_states: Dict[int, Dict[str, Any]]) -> bool:
+    def migrate_from_dict(self, dict_states: dict[int, dict[str, Any]]) -> bool:
         """Migrate states from in-memory dict to database (for transition)"""
         success = True
         for user_id, state in dict_states.items():
@@ -180,14 +180,14 @@ class InMemoryStateManager:
     """Simple in-memory state manager for testing"""
 
     def __init__(self):
-        self._states: Dict[int, Dict[str, Any]] = {}
+        self._states: dict[int, dict[str, Any]] = {}
         self._lock = threading.Lock()
 
-    def get_state(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get_state(self, user_id: int) -> dict[str, Any] | None:
         with self._lock:
             return self._states.get(user_id)
 
-    def update_state(self, user_id: int, state: Dict[str, Any]) -> bool:
+    def update_state(self, user_id: int, state: dict[str, Any]) -> bool:
         with self._lock:
             self._states[user_id] = state
             return True
@@ -204,6 +204,6 @@ class InMemoryStateManager:
         # In-memory doesn't need cleanup
         return 0
 
-    def get_all_active_users(self) -> List[int]:
+    def get_all_active_users(self) -> list[int]:
         with self._lock:
             return list(self._states.keys())

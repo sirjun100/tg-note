@@ -29,10 +29,7 @@ def setup_logging(debug: bool = False) -> None:
         structlog.processors.UnicodeDecoder(),
     ]
 
-    if is_production:
-        renderer = structlog.processors.JSONRenderer()
-    else:
-        renderer = structlog.dev.ConsoleRenderer()
+    renderer = structlog.processors.JSONRenderer() if is_production else structlog.dev.ConsoleRenderer()
 
     structlog.configure(
         processors=[

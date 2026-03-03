@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from telegram.ext import Application
@@ -70,16 +70,16 @@ class WebhookServer:
 
     def __init__(
         self,
-        ptb_app: "Application",
+        ptb_app: Application,
         port: int = 8080,
         webhook_path: str = "/webhook",
-        secret_token: Optional[str] = None,
+        secret_token: str | None = None,
     ) -> None:
         self.ptb_app = ptb_app
         self.port = port
         self.webhook_path = webhook_path
         self.secret_token = secret_token
-        self._server: Optional[asyncio.AbstractServer] = None
+        self._server: asyncio.AbstractServer | None = None
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -111,7 +111,7 @@ class WebhookServer:
                 writer.write(_http_response(404))
 
             await writer.drain()
-        except (asyncio.TimeoutError, ConnectionResetError):
+        except (TimeoutError, ConnectionResetError):
             pass
         except Exception:
             logger.exception("Webhook connection error")

@@ -11,7 +11,7 @@ import html
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 URL_PATTERN = re.compile(r"(https?://[^\s<>()]+)", re.IGNORECASE)
 
 
-def extract_urls(text: str) -> List[str]:
+def extract_urls(text: str) -> list[str]:
     """Extract HTTP(S) URLs from user text."""
     if not text:
         return []
     urls = [m.group(1).rstrip(".,);]") for m in URL_PATTERN.finditer(text)]
     seen = set()
-    deduped: List[str] = []
+    deduped: list[str] = []
     for url in urls:
         if url not in seen:
             seen.add(url)
@@ -35,7 +35,7 @@ def extract_urls(text: str) -> List[str]:
     return deduped
 
 
-def _extract_meta(html_text: str, names: List[str]) -> Optional[str]:
+def _extract_meta(html_text: str, names: list[str]) -> str | None:
     for name in names:
         pattern = (
             rf'<meta[^>]+(?:name|property)=["\']{re.escape(name)}["\'][^>]*content=["\'](.*?)["\']'
@@ -89,7 +89,7 @@ def _classify_url_type(url: str, title: str, extracted_text: str) -> str:
     return "knowledge"
 
 
-def _template_for_url_type(url_type: str) -> Dict[str, str]:
+def _template_for_url_type(url_type: str) -> dict[str, str]:
     if url_type == "media":
         return {
             "template_id": "1",
@@ -136,7 +136,7 @@ def _template_for_url_type(url_type: str) -> Dict[str, str]:
     }
 
 
-def _find_recipe_in_json(obj: Any) -> Optional[Dict[str, Any]]:
+def _find_recipe_in_json(obj: Any) -> dict[str, Any] | None:
     """Return first Recipe object from JSON-LD structure (supports @graph and single object)."""
     if not isinstance(obj, dict):
         return None
@@ -154,7 +154,7 @@ def _find_recipe_in_json(obj: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _normalize_recipe_instructions(instructions: Any) -> List[str]:
+def _normalize_recipe_instructions(instructions: Any) -> list[str]:
     """Turn schema.org recipeInstructions into a list of step strings."""
     if instructions is None:
         return []
@@ -162,7 +162,7 @@ def _normalize_recipe_instructions(instructions: Any) -> List[str]:
         return [instructions] if instructions.strip() else []
     if not isinstance(instructions, list):
         return []
-    steps: List[str] = []
+    steps: list[str] = []
     for step in instructions:
         if isinstance(step, str):
             if step.strip():
@@ -174,11 +174,11 @@ def _normalize_recipe_instructions(instructions: Any) -> List[str]:
     return steps
 
 
-def _extract_nutrition(nutrition: Any) -> Optional[Dict[str, str]]:
+def _extract_nutrition(nutrition: Any) -> dict[str, str] | None:
     """Extract calories and macros from schema.org NutritionInformation. Pass through as-is (strings)."""
     if not isinstance(nutrition, dict):
         return None
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     for schema_key, our_key in (
         ("calorieContent", "calories"),
         ("proteinContent", "protein"),
@@ -192,7 +192,7 @@ def _extract_nutrition(nutrition: Any) -> Optional[Dict[str, str]]:
     return out if out else None
 
 
-def _parse_recipe_jsonld(html_text: str) -> Optional[Dict[str, Any]]:
+def _parse_recipe_jsonld(html_text: str) -> dict[str, Any] | None:
     """
     Scan HTML for application/ld+json, find a Recipe object, return extracted fields.
     Returns dict with recipe_title, recipe_ingredients, recipe_instructions, recipe_nutrition
@@ -216,14 +216,14 @@ def _parse_recipe_jsonld(html_text: str) -> Optional[Dict[str, Any]]:
         title = recipe.get("name")
         recipe_title = title.strip() if isinstance(title, str) and title.strip() else None
         ingredients_raw = recipe.get("recipeIngredient")
-        recipe_ingredients: List[str] = []
+        recipe_ingredients: list[str] = []
         if isinstance(ingredients_raw, list):
             for ing in ingredients_raw:
                 if isinstance(ing, str) and ing.strip():
                     recipe_ingredients.append(ing.strip())
         recipe_instructions = _normalize_recipe_instructions(recipe.get("recipeInstructions"))
         recipe_nutrition = _extract_nutrition(recipe.get("nutrition"))
-        recipe_image_url: Optional[str] = None
+        recipe_image_url: str | None = None
         img = recipe.get("image")
         if isinstance(img, str) and img.strip().startswith("http"):
             recipe_image_url = img.strip()
@@ -265,19 +265,16 @@ def _is_challenge_page(html_text: str, title: str) -> bool:
         "attention required",
         "enable javascript and cookies",
     ]
-    for phrase in indicators:
-        if phrase in text_lower or phrase in title_lower:
-            return True
-    return False
+    return any(phrase in text_lower or phrase in title_lower for phrase in indicators)
 
 
-async def fetch_url_context(url: str) -> Dict[str, Any]:
+async def fetch_url_context(url: str) -> dict[str, Any]:
     """
     Fetch and parse URL metadata/content for LLM enrichment.
 
     Returns a dict safe to pass into LLM context.
     """
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "url": url,
         "final_url": url,
         "domain": urlparse(url).netloc.lower(),
@@ -323,10 +320,7 @@ async def fetch_url_context(url: str) -> Dict[str, Any]:
         extracted_text = _extract_text(html_text)
 
         recipe_data = _parse_recipe_jsonld(html_text)
-        if recipe_data is not None:
-            content_type = "recipe"
-        else:
-            content_type = _classify_url_type(final_url, title, extracted_text)
+        content_type = "recipe" if recipe_data is not None else _classify_url_type(final_url, title, extracted_text)
 
         template = _template_for_url_type(content_type)
 

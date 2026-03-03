@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 from src.settings import AppSettings, get_settings
 
@@ -27,22 +26,22 @@ class ServiceContainer:
     llm: object = field(default=None, init=False)
     state_manager: object = field(default=None, init=False)
     logging_service: object = field(default=None, init=False)
-    task_service: Optional[object] = field(default=None, init=False)
+    task_service: object | None = field(default=None, init=False)
     report_generator: object = field(default=None, init=False)
     scheduler: object = field(default=None, init=False)
     reorg: object = field(default=None, init=False)
     enrichment: object = field(default=None, init=False)
 
-    def build(self) -> "ServiceContainer":
+    def build(self) -> ServiceContainer:
         """Instantiate all services with proper wiring."""
+        from src.enrichment_service import EnrichmentService
         from src.joplin_client import JoplinClient
         from src.llm_orchestrator import LLMOrchestrator
         from src.logging_service import LoggingService
-        from src.state_manager import StateManager
+        from src.reorg_orchestrator import ReorgOrchestrator
         from src.report_generator import ReportGenerator
         from src.scheduler_service import get_scheduler_service
-        from src.reorg_orchestrator import ReorgOrchestrator
-        from src.enrichment_service import EnrichmentService
+        from src.state_manager import StateManager
 
         self.joplin = JoplinClient(settings=self.settings.joplin)
         self.llm = LLMOrchestrator()
@@ -72,7 +71,7 @@ class ServiceContainer:
         logger.info("Service container built")
         return self
 
-    def _build_task_service(self) -> Optional[object]:
+    def _build_task_service(self) -> object | None:
         if not self.settings.google.is_configured:
             logger.info("Google Tasks not configured — skipping")
             return None

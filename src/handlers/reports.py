@@ -31,7 +31,7 @@ _DEFAULT_CONFIG = {
 }
 
 
-def register_report_handlers(application: Any, orch: "TelegramOrchestrator") -> None:
+def register_report_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("daily_report", _daily_report(orch)))
     application.add_handler(CommandHandler("configure_report_time", _configure_time(orch)))
     application.add_handler(CommandHandler("configure_report_timezone", _configure_tz(orch)))
@@ -41,7 +41,7 @@ def register_report_handlers(application: Any, orch: "TelegramOrchestrator") -> 
     application.add_handler(CommandHandler("report_help", _help(orch)))
 
 
-def _daily_report(orch: "TelegramOrchestrator"):
+def _daily_report(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -85,7 +85,7 @@ def _daily_report(orch: "TelegramOrchestrator"):
     return handler
 
 
-async def send_scheduled_report(orch: "TelegramOrchestrator", user_id: int) -> None:
+async def send_scheduled_report(orch: TelegramOrchestrator, user_id: int) -> None:
     """Callback invoked by the scheduler at the configured time."""
     try:
         logger.info("Sending scheduled report to user %d", user_id)
@@ -114,8 +114,9 @@ async def send_scheduled_report(orch: "TelegramOrchestrator", user_id: int) -> N
             report, include_details=(detail_level == "detailed")
         )
 
-        from config import TELEGRAM_BOT_TOKEN
         from telegram import Bot
+
+        from config import TELEGRAM_BOT_TOKEN
 
         bot = Bot(token=TELEGRAM_BOT_TOKEN)
         sent = await bot.send_message(chat_id=user_id, text=message)
@@ -142,7 +143,7 @@ async def send_scheduled_report(orch: "TelegramOrchestrator", user_id: int) -> N
         logger.error("Failed to send scheduled report to user %d: %s", user_id, exc, exc_info=True)
 
 
-def _configure_time(orch: "TelegramOrchestrator"):
+def _configure_time(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -192,7 +193,7 @@ def _configure_time(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _configure_tz(orch: "TelegramOrchestrator"):
+def _configure_tz(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -242,7 +243,7 @@ def _configure_tz(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _toggle(orch: "TelegramOrchestrator"):
+def _toggle(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -289,7 +290,7 @@ def _toggle(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _show_config(orch: "TelegramOrchestrator"):
+def _show_config(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -323,7 +324,7 @@ def _show_config(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _configure_content(orch: "TelegramOrchestrator"):
+def _configure_content(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -369,7 +370,7 @@ def _configure_content(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _help(orch: "TelegramOrchestrator"):
+def _help(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):

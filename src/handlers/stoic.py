@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from telegram import Message, Update
 from telegram.ext import CommandHandler, ContextTypes
@@ -24,7 +24,7 @@ STOIC_JOURNAL_PATH = ["Areas", "📓 Journaling", "Stoic Journal"]
 STOIC_TAGS = ["stoic", "journal", "daily"]
 
 
-def _load_stoic_template() -> Tuple[List[str], List[str], str]:
+def _load_stoic_template() -> tuple[list[str], list[str], str]:
     """Load prompts/stoic_journal_template.md; return (morning_questions, evening_questions, body_template)."""
     path = Path(__file__).parent.parent / "prompts" / "stoic_journal_template.md"
     if not path.exists():
@@ -43,9 +43,9 @@ def _load_stoic_template() -> Tuple[List[str], List[str], str]:
             "# {{DATE}} - Daily Stoic Reflection\n\n{{MORNING_CONTENT}}\n\n{{EVENING_CONTENT}}",
         )
     block, body_template = parts[0].strip(), parts[1].strip()
-    morning_questions: List[str] = []
-    evening_questions: List[str] = []
-    current: Optional[List[str]] = None
+    morning_questions: list[str] = []
+    evening_questions: list[str] = []
+    current: list[str] | None = None
     for line in block.splitlines():
         line = line.strip()
         if not line:
@@ -65,14 +65,14 @@ def _load_stoic_template() -> Tuple[List[str], List[str], str]:
     return morning_questions, evening_questions, body_template
 
 
-def _get_answer(answers: List[Dict[str, str]], index: int) -> str:
+def _get_answer(answers: list[dict[str, str]], index: int) -> str:
     """Get answer text at index, or empty string."""
     if index < 0 or index >= len(answers):
         return ""
     return (answers[index].get("a") or "").strip()
 
 
-def _format_morning_content(answers: List[Dict[str, str]]) -> str:
+def _format_morning_content(answers: list[dict[str, str]]) -> str:
     """Fill morning template from answers: intention, focus, virtue, gratitude, top 3 tasks."""
     now = datetime.now()
     ts = now.strftime("%H:%M")
@@ -116,7 +116,7 @@ def _format_morning_content(answers: List[Dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def _format_evening_content(answers: List[Dict[str, str]]) -> str:
+def _format_evening_content(answers: list[dict[str, str]]) -> str:
     """Fill evening template from answers: wins, challenges, lesson learned, gratitude."""
     now = datetime.now()
     ts = now.strftime("%H:%M")
@@ -142,7 +142,7 @@ def _format_evening_content(answers: List[Dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def _format_section(mode: str, answers: List[Dict[str, str]]) -> str:
+def _format_section(mode: str, answers: list[dict[str, str]]) -> str:
     """Format answers into template structure (morning or evening) with timestamp."""
     if mode == "morning":
         return _format_morning_content(answers)
@@ -172,12 +172,12 @@ def _build_full_body(
     )
 
 
-def register_stoic_handlers(application: Any, orch: "TelegramOrchestrator") -> None:
+def register_stoic_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("stoic", _stoic(orch)))
     application.add_handler(CommandHandler("stoic_done", _stoic_done(orch)))
 
 
-def _stoic(orch: "TelegramOrchestrator"):
+def _stoic(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -206,7 +206,7 @@ def _stoic(orch: "TelegramOrchestrator"):
             await update.message.reply_text("No questions configured for this mode.")
             return
 
-        new_state: Dict[str, Any] = {
+        new_state: dict[str, Any] = {
             "active_persona": "STOIC_JOURNAL",
             "session_start": datetime.now().isoformat(),
             "mode": mode,
@@ -226,7 +226,7 @@ def _stoic(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _stoic_done(orch: "TelegramOrchestrator"):
+def _stoic_done(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -259,7 +259,7 @@ def _stoic_done(orch: "TelegramOrchestrator"):
 
 
 async def _finish_stoic_session(
-    orch: "TelegramOrchestrator", user_id: int, message: Message, state: Dict[str, Any]
+    orch: TelegramOrchestrator, user_id: int, message: Message, state: dict[str, Any]
 ) -> bool:
     mode = state.get("mode", "morning")
     answers = state.get("answers", [])
@@ -350,7 +350,7 @@ async def _finish_stoic_session(
 
 
 async def handle_stoic_message(
-    orch: "TelegramOrchestrator", user_id: int, text: str, message: Message
+    orch: TelegramOrchestrator, user_id: int, text: str, message: Message
 ) -> None:
     state = orch.state_manager.get_state(user_id)
     if not state or state.get("active_persona") != "STOIC_JOURNAL":

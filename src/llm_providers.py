@@ -7,10 +7,9 @@ using httpx instead of blocking requests.
 
 from __future__ import annotations
 
-import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -35,8 +34,8 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def generate_response(
-        self, messages: List[Dict[str, str]], **kwargs: Any
-    ) -> Dict[str, Any]: ...
+        self, messages: list[dict[str, str]], **kwargs: Any
+    ) -> dict[str, Any]: ...
 
 
 class OpenAIProvider(LLMProvider):
@@ -59,8 +58,8 @@ class OpenAIProvider(LLMProvider):
         return self.client is not None
 
     async def generate_response(
-        self, messages: List[Dict[str, str]], **kwargs: Any
-    ) -> Dict[str, Any]:
+        self, messages: list[dict[str, str]], **kwargs: Any
+    ) -> dict[str, Any]:
         if not self.is_available():
             raise LLMProviderUnavailable("OpenAI provider not available")
 
@@ -115,8 +114,8 @@ class OllamaProvider(LLMProvider):
             return False
 
     async def generate_response(
-        self, messages: List[Dict[str, str]], **kwargs: Any
-    ) -> Dict[str, Any]:
+        self, messages: list[dict[str, str]], **kwargs: Any
+    ) -> dict[str, Any]:
         prompt_parts = []
         for msg in messages:
             role, content = msg["role"], msg["content"]
@@ -127,7 +126,7 @@ class OllamaProvider(LLMProvider):
             elif role == "assistant":
                 prompt_parts.append(f"Assistant: {content}")
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model_name,
             "prompt": "\n\n".join(prompt_parts),
             "stream": False,
@@ -177,8 +176,8 @@ class DeepSeekProvider(LLMProvider):
         return self.api_key is not None
 
     async def generate_response(
-        self, messages: List[Dict[str, str]], **kwargs: Any
-    ) -> Dict[str, Any]:
+        self, messages: list[dict[str, str]], **kwargs: Any
+    ) -> dict[str, Any]:
         if not self.is_available():
             raise LLMProviderUnavailable("DeepSeek API key not configured")
 
@@ -186,7 +185,7 @@ class DeepSeekProvider(LLMProvider):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model_name,
             "messages": messages,
             "temperature": kwargs.get("temperature", LLM_DEFAULT_TEMPERATURE),
@@ -221,7 +220,7 @@ class LLMProviderRegistry:
     """Registry for LLM providers — built from settings."""
 
     def __init__(self) -> None:
-        self.providers: Dict[str, LLMProvider] = {}
+        self.providers: dict[str, LLMProvider] = {}
         self._register_builtin()
 
     def _register_builtin(self) -> None:
@@ -242,10 +241,10 @@ class LLMProviderRegistry:
     def get_provider(self, name: str) -> LLMProvider | None:
         return self.providers.get(name)
 
-    def get_available_providers(self) -> Dict[str, LLMProvider]:
+    def get_available_providers(self) -> dict[str, LLMProvider]:
         return {n: p for n, p in self.providers.items() if p.is_available()}
 
-    def list_providers(self) -> List[str]:
+    def list_providers(self) -> list[str]:
         return list(self.providers.keys())
 
 

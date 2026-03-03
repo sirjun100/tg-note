@@ -8,11 +8,12 @@ Generates unified daily priority reports aggregating:
 - Completion tracking since last report
 """
 
+import contextlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +45,14 @@ class ReportItem:
     id: str
     source: ItemSource
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     priority_level: PriorityLevel = PriorityLevel.MEDIUM
-    due_date: Optional[datetime] = None
+    due_date: datetime | None = None
     is_overdue: bool = False
     days_overdue: int = 0
     impact_score: float = 2.0  # 1-3 scale
-    tags: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     priority_score: float = 0.0  # Calculated score
 
     def calculate_priority_score(self) -> float:
@@ -103,13 +104,13 @@ class ReportData:
     """Complete daily report data"""
     user_id: int
     report_date: datetime
-    critical_items: List[ReportItem] = field(default_factory=list)
-    high_items: List[ReportItem] = field(default_factory=list)
-    medium_items: List[ReportItem] = field(default_factory=list)
-    low_items: List[ReportItem] = field(default_factory=list)
-    joplin_notes: List[ReportItem] = field(default_factory=list)  # Separate section for all Joplin notes
-    pending_clarification: List[str] = field(default_factory=list)
-    completed_items: List[str] = field(default_factory=list)
+    critical_items: list[ReportItem] = field(default_factory=list)
+    high_items: list[ReportItem] = field(default_factory=list)
+    medium_items: list[ReportItem] = field(default_factory=list)
+    low_items: list[ReportItem] = field(default_factory=list)
+    joplin_notes: list[ReportItem] = field(default_factory=list)  # Separate section for all Joplin notes
+    pending_clarification: list[str] = field(default_factory=list)
+    completed_items: list[str] = field(default_factory=list)
     joplin_count: int = 0
     google_tasks_count: int = 0
     clarification_count: int = 0
@@ -126,7 +127,7 @@ class ReportData:
         )
 
     @property
-    def all_items(self) -> List[ReportItem]:
+    def all_items(self) -> list[ReportItem]:
         """All items sorted by priority score"""
         items = (
             self.critical_items + self.high_items + self.medium_items + self.low_items
@@ -169,7 +170,7 @@ class ReportGenerator:
         self.joplin_client = joplin_client
         self.task_service = task_service
 
-    def extract_priority_from_tags(self, tags: List[str]) -> PriorityLevel:
+    def extract_priority_from_tags(self, tags: list[str]) -> PriorityLevel:
         """Extract priority level from tag list"""
         if not tags:
             return PriorityLevel.MEDIUM
@@ -260,7 +261,7 @@ Response:"""
             self.logger.debug(f"Error in analyze_importance_with_ai: {e}")
             return current_priority
 
-    def calculate_impact(self, item_dict: Dict[str, Any], source: ItemSource) -> float:
+    def calculate_impact(self, item_dict: dict[str, Any], source: ItemSource) -> float:
         """
         Calculate impact score for an item (1-3 scale)
 
@@ -287,7 +288,7 @@ Response:"""
 
         return min(3.0, max(1.0, impact))  # Clamp 1-3
 
-    def calculate_overdue_days(self, due_date: Optional[datetime]) -> int:
+    def calculate_overdue_days(self, due_date: datetime | None) -> int:
         """Calculate number of days an item is overdue"""
         if not due_date:
             return 0
@@ -295,7 +296,7 @@ Response:"""
         days_overdue = (datetime.now().date() - due_date.date()).days
         return max(0, days_overdue)
 
-    def create_joplin_item(self, note: Dict[str, Any]) -> Optional[ReportItem]:
+    def create_joplin_item(self, note: dict[str, Any]) -> ReportItem | None:
         """Convert a Joplin note to a ReportItem"""
         try:
             # Extract priority from tags
@@ -347,19 +348,17 @@ Response:"""
             return None
 
     def create_google_task_item(
-        self, task: Dict[str, Any]
-    ) -> Optional[ReportItem]:
+        self, task: dict[str, Any]
+    ) -> ReportItem | None:
         """Convert a Google Task to a ReportItem"""
         try:
             # Extract due date
             due_date = None
             if "due" in task:
-                try:
+                with contextlib.suppress(ValueError, TypeError, AttributeError):
                     due_date = datetime.fromisoformat(
                         task["due"].replace("Z", "+00:00")
                     )
-                except:
-                    pass
 
             days_overdue = self.calculate_overdue_days(due_date)
             is_overdue = days_overdue > 0
@@ -406,7 +405,7 @@ Response:"""
             impact_score=2.5,
         )
 
-    def categorize_items(self, items: List[ReportItem]) -> ReportData:
+    def categorize_items(self, items: list[ReportItem]) -> ReportData:
         """Categorize items by priority level, separating Joplin notes"""
         report = ReportData(user_id=0, report_date=datetime.now())
 
@@ -429,7 +428,7 @@ Response:"""
 
         return report
 
-    def _extract_due_date_from_note(self, note: Dict[str, Any]) -> Optional[datetime]:
+    def _extract_due_date_from_note(self, note: dict[str, Any]) -> datetime | None:
         """
         Extract due date from note body or metadata
 
@@ -446,10 +445,10 @@ Response:"""
     def generate_report(
         self,
         user_id: int,
-        joplin_notes: List[Dict[str, Any]],
-        google_tasks: List[Dict[str, Any]],
-        pending_clarifications: List[Tuple[str, str]] = None,
-        completed_items: List[str] = None,
+        joplin_notes: list[dict[str, Any]],
+        google_tasks: list[dict[str, Any]],
+        pending_clarifications: list[tuple[str, str]] = None,
+        completed_items: list[str] = None,
     ) -> ReportData:
         """
         Generate a complete daily report
@@ -492,7 +491,7 @@ Response:"""
 
         # Add pending clarifications
         if pending_clarifications:
-            for note_id, note_title in pending_clarifications:
+            for _note_id, note_title in pending_clarifications:
                 report.pending_clarification.append(note_title)
             report.clarification_count = len(pending_clarifications)
 
@@ -515,7 +514,7 @@ Response:"""
 
         return report
 
-    def get_top_recommendation(self, report: ReportData) -> Optional[str]:
+    def get_top_recommendation(self, report: ReportData) -> str | None:
         """Get the most urgent item to tackle first"""
         if not report.all_items:
             return None
@@ -525,18 +524,18 @@ Response:"""
         return top_item.title
 
     def filter_by_priority(
-        self, items: List[ReportItem], min_priority: PriorityLevel
-    ) -> List[ReportItem]:
+        self, items: list[ReportItem], min_priority: PriorityLevel
+    ) -> list[ReportItem]:
         """Filter items by minimum priority level"""
         return [item for item in items if item.priority_level.value >= min_priority.value]
 
-    def limit_items(self, items: List[ReportItem], limit: int = None) -> List[ReportItem]:
+    def limit_items(self, items: list[ReportItem], limit: int = None) -> list[ReportItem]:
         """Limit number of items returned"""
         if limit is None:
             limit = self.MAX_ITEMS_PER_CATEGORY
         return items[:limit]
 
-    def _has_priority_tag(self, note: Dict[str, Any]) -> bool:
+    def _has_priority_tag(self, note: dict[str, Any]) -> bool:
         """Check if note has any priority-indicating tags"""
         tags = note.get("tags", [])
         if isinstance(tags, str):
@@ -544,24 +543,16 @@ Response:"""
         else:
             tags = [t.lower() for t in tags] if tags else []
 
-        # Check if any tag is in our priority tags dictionary
-        for tag in tags:
-            if tag in self.PRIORITY_TAGS:
-                return True
-        return False
+        return any(tag in self.PRIORITY_TAGS for tag in tags)
 
-    def _is_recently_modified(self, note: Dict[str, Any], days_threshold: int = 7) -> bool:
+    def _is_recently_modified(self, note: dict[str, Any], days_threshold: int = 7) -> bool:
         """Check if note was modified in the last N days"""
         try:
             updated_ms = note.get("updated", 0)
             if not updated_ms:
                 return False
 
-            # Convert milliseconds to seconds if needed
-            if updated_ms > 10000000000:  # Likely in milliseconds
-                updated_timestamp = updated_ms / 1000
-            else:
-                updated_timestamp = updated_ms
+            updated_timestamp = updated_ms / 1000 if updated_ms > 10000000000 else updated_ms
 
             # Get the date
             updated_date = datetime.fromtimestamp(updated_timestamp).date()
@@ -574,7 +565,7 @@ Response:"""
 
     async def fetch_joplin_notes_for_report(
         self, user_id: int, min_priority: PriorityLevel = PriorityLevel.LOW
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Fetch Joplin notes using hybrid strategy with smart fallback:
         - Include all notes with priority tags (#urgent, #critical, #important, #high, #medium)
@@ -659,7 +650,7 @@ Response:"""
             self.logger.error(f"Failed to fetch Joplin notes: {e}")
             return []
 
-    async def fetch_google_tasks_for_report(self, user_id: int) -> List[Dict[str, Any]]:
+    async def fetch_google_tasks_for_report(self, user_id: int) -> list[dict[str, Any]]:
         """
         Fetch incomplete Google Tasks
 
@@ -711,10 +702,10 @@ Response:"""
     async def aggregate_report_items(
         self,
         user_id: int,
-        joplin_notes: List[Dict[str, Any]],
-        google_tasks: List[Dict[str, Any]],
+        joplin_notes: list[dict[str, Any]],
+        google_tasks: list[dict[str, Any]],
         min_priority: PriorityLevel = PriorityLevel.LOW,
-    ) -> List[ReportItem]:
+    ) -> list[ReportItem]:
         """
         Aggregate items from both sources and rank by priority
 
@@ -759,8 +750,8 @@ Response:"""
     async def generate_report_async(
         self,
         user_id: int,
-        pending_clarifications: List[Tuple[str, str]] = None,
-        completed_items: List[str] = None,
+        pending_clarifications: list[tuple[str, str]] = None,
+        completed_items: list[str] = None,
         min_priority: PriorityLevel = PriorityLevel.LOW,
     ) -> ReportData:
         """
@@ -796,7 +787,7 @@ Response:"""
 
             # Add pending clarifications
             if pending_clarifications:
-                for note_id, note_title in pending_clarifications:
+                for _note_id, note_title in pending_clarifications:
                     report.pending_clarification.append(note_title)
                 report.clarification_count = len(pending_clarifications)
 
@@ -1038,7 +1029,7 @@ Response:"""
 
         return "\n".join(lines)
 
-    def format_configuration_display(self, config: Dict[str, Any]) -> str:
+    def format_configuration_display(self, config: dict[str, Any]) -> str:
         """
         Format user's report configuration for display
 
@@ -1086,7 +1077,6 @@ Response:"""
 
 if __name__ == "__main__":
     # Example usage
-    import json
 
     generator = ReportGenerator()
 
@@ -1128,7 +1118,7 @@ if __name__ == "__main__":
         completed_items=["Design homepage mockup"],
     )
 
-    print(f"\n📊 Report Summary:")
+    print("\n📊 Report Summary:")
     print(f"Total items: {report.total_items}")
     print(f"Critical: {len(report.critical_items)}")
     print(f"High: {len(report.high_items)}")

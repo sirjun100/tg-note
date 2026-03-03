@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def register_google_tasks_handlers(application: Any, orch: "TelegramOrchestrator") -> None:
+def register_google_tasks_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("authorize_google_tasks", _authorize(orch)))
     application.add_handler(CommandHandler("verify_google", _verify(orch)))
     application.add_handler(CommandHandler("google_tasks_config", _config(orch)))
@@ -29,7 +29,7 @@ def register_google_tasks_handlers(application: Any, orch: "TelegramOrchestrator
     application.add_handler(CommandHandler("list_inbox_tasks", _list_inbox_tasks(orch)))
 
 
-def _authorize(orch: "TelegramOrchestrator"):
+def _authorize(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -67,7 +67,7 @@ def _authorize(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _verify(orch: "TelegramOrchestrator"):
+def _verify(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -130,7 +130,7 @@ def _verify(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _config(orch: "TelegramOrchestrator"):
+def _config(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -176,7 +176,7 @@ def _config(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _set_task_list(orch: "TelegramOrchestrator"):
+def _set_task_list(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -200,7 +200,7 @@ def _set_task_list(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _toggle_auto_tasks(orch: "TelegramOrchestrator"):
+def _toggle_auto_tasks(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -219,7 +219,7 @@ def _toggle_auto_tasks(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _toggle_privacy(orch: "TelegramOrchestrator"):
+def _toggle_privacy(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -238,7 +238,7 @@ def _toggle_privacy(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _tasks_status(orch: "TelegramOrchestrator"):
+def _tasks_status(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -274,7 +274,7 @@ def _tasks_status(orch: "TelegramOrchestrator"):
     return handler
 
 
-def _list_inbox_tasks(orch: "TelegramOrchestrator"):
+def _list_inbox_tasks(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):

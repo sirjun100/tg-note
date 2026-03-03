@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -95,9 +95,9 @@ class JoplinClient:
         folder_id: str,
         title: str,
         body: str,
-        image_data_url: Optional[str] = None,
+        image_data_url: str | None = None,
     ) -> str:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "title": title,
             "body": body,
             "parent_id": folder_id,
@@ -110,13 +110,13 @@ class JoplinClient:
             return result["id"]
         raise JoplinError(f"Failed to create note '{title}'")
 
-    async def get_note(self, note_id: str) -> Dict[str, Any]:
+    async def get_note(self, note_id: str) -> dict[str, Any]:
         result = await self._request("GET", f"/notes/{note_id}")
         if result is None:
             raise JoplinError(f"Note {note_id} not found")
         return result
 
-    async def update_note(self, note_id: str, updates: Dict[str, Any]) -> None:
+    async def update_note(self, note_id: str, updates: dict[str, Any]) -> None:
         await self._request("PUT", f"/notes/{note_id}", json=updates)
         logger.info("Updated note %s", note_id)
 
@@ -127,22 +127,22 @@ class JoplinClient:
     async def move_note(self, note_id: str, parent_id: str) -> None:
         await self._request("PUT", f"/notes/{note_id}", json={"parent_id": parent_id})
 
-    async def get_all_notes(self, fields: str | None = None) -> List[Dict[str, Any]]:
+    async def get_all_notes(self, fields: str | None = None) -> list[dict[str, Any]]:
         endpoint = "/notes"
         if fields:
             endpoint = f"/notes?fields={fields}"
         return await self._paginated_items(endpoint)
 
-    async def get_notes_in_folder(self, folder_id: str) -> List[Dict[str, Any]]:
+    async def get_notes_in_folder(self, folder_id: str) -> list[dict[str, Any]]:
         return await self._paginated_items(f"/folders/{folder_id}/notes")
 
     # -- folders --
 
-    async def get_folders(self) -> List[Dict[str, Any]]:
+    async def get_folders(self) -> list[dict[str, Any]]:
         folders = await self._paginated_items("/folders")
         # Ignore soft-deleted folders; they can still be returned by API but
         # should not be considered valid destinations for new notes.
-        active_folders: List[Dict[str, Any]] = []
+        active_folders: list[dict[str, Any]] = []
         for folder in folders:
             deleted_time = folder.get("deleted_time", 0) or 0
             if deleted_time:
@@ -150,7 +150,7 @@ class JoplinClient:
             active_folders.append(folder)
         return active_folders
 
-    async def get_folder(self, folder_id: str) -> Dict[str, Any]:
+    async def get_folder(self, folder_id: str) -> dict[str, Any]:
         result = await self._request("GET", f"/folders/{folder_id}")
         if result is None:
             raise JoplinError(f"Folder {folder_id} not found")
@@ -158,8 +158,8 @@ class JoplinClient:
 
     async def create_folder(
         self, title: str, parent_id: str | None = None
-    ) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {"title": title}
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {"title": title}
         if parent_id:
             payload["parent_id"] = parent_id
         result = await self._request("POST", "/folders", json=payload)
@@ -167,7 +167,7 @@ class JoplinClient:
             raise JoplinError(f"Failed to create folder '{title}'")
         return result
 
-    async def get_or_create_folder_by_path(self, path_parts: List[str]) -> str:
+    async def get_or_create_folder_by_path(self, path_parts: list[str]) -> str:
         current_parent = ""
         for part in path_parts:
             folders = await self.get_folders()
@@ -193,19 +193,19 @@ class JoplinClient:
 
     # -- tags --
 
-    async def fetch_tags(self) -> List[Dict[str, Any]]:
+    async def fetch_tags(self) -> list[dict[str, Any]]:
         tags = await self._paginated_items("/tags")
         logger.info("Fetched %d tags", len(tags))
         return tags
 
-    async def get_notes_with_tag(self, tag_id: str) -> List[Dict[str, Any]]:
+    async def get_notes_with_tag(self, tag_id: str) -> list[dict[str, Any]]:
         return await self._paginated_items(f"/tags/{tag_id}/notes")
 
-    async def get_note_tags(self, note_id: str) -> List[Dict[str, Any]]:
+    async def get_note_tags(self, note_id: str) -> list[dict[str, Any]]:
         """Return the list of tags attached to a note (each dict has at least 'id' and 'title')."""
         return await self._paginated_items(f"/notes/{note_id}/tags")
 
-    async def get_tag_id_by_name(self, tag_name: str) -> Optional[str]:
+    async def get_tag_id_by_name(self, tag_name: str) -> str | None:
         """Return tag id if a tag with this name (case-insensitive) exists; else None. Does not create."""
         tags = await self.fetch_tags()
         for tag in tags:
@@ -213,7 +213,7 @@ class JoplinClient:
                 return tag["id"]
         return None
 
-    async def apply_tags(self, note_id: str, tag_names: List[str]) -> bool:
+    async def apply_tags(self, note_id: str, tag_names: list[str]) -> bool:
         success = True
         for name in tag_names:
             tag_id = await self._get_or_create_tag(name)
@@ -224,7 +224,7 @@ class JoplinClient:
                 success = False
         return success
 
-    async def apply_existing_tags_only(self, note_id: str, tag_names: List[str]) -> bool:
+    async def apply_existing_tags_only(self, note_id: str, tag_names: list[str]) -> bool:
         """Apply only tags that already exist in Joplin (reuse, never create)."""
         if not tag_names:
             return True
@@ -241,11 +241,11 @@ class JoplinClient:
         return success
 
     async def apply_tags_and_track_new(
-        self, note_id: str, tag_names: List[str]
-    ) -> Dict[str, Any]:
+        self, note_id: str, tag_names: list[str]
+    ) -> dict[str, Any]:
         existing_titles = {t.get("title") for t in await self.fetch_tags()}
-        new_tags: List[str] = []
-        existing_tags: List[str] = []
+        new_tags: list[str] = []
+        existing_tags: list[str] = []
         success = True
 
         for name in tag_names:
@@ -271,13 +271,13 @@ class JoplinClient:
         )
         return result is not None
 
-    def _tag_title_matches(self, tag: Dict[str, Any], name: str) -> bool:
+    def _tag_title_matches(self, tag: dict[str, Any], name: str) -> bool:
         """Match tag title to name case-insensitively (avoids duplicate 'AI' vs 'ai' etc.)."""
         t = (tag.get("title") or "").strip()
         n = (name or "").strip()
         return t.lower() == n.lower()
 
-    async def _get_or_create_tag(self, tag_name: str) -> Optional[str]:
+    async def _get_or_create_tag(self, tag_name: str) -> str | None:
         tags = await self.fetch_tags()
         for tag in tags:
             if self._tag_title_matches(tag, tag_name):
@@ -322,14 +322,14 @@ class JoplinClient:
             except Exception as exc:
                 logger.warning("Failed to ensure tag '%s': %s", name, exc)
 
-    async def _paginated_items(self, endpoint: str) -> List[Dict[str, Any]]:
+    async def _paginated_items(self, endpoint: str) -> list[dict[str, Any]]:
         """
         Fetch all pages from a Joplin list endpoint.
 
         Joplin may paginate folders/tags with `has_more` and `page`.
         """
         page = 1
-        items: List[Dict[str, Any]] = []
+        items: list[dict[str, Any]] = []
         while True:
             sep = "&" if "?" in endpoint else "?"
             result = await self._request("GET", f"{endpoint}{sep}page={page}")
@@ -344,7 +344,7 @@ class JoplinClient:
 
     async def append_log(self, log_entry: str) -> bool:
         try:
-            with open("joplin_config.json", "r") as f:
+            with open("joplin_config.json") as f:
                 config = json.load(f)
                 log_note_id = config.get("ai_decision_log_note_id")
         except (FileNotFoundError, json.JSONDecodeError):

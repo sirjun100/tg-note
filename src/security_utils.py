@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Dict, List, Optional
 
 from src.constants import MESSAGE_MAX_LENGTH, NOTE_BODY_MAX_LENGTH, NOTE_TITLE_MAX_LENGTH, SANITIZE_MAX_LENGTH
 from src.exceptions import AppError
@@ -31,7 +30,7 @@ def check_whitelist(user_id: int) -> bool:
     return ok
 
 
-def validate_message_text(text: str) -> Optional[str]:
+def validate_message_text(text: str) -> str | None:
     if not text or not text.strip():
         return None
     text = text.strip()
@@ -44,6 +43,7 @@ def validate_message_text(text: str) -> Optional[str]:
 async def ping_joplin_api(base_url: str | None = None) -> bool:
     """Async health check for Joplin API."""
     import httpx
+
     from src.constants import JOPLIN_PING_TIMEOUT
 
     if base_url is None:
@@ -72,7 +72,7 @@ def sanitize_input(text: str) -> str:
     return text.strip()
 
 
-def log_user_action(user_id: int, action: str, details: Optional[Dict] = None) -> None:
+def log_user_action(user_id: int, action: str, details: dict | None = None) -> None:
     extra = f" - {details}" if details else ""
     logger.info("User %d: %s%s", user_id, action, extra)
 
@@ -94,8 +94,8 @@ def handle_api_error(error: Exception, context: str = "") -> str:
     return "Something went wrong. Please try again."
 
 
-def validate_note_data(note_data: Dict) -> List[str]:
-    errors: List[str] = []
+def validate_note_data(note_data: dict) -> list[str]:
+    errors: list[str] = []
     if not note_data.get("title"):
         errors.append("Note title is required")
     if not note_data.get("body"):

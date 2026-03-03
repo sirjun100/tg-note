@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import Optional
 
 import httpx
 
@@ -20,7 +19,7 @@ _PAGESHOT_URL = "https://pageshot.site/v1/screenshot"
 _TIMEOUT = 25.0
 
 
-async def capture_url_screenshot(url: str) -> Optional[str]:
+async def capture_url_screenshot(url: str) -> str | None:
     """
     Capture a webpage at the given URL as a PNG image.
 
