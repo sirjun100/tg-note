@@ -9,15 +9,15 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-01 (BF-001 Google Tasks sync no-token added)
+**Last Updated**: 2026-03-01 (Code review: status audit across all features and bugs)
 
 ## Project Overview
 
 **Project Name**: Intelligent Telegram-Joplin Bot
-**Current Sprint**: Sprint 9 (Joplin Database Reorganization - Mar 10-31)
-**Status**: ⏳ In Progress - 74% Complete (95/129 story points)
-**Timeline**: 2 Sprints remaining through March 31, 2025
-**Quality**: Production Ready ✅
+**Current Sprint**: Sprint 8 (Weekly Reports - Feb 24–Mar 9) — not started
+**Status**: ⏳ In Progress - 78% Complete (108/138 story points)
+**Timeline**: Sprint 8 (FR-015) not started; Sprint 9 (FR-016) ~55% complete
+**Quality**: Production Ready ✅ (blocked by BF-002, BF-003 — app currently down)
 
 ## Executive Summary
 
@@ -29,13 +29,14 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 - (Sprint 5) Displays tags applied by AI in success messages
 - (Sprint 6) Delivers daily priority reports aggregating Joplin + Google Tasks
 - (Sprint 7) Provides GTD expert persona for brain dump sessions
+- (Sprint 7b) Provides stoic journaling with morning/evening guided reflection
 - (Sprint 8) Generates weekly productivity reviews with trends
 - (Sprint 9) Reorganizes Joplin with PARA methodology
 
 **Sprints Completed**: 7 of 9 planned
-**Current Sprint**: Sprint 9 (FR-016 - DB Reorganization, 21 points, Mar 10-31)
-**Sprints Planned**: Sprint 8 (Feb 24-Mar 9)
-**Major Milestones**: Foundation ✅ → Components ✅ → Enhancements ✅ → Google Tasks ✅ → Tag Display ✅ → Reports ✅ → GTD Expert (Sprint 7) → Weekly Reports (Sprint 8) → Database Org (Sprint 9)
+**Current Sprint**: Sprint 8 (FR-015 - Weekly Reports, 13 points, Feb 24–Mar 9) — not started
+**Next Sprint**: Sprint 9 (FR-016 - DB Reorganization, 21 points, Mar 10-31) — ~55% complete
+**Major Milestones**: Foundation ✅ → Components ✅ → Enhancements ✅ → Google Tasks ✅ → Tag Display ✅ → Reports ✅ → GTD Expert ✅ → Stoic Journal ✅ → Weekly Reports (Sprint 8) → Database Org (Sprint 9)
 
 ## Feature Requests
 
@@ -58,15 +59,16 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [FR-015](features/FR-015-weekly-review-report.md) | Weekly Review and Report | 🟠 High | 13 | ⭕ | Sprint 8 | 2025-01-23 | 2026-01-24 |
 | [FR-016](features/FR-016-joplin-database-reorganization.md) | Joplin Database Reorganization, Tag Management, and Entry Enrichment | 🟠 High | 21 | ⏳ | Sprint 9 | 2025-01-23 | 2026-01-24 |
 | [FR-017](features/FR-017-gtd-expert-persona.md) | GTD Expert Persona for 15-Minute Brain Dumping | 🟠 High | 8 | ✅ | Sprint 7 | 2026-01-24 | 2026-01-24 |
-| [FR-018](features/FR-018-docker-compose-setup.md) | Docker Compose Setup for Bot and Joplin Server | 🟠 High | 8 | ⭕ | Backlog | 2026-01-24 | 2026-01-24 |
+| [FR-018](features/FR-018-docker-compose-setup.md) | Docker Compose Setup for Bot and Joplin Server | 🟠 High | 8 | ⏳ | Backlog | 2026-01-24 | 2026-03-01 |
+| [FR-019](features/FR-019-stoic-journal.md) | Stoic Journal with Morning/Evening Guided Reflection | 🟠 High | 5 | ✅ | Sprint 7 | 2026-02-15 | 2026-03-01 |
 
 ## Bug Fixes
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
 | [BF-001](bugs/BF-001-google-tasks-sync-no-token.md) | Google Tasks Sync Fails: No Google token found for user | 🟠 High | 2 | ✅ | Backlog | 2026-03-01 | 2026-03-01 |
-| [BF-002](bugs/BF-002-bug-description.md) | [Bug Description] | 🟠 High | [X] | ⭕ | - | 2026-01-01 | 2026-01-01 |
-| [BF-003](bugs/BF-003-bug-description.md) | [Bug Description] | 🟡 Medium | [X] | ⭕ | - | 2026-01-01 | 2026-01-01 |
+| [BF-002](bugs/BF-002-github-actions-build-failure.md) | GitHub Actions Build Failure | 🔴 Critical | 3 | ⭕ | Backlog | 2026-03-01 | 2026-03-01 |
+| [BF-003](bugs/BF-003-scheduler-not-working.md) | Scheduler Not Working — App Down | 🔴 Critical | 5 | ⭕ | Backlog | 2026-03-01 | 2026-03-01 |
 
 ---
 
@@ -104,12 +106,12 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 |--------|----------|-----------|--------|--------|
 | **Sprint 5** | Jan 27-31 | FR-013 (Tag Display) | 5 | ✅ Complete |
 | **Sprint 6** | Feb 3-16 | FR-014 (Daily Reports) | 8 | ✅ Complete |
-| **Sprint 7** | Jan 24-31 (Accelerated) | FR-017 (GTD Expert) | 8 | ✅ Complete |
-| **Sprint 8** | Feb 24-Mar 9 | FR-015 (Weekly Reports) | 13 | ⭕ Planned |
-| **Sprint 9** | Mar 10-31 | FR-016 (DB Reorganization) | 21 | ⏳ In Progress |
+| **Sprint 7** | Jan 24-31 (Accelerated) | FR-017 (GTD Expert), FR-019 (Stoic Journal) | 13 | ✅ Complete |
+| **Sprint 8** | Feb 24-Mar 9 | FR-015 (Weekly Reports) | 13 | ⭕ Not Started |
+| **Sprint 9** | Mar 10-31 | FR-016 (DB Reorganization) | 21 | ⏳ ~55% Complete |
 
-**Remaining Backlog**: 42 points across 3 sprints (3 features)
-**Projected Completion**: March 31, 2025
+**Remaining Backlog**: 30 points (FR-015 not started, FR-016 ~55%, FR-018 partial)
+**Projected Completion**: Delayed — BF-002/BF-003 blocking deployment
 
 ## Notes
 
@@ -121,26 +123,35 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 ## Backlog Statistics
 
-**Total Items**: 17 (Features)
+**Total Items**: 19 Features + 3 Bugs = 22 items
 
-**By Status**:
+**Features by Status**:
 - ⭕ Not Started: 1 (FR-015)
-- ⏳ In Progress: 1 (FR-016)
-- ✅ Completed: 15 (FR-001 through FR-017)
+- ⏳ In Progress: 2 (FR-016, FR-018)
+- ✅ Completed: 16 (FR-001–FR-014, FR-017, FR-019)
 
-**By Priority**:
-- 🔴 Critical: 0
-- 🟠 High: 9
-- 🟡 Medium: 8
+**Bugs by Status**:
+- ⭕ Not Started: 2 (BF-002, BF-003) — both Critical, blocking deployment
+- ✅ Completed: 1 (BF-001)
+
+**By Priority (all items)**:
+- 🔴 Critical: 2 (BF-002, BF-003)
+- 🟠 High: 10
+- 🟡 Medium: 7
 - 🟢 Low: 0
 
-**Total Story Points**: 129
-  - Completed: 95 points (FR-001 through FR-017) - 74%
-  - Sprints 8-9 Planned: 34 points (FR-015, FR-016) - 26% 
+**Feature Story Points**: 138
+  - Completed: 108 points (FR-001–FR-014, FR-017, FR-019) — 78%
+  - In Progress: 29 points (FR-016 ~55%, FR-018 partial) — 21%
+  - Not Started: 13 points (FR-015) — 9%
 
-**Completion Rate**: 74% completed (95/129 points)
-**After Sprint 7**: 74% (95/129 points) ✅
-**Full Completion Target**: March 31, 2025
+**Bug Story Points**: 10
+  - Completed: 2 points (BF-001)
+  - Not Started: 8 points (BF-002: 3, BF-003: 5) — Critical blockers
+
+**Overall Completion Rate**: 78% features completed (108/138 points)
+**After Sprint 7**: 78% (108/138 points) ✅
+**Full Completion Target**: Delayed — critical bugs must be resolved first
 
 ---
 
@@ -156,15 +167,16 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [Sprint 4](../sprints/sprint-04-google-tasks-integration.md) | Jan 23-24 | Google Tasks Integration | 8 | ✅ | 8 pts |
 | [Sprint 5](../sprints/sprint-05-user-engagement-features.md) | Jan 27-31 | Display Tags (FR-013) | 5 | ✅ | 5 pts |
 | [Sprint 6](../sprints/sprint-06-daily-priority-reports.md) | Feb 3-16 | Daily Reports (FR-014) | 8 | ✅ | 8 pts |
-| [Sprint 7](../sprints/sprint-07-gtd-expert-persona.md) | Jan 24-31 | GTD Expert (FR-017) | 8 | ✅ | 8 pts |
-| Sprint 8 | Feb 24-Mar 9 | Weekly Reports (FR-015) | 13 | ⭕ | — |
-| Sprint 9 | Mar 10-31 | Database Reorganization (FR-016) | 21 | ⏳ | — |
-| **TOTAL** | | | **129 pts** | **95 Complete, 34 Planned** | **14 avg** |
+| [Sprint 7](../sprints/sprint-07-gtd-expert-persona.md) | Jan 24-31 | GTD Expert (FR-017) + Stoic Journal (FR-019) | 13 | ✅ | 13 pts |
+| Sprint 8 | Feb 24-Mar 9 | Weekly Reports (FR-015) | 13 | ⭕ Not Started | — |
+| Sprint 9 | Mar 10-31 | Database Reorganization (FR-016) | 21 | ⏳ ~55% | — |
+| **TOTAL** | | | **138 pts** | **108 Complete, 30 Remaining** | **14 avg** |
 
-**Completion Status**: 74% Complete (95/129)
-  - Sprint 7 Complete (Jan 24): 74% (95/129) ✅
-  - After Sprint 9 (Mar 31): 90% (116/129)
-  - After Sprint 8 (TBD): 100% (129/129) ✅
+**Completion Status**: 78% Complete (108/138)
+  - Sprint 7 Complete (Jan 31): 78% (108/138) ✅
+  - Sprint 8 (Feb 24–Mar 9): FR-015 not started
+  - Sprint 9 (Mar 10–31): FR-016 ~55% complete
+  - **Blocker**: BF-002 + BF-003 — app down, CI/CD broken
 
 ## Tips for Maintaining the Backlog
 

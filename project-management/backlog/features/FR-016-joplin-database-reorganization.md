@@ -1,11 +1,11 @@
 # Feature Request: FR-016 - Joplin Database Reorganization, Tag Management, and Entry Enrichment
 
-**Status**: ⭕ Not Started
+**Status**: ⏳ In Progress (~55% complete)
 **Priority**: 🟠 High
 **Story Points**: 21
 **Created**: 2025-01-23
-**Updated**: 2025-01-23
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-01
+**Assigned Sprint**: Sprint 9
 
 ## Description
 
@@ -22,20 +22,20 @@ so that my knowledge is organized, discoverable, and more valuable over time.
 
 ### Core Features
 
-- [ ] User can select from 3 pre-built organizational frameworks (all PARA-based)
-- [ ] System provides migration plan for existing notes to new structure
-- [ ] Folder reorganization process is reversible (undo capability)
-- [ ] Tags are managed systematically (create, merge, deprecate)
-- [ ] Tag hierarchy is enforced (parent tags, child tags)
-- [ ] Entry enrichment adds metadata to notes (summary, links, relationships, dates)
-- [ ] Automated suggestions for tag assignment to existing notes
-- [ ] Automated suggestions for folder placement
-- [ ] Bulk reorganization operations supported (move, retag, enrich multiple notes)
-- [ ] Database maintains audit trail of all reorganization changes
-- [ ] Organization rules can be customized and saved
-- [ ] Visual representation of folder structure available
-- [ ] Conflict detection when moving/merging notes
-- [ ] Performance optimized for large databases (1000+ notes)
+- [x] User can select from ~~3~~ 2 pre-built organizational frameworks (status, roles — time-based not implemented)
+- [x] System provides migration plan for existing notes to new structure (LLM-based, samples 20 notes)
+- [ ] Folder reorganization process is reversible (undo capability) — **not implemented**, no `/reorganize-rollback`
+- [ ] Tags are managed systematically (create, merge, deprecate) — **partial**: create + audit only, no merge/deprecate
+- [ ] Tag hierarchy is enforced (parent tags, child tags) — **not implemented**
+- [x] Entry enrichment adds metadata to notes (status, priority, summary, key takeaways, suggested tags)
+- [x] Automated suggestions for tag assignment to existing notes (via enrichment)
+- [x] Automated suggestions for folder placement (LLM-based PARA classification)
+- [x] Bulk reorganization operations supported (batch enrichment, migration execution)
+- [ ] Database maintains audit trail of all reorganization changes — **partial**: in-memory `OperationLog` only, not persisted
+- [ ] Organization rules can be customized and saved — **not implemented**
+- [ ] Visual representation of folder structure available — **basic stats only** via `/reorg_status`
+- [x] Conflict detection when moving/merging notes (duplicate titles, invalid folders, tag conflicts)
+- [ ] Performance optimized for large databases (1000+ notes) — **migration samples 20 notes**, no special optimization
 
 ## Business Value
 
@@ -542,6 +542,35 @@ All three maintain PARA's proven structure while allowing customization. The enr
 
 Consider implementing this as a guided wizard with undo capability at each step to reduce user anxiety about reorganizing a large database.
 
+## Implementation Status (as of 2026-03-01)
+
+### What's Done (~55%)
+- **Reorg handlers**: 9 of 10 commands registered (`/reorg_init`, `/reorg_preview`, `/reorg_execute`, `/reorg_status`, `/reorg_detect_conflicts`, `/reorg_audit_tags`, `/reorg_history`, `/reorg_help`, `/enrich_notes`)
+- **PARA structure creation**: 2 templates (status, roles) with full folder creation via `get_or_create_folder_by_path`
+- **Migration plan + execution**: LLM-based note classification, `execute_migration_plan()` with dry-run support
+- **Enrichment service**: Full pipeline — YAML front matter injection (status, priority, summary, key takeaways, tags), batch processing, `augment_note_with_research()`
+- **Conflict detection**: Duplicate titles, invalid folders, tag conflicts
+- **Tag audit**: Case-insensitive duplicate detection
+
+### What's Missing (~45%)
+- **Rollback/undo**: No `/reorganize-rollback`, no automatic backup before migration
+- **Third PARA template**: Time-based/quarterly template not implemented
+- **Tag hierarchy**: No parent/child tag relationships
+- **Tag merge/deprecate**: Only audit exists, no systematic management
+- **Full enrichment metadata**: Missing Created, Updated, Review Date, Source, Related Notes, bidirectional linking
+- **Persistent audit trail**: History is in-memory `OperationLog` only, 6 planned DB tables not created
+- **Custom organization rules**: Not implemented
+- **Visual folder tree**: Only basic stats in `/reorg_status`
+- **Large-DB optimization**: Migration plan samples 20 notes only
+
+### Key Files
+- `src/handlers/reorg.py` — Command handlers
+- `src/reorg_orchestrator.py` (414 lines) — Core orchestration logic
+- `src/enrichment_service.py` (250 lines) — Note enrichment pipeline
+- `src/prompts/para_classifier.txt` — LLM classification prompt
+- `src/prompts/note_enricher.txt` — LLM enrichment prompt
+
 ## History
 
 - 2025-01-23 - Created
+- 2026-03-01 - Status updated to ⏳ In Progress (~55%) based on code review
