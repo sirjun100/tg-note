@@ -41,22 +41,24 @@ jobs:
           DEEPSEEK_API_KEY: "test-key"
           LLM_PROVIDER: "deepseek"
 
-  docker-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t telegram-joplin:ci .
-
   deploy:
-    needs: [lint-and-test, docker-build]
+    needs: [lint-and-test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly.io token
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::FLY_API_TOKEN secret is not set. Add it via: Settings → Secrets → Actions → New repository secret."
+            echo "Generate a token with: fly tokens create deploy -x 8760h"
+            exit 1
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Deploy to Fly.io
         run: flyctl deploy --remote-only

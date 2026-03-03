@@ -1,10 +1,11 @@
 """
-Daily report handlers: generate, schedule, configure.
+Daily and weekly report handlers: generate, schedule, configure.
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from telegram import Update
@@ -12,6 +13,7 @@ from telegram.ext import CommandHandler, ContextTypes
 
 from src.report_generator import PriorityLevel
 from src.security_utils import check_whitelist
+from src.weekly_report_generator import WeeklyReportGenerator
 
 if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
@@ -33,6 +35,7 @@ _DEFAULT_CONFIG = {
 
 def register_report_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("daily_report", _daily_report(orch)))
+    application.add_handler(CommandHandler("weekly_report", _weekly_report(orch)))
     application.add_handler(CommandHandler("configure_report_time", _configure_time(orch)))
     application.add_handler(CommandHandler("configure_report_timezone", _configure_tz(orch)))
     application.add_handler(CommandHandler("toggle_daily_report", _toggle(orch)))
@@ -141,6 +144,85 @@ async def send_scheduled_report(orch: TelegramOrchestrator, user_id: int) -> Non
         )
     except Exception as exc:
         logger.error("Failed to send scheduled report to user %d: %s", user_id, exc, exc_info=True)
+
+
+def _weekly_report(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            await update.message.reply_text("❌ You're not authorized to use this command.")
+            return
+
+        try:
+            await update.message.chat.send_action("typing")
+            logger.info("Generating on-demand weekly report for user %d", user.id)
+
+            ref_date: datetime | None = None
+            if context.args:
+                arg = context.args[0].lower()
+                if arg == "last":
+                    ref_date = datetime.now() - timedelta(days=7)
+
+            generator = WeeklyReportGenerator(
+                joplin_client=orch.joplin_client,
+                task_service=orch.task_service,
+                logging_service=orch.logging_service,
+            )
+            report = await generator.generate_weekly_report(user.id, ref_date)
+            message = generator.format_weekly_report(report)
+            await update.message.reply_text(message)
+
+            orch.logging_service.log_system_event(
+                level="INFO",
+                module="weekly_report",
+                message=f"Generated on-demand weekly report for user {user.id}",
+                extra_data={
+                    "velocity": report.current.velocity,
+                    "completion_rate": report.current.completion_rate,
+                    "generated_by": "manual",
+                },
+            )
+            logger.info("Weekly report sent to user %d", user.id)
+        except Exception as exc:
+            await update.message.reply_text("❌ Error generating weekly report. Please try again later.")
+            logger.error("Error in weekly_report handler: %s", exc, exc_info=True)
+
+    return handler
+
+
+async def send_scheduled_weekly_report(orch: TelegramOrchestrator, user_id: int) -> None:
+    """Callback invoked by the scheduler for weekly reports."""
+    try:
+        logger.info("Sending scheduled weekly report to user %d", user_id)
+
+        generator = WeeklyReportGenerator(
+            joplin_client=orch.joplin_client,
+            task_service=orch.task_service,
+            logging_service=orch.logging_service,
+        )
+        report = await generator.generate_weekly_report(user_id)
+        message = generator.format_weekly_report(report)
+
+        from telegram import Bot
+
+        from config import TELEGRAM_BOT_TOKEN
+
+        bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        sent = await bot.send_message(chat_id=user_id, text=message)
+
+        orch.logging_service.log_system_event(
+            level="INFO",
+            module="weekly_report",
+            message=f"Scheduled weekly report sent to user {user_id}",
+            extra_data={
+                "velocity": report.current.velocity,
+                "message_id": sent.message_id,
+                "generated_by": "scheduled",
+            },
+        )
+        logger.info("Scheduled weekly report sent to user %d, message_id=%d", user_id, sent.message_id)
+    except Exception as exc:
+        logger.error("Failed to send scheduled weekly report to user %d: %s", user_id, exc, exc_info=True)
 
 
 def _configure_time(orch: TelegramOrchestrator):
@@ -377,11 +459,13 @@ def _help(orch: TelegramOrchestrator):
             return
 
         await update.message.reply_text(
-            "📊 Daily Priority Report Commands\n\n"
+            "📊 Report Commands\n\n"
             "Generate Reports:\n"
-            "  /daily_report - Generate report immediately\n\n"
+            "  /daily_report - Generate daily priority report\n"
+            "  /weekly_report - Generate weekly review\n"
+            "  /weekly_report last - Review last week\n\n"
             "Configure Delivery:\n"
-            "  /configure_report_time <HH:MM> - Set delivery time (24-hour format)\n"
+            "  /configure_report_time <HH:MM> - Set daily delivery time\n"
             "    Example: /configure_report_time 08:00\n\n"
             "  /configure_report_timezone <timezone> - Set your timezone\n"
             "    Example: /configure_report_timezone US/Eastern\n"
@@ -396,12 +480,17 @@ def _help(orch: TelegramOrchestrator):
             "  /show_report_config - View your current configuration\n\n"
             "Help:\n"
             "  /report_help - Show this help message\n\n"
-            "What's Included:\n"
+            "Daily Report Includes:\n"
             "• High-priority Joplin notes (tagged: #urgent, #critical, #important)\n"
             "• Incomplete Google Tasks\n"
             "• Notes pending clarification\n"
-            "• Items completed since last report\n"
-            "• Smart priority ranking across all sources"
+            "• Smart priority ranking across all sources\n\n"
+            "Weekly Report Includes:\n"
+            "• Notes created & modified during the week\n"
+            "• Google Tasks completed, pending, and overdue\n"
+            "• Productivity metrics & velocity trends\n"
+            "• Breakdown by folder and day of week\n"
+            "• Actionable recommendations"
         )
         logger.info("User %d viewed report help", user.id)
 

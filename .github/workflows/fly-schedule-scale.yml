@@ -53,6 +53,17 @@ jobs:
             fi
           fi
 
+      - name: Verify Fly.io token
+        if: steps.resolve.outputs.count != 'skip'
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::FLY_API_TOKEN secret is not set. Add it via: Settings → Secrets → Actions → New repository secret."
+            echo "Generate a token with: fly tokens create deploy -x 8760h"
+            exit 1
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Scale Fly app
         if: steps.resolve.outputs.count != 'skip'
         env:
