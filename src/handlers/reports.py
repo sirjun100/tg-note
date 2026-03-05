@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
+from src.monthly_report_generator import MonthlyReportGenerator
 from src.report_generator import PriorityLevel
 from src.security_utils import check_whitelist
 from src.timezone_utils import get_user_timezone_aware_now
@@ -37,6 +38,7 @@ _DEFAULT_CONFIG = {
 def register_report_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("daily_report", _daily_report(orch)))
     application.add_handler(CommandHandler("weekly_report", _weekly_report(orch)))
+    application.add_handler(CommandHandler("monthly_report", _monthly_report(orch)))
     application.add_handler(CommandHandler("configure_report_time", _configure_time(orch)))
     application.add_handler(CommandHandler("configure_report_timezone", _configure_tz(orch)))
     application.add_handler(CommandHandler("toggle_daily_report", _toggle(orch)))
@@ -187,6 +189,75 @@ def _weekly_report(orch: TelegramOrchestrator):
         except Exception as exc:
             await update.message.reply_text("❌ Error generating weekly report. Please try again later.")
             logger.error("Error in weekly_report handler: %s", exc, exc_info=True)
+
+    return handler
+
+
+def _monthly_report(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            await update.message.reply_text("❌ You're not authorized to use this command.")
+            return
+
+        try:
+            await update.message.chat.send_action("typing")
+
+            now = get_user_timezone_aware_now(user.id, orch.logging_service)
+            year, month = now.year, now.month
+
+            if context.args:
+                arg = context.args[0].strip().lower()
+                if arg == "last":
+                    if month == 1:
+                        year, month = year - 1, 12
+                    else:
+                        month -= 1
+                else:
+                    # Parse YYYY-MM
+                    parts = arg.split("-")
+                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                        year, month = int(parts[0]), int(parts[1])
+                        if not (1 <= month <= 12):
+                            await update.message.reply_text(
+                                "Usage: `/monthly_report` or `/monthly_report 2026-02` or `/monthly_report last`",
+                                parse_mode="Markdown",
+                            )
+                            return
+                    else:
+                        await update.message.reply_text(
+                            "Usage: `/monthly_report` or `/monthly_report 2026-02` or `/monthly_report last`",
+                            parse_mode="Markdown",
+                        )
+                        return
+
+            logger.info("Generating monthly report for user %d: %d-%02d", user.id, year, month)
+
+            generator = MonthlyReportGenerator(
+                joplin_client=orch.joplin_client,
+                task_service=orch.task_service,
+                logging_service=orch.logging_service,
+                llm_orchestrator=orch.llm_orchestrator,
+            )
+            report = await generator.generate(user.id, year, month)
+            message = generator.format_report(report)
+            await update.message.reply_text(message)
+
+            orch.logging_service.log_system_event(
+                level="INFO",
+                module="monthly_report",
+                message=f"Generated monthly report for user {user.id}: {year}-{month:02d}",
+                extra_data={
+                    "year": year,
+                    "month": month,
+                    "notes_created": report.metrics.notes_created,
+                    "tasks_completed": report.metrics.tasks_completed,
+                },
+            )
+            logger.info("Monthly report sent to user %d: %d-%02d", user.id, year, month)
+        except Exception as exc:
+            await update.message.reply_text("❌ Error generating monthly report. Please try again later.")
+            logger.error("Error in monthly_report handler: %s", exc, exc_info=True)
 
     return handler
 
@@ -464,7 +535,10 @@ def _help(orch: TelegramOrchestrator):
             "Generate Reports:\n"
             "  /daily_report - Generate daily priority report\n"
             "  /weekly_report - Generate weekly review\n"
-            "  /weekly_report last - Review last week\n\n"
+            "  /weekly_report last - Review last week\n"
+            "  /monthly_report - Generate monthly review\n"
+            "  /monthly_report 2026-02 - Specific month\n"
+            "  /monthly_report last - Previous month\n\n"
             "Configure Delivery:\n"
             "  /configure_report_time <HH:MM> - Set daily delivery time\n"
             "    Example: /configure_report_time 08:00\n\n"

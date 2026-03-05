@@ -106,7 +106,8 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /recipe → Save and organize recipes\n\n"
         "**📊 Review**\n"
         "• /daily_report → Today's priorities\n"
-        "• /weekly_report → Weekly productivity review\n\n"
+        "• /weekly_report → Weekly productivity review\n"
+        "• /monthly_report → Monthly review with insights\n\n"
         "💡 Type anything to get started, or use a command above!"
     )
 
