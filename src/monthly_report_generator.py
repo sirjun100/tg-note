@@ -13,7 +13,7 @@ Generates monthly reports aggregating:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -426,7 +426,6 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
         decisions = self._get_decisions_in_range(user_id, start, end)
 
         total_items = len(created) + len(completed)
-        prev_total = len(prev_created) + len(prev_completed)
         completion_rate = (
             (len(completed) / total_items * 100) if total_items else 0.0
         )
@@ -486,8 +485,8 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
             f"# 📊 Monthly Review — {month_name}",
             "",
             "## Overview",
-            f"| Metric | This Month | Change |",
-            f"|--------|------------|--------|",
+            "| Metric | This Month | Change |",
+            "|--------|------------|--------|",
             f"| Notes Created | {m.notes_created} | {m.notes_change_pct:+.0f}% |",
             f"| Tasks Completed | {m.tasks_completed} | {m.tasks_change_pct:+.0f}% |",
             f"| Completion Rate | {m.completion_rate:.0f}% | {m.completion_change_pct:+.0f}% |",

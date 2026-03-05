@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 import logging
-from urllib.parse import quote
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 

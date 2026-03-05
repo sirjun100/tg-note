@@ -20,7 +20,6 @@ from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.constants import is_action_item
 from src.logging_service import Decision, TelegramMessage
-from src.timezone_utils import get_user_timezone_aware_now
 from src.security_utils import (
     check_whitelist,
     format_error_message,
@@ -30,6 +29,7 @@ from src.security_utils import (
     validate_message_text,
     validate_note_data,
 )
+from src.timezone_utils import get_user_timezone_aware_now
 from src.url_enrichment import extract_urls, fetch_url_context
 
 if TYPE_CHECKING:
