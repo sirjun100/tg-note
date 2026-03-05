@@ -3,7 +3,11 @@ What is your primary professional objective today? (e.g. Complete the Q3 budget 
 What is your primary personal objective today? (e.g. 30 minutes of focused reading, Walk 10,000 steps, One difficult conversation)
 What obstacle might arise, and how will you meet it? (e.g. Interruptions—I will block time. Fatigue—I will work in shorter intervals)
 How does today serve your greater goals? (e.g. Professional: This project moves me toward senior role. Personal: Each day of discipline builds the health I want)
+What is your #1 priority for today?
+What is your #2 priority for today?
+What is your #3 priority for today?
 EVENING_QUESTIONS:
+Were your 3 morning priorities completed? Take a moment to reflect on each—what went well, what didn't, and what you'll do differently.
 What went well today? (Professional) (e.g. Delivered report on time, Solved the blocking bug, Led the meeting with clarity)
 What went well today? (Personal) (e.g. Kept commitment to exercise, Present at dinner—no phone, Read for 30 minutes)
 What went wrong or remains undone? What will you correct? (e.g. Lost an hour to email—tomorrow check only at 9, 12, 5)

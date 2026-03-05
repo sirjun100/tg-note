@@ -23,13 +23,13 @@ class TestStoicDataLossScenarios(unittest.TestCase):
         full_body = stoic_module._build_full_body(
             body_template,
             "2026-03-04",
-            "### 🌞 Morning\n\n- **Professional Objective:** Complete report",  # Real content
+            "### 🌞 Morning\n\n- **Professional Objective:**\n  Complete report\n\n- **Personal Objective:**\n  -\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -\n\n- **Top 3 Priorities:**\n  1. Complete report\n  2. -\n  3. -",  # Real content (BF-009)
             "",  # Evening empty - will get placeholder
         )
 
-        # Verify placeholder is present
+        # Verify placeholder is present (BF-009 structure)
         self.assertIn("### 🌙 Evening", full_body)
-        self.assertIn("- **What Went Well (Professional):**", full_body)
+        self.assertIn("- **Morning Priorities Completed?**", full_body)
 
         # The question: does _check_section_exists consider the placeholder as "existing"?
         exists = stoic_module._check_section_exists(full_body, "evening")
@@ -38,13 +38,37 @@ class TestStoicDataLossScenarios(unittest.TestCase):
 
     def test_replace_section_preserves_other_sections(self):
         """Replacing one section should NOT delete the other section."""
-        # Start with a note that has morning content
-        morning_content = "### 🌞 Morning\n\n- **Intention:** Start strong\n- **Focus:** One task"
+        # Start with a note that has morning content (BF-009 structure)
+        morning_content = "### 🌞 Morning\n\n- **Professional Objective:**\n  Start strong\n\n- **Personal Objective:**\n  One task\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -\n\n- **Top 3 Priorities:**\n  1. Start strong\n  2. One task\n  3. -"
         evening_placeholder = stoic_module._empty_evening_placeholder()
         existing_body = f"{morning_content}\n\n{evening_placeholder}"
 
-        # Now replace evening with real content
-        new_evening = "### 🌙 Evening\n\n- **Wins:** Accomplished goal\n- **Challenges:** Time management\n- **Lesson Learned:** Prioritize better"
+        # Now replace evening with real content (BF-009 structure)
+        new_evening = """### 🌙 Evening
+
+- **Morning Priorities Completed?**
+  Accomplished goal
+
+- **What Went Well (Professional):**
+  Time management
+
+- **What Went Well (Personal):**
+  Prioritize better
+
+- **What Went Wrong / Will Correct:**
+  -
+
+- **Within My Control / Not:**
+  -
+
+- **Progress Toward Greater Goals:**
+  -
+
+- **Grateful For:**
+  -
+
+- **Tomorrow:**
+  -"""
 
         result = stoic_module._replace_section(existing_body, new_evening, "evening")
 
@@ -53,6 +77,8 @@ class TestStoicDataLossScenarios(unittest.TestCase):
         self.assertIn("Start strong", result, "Morning content should be preserved")
         self.assertIn("### 🌙 Evening", result, "Evening section should exist")
         self.assertIn("Accomplished goal", result, "Evening content should be present")
+        self.assertIn("Time management", result, "Evening content should be present")
+        self.assertIn("Prioritize better", result, "Evening content should be present")
 
     def test_replace_section_preserves_morning_when_replacing_evening(self):
         """Specifically test morning preservation when replacing evening."""
@@ -60,36 +86,50 @@ class TestStoicDataLossScenarios(unittest.TestCase):
 
 ### 🌞 Morning (09:00)
 
-- **Intention:**
-  - Be present
+- **Professional Objective:**
+  Be present
 
-- **Focus:**
-  - One report
+- **Personal Objective:**
+  One report
 
-- **Virtue:**
-  - Patience
+- **Obstacle & Response:**
+  Patience
+
+- **Greater Goals:**
+  -
+
+- **Top 3 Priorities:**
+  1. Be present
+  2. One report
+  3. Patience
 
 ### 🌙 Evening
 
-- **Wins:**
+- **Morning Priorities Completed?**
   -
 
-- **Challenges:**
+- **What Went Well (Professional):**
   -
 
-- **Lesson Learned:**
+- **What Went Well (Personal):**
+  -
+
+- **Tomorrow:**
   -"""
 
         new_evening = """### 🌙 Evening (18:00)
 
-- **Wins:**
-  - Completed report on time
+- **Morning Priorities Completed?**
+  Completed report on time
 
-- **Challenges:**
-  - Stayed late to finish
+- **What Went Well (Professional):**
+  Stayed late to finish
 
-- **Lesson Learned:**
-  - Better time estimates needed"""
+- **What Went Well (Personal):**
+  Better time estimates needed
+
+- **Tomorrow:**
+  -"""
 
         result = stoic_module._replace_section(existing_body, new_evening, "evening")
 
@@ -102,6 +142,7 @@ class TestStoicDataLossScenarios(unittest.TestCase):
         # Check evening is updated
         self.assertIn("Completed report on time", result)
         self.assertIn("Better time estimates needed", result)
+        self.assertIn("Stayed late to finish", result)
 
     def test_build_full_body_structure(self):
         """Verify the body template structure when creating new note."""
@@ -111,7 +152,7 @@ class TestStoicDataLossScenarios(unittest.TestCase):
         result = stoic_module._build_full_body(
             body_template,
             "2026-03-04",
-            "### 🌞 Morning\n\n- **Intention:** Test",
+            "### 🌞 Morning\n\n- **Professional Objective:**\n  Test\n\n- **Personal Objective:**\n  -\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -\n\n- **Top 3 Priorities:**\n  1. Test\n  2. -\n  3. -",
             "",  # Empty evening
         )
 
@@ -128,19 +169,40 @@ class TestStoicDataLossScenarios(unittest.TestCase):
 
     def test_check_section_exists_with_real_vs_placeholder(self):
         """Test whether _check_section_exists distinguishes real from placeholder content."""
-        # Body with only placeholder evening
+        # Body with only placeholder evening (BF-009 structure)
         body_with_placeholder_only = """# 2026-03-04
 
 ### 🌞 Morning
 
-- **Intention:** Test
+- **Professional Objective:**
+  Test
+
+- **Personal Objective:**
+  -
+
+- **Obstacle & Response:**
+  -
+
+- **Greater Goals:**
+  -
+
+- **Top 3 Priorities:**
+  1. Test
+  2. -
+  3. -
 
 ### 🌙 Evening
 
-- **Wins:**
+- **Morning Priorities Completed?**
   -
 
-- **Challenges:**
+- **What Went Well (Professional):**
+  -
+
+- **What Went Well (Personal):**
+  -
+
+- **Tomorrow:**
   -"""
 
         # This is the potential issue: does it count placeholder as "existing"?
@@ -163,11 +225,35 @@ class TestStoicDataLossScenarios(unittest.TestCase):
 
 ### 🌞 Morning
 
-- **Intention:** Wake early
+- **Professional Objective:**
+  Wake early
+
+- **Personal Objective:**
+  -
+
+- **Obstacle & Response:**
+  -
+
+- **Greater Goals:**
+  -
+
+- **Top 3 Priorities:**
+  1. Wake early
+  2. -
+  3. -
 
 ### 🌙 Evening
 
-- **Wins:**
+- **Morning Priorities Completed?**
+  -
+
+- **What Went Well (Professional):**
+  -
+
+- **What Went Well (Personal):**
+  -
+
+- **Tomorrow:**
   -"""
 
         # Check if evening "exists"
@@ -200,11 +286,13 @@ class TestStoicMorningEveningWorkflow(unittest.IsolatedAsyncioTestCase):
             "active_persona": "STOIC_JOURNAL",
             "mode": "morning",
             "answers": [
-                {"q": "Intention?", "a": "Focus on work"},
-                {"q": "Focus?", "a": "Complete report"},
-                {"q": "Virtue?", "a": "Diligence"},
-                {"q": "Grateful?", "a": "Health"},
-                {"q": "Tasks?", "a": "Report\nEmail\nMeeting"},
+                {"q": "Professional?", "a": "Focus on work"},
+                {"q": "Personal?", "a": "Exercise"},
+                {"q": "Obstacle?", "a": "Interruptions"},
+                {"q": "Goals?", "a": "Senior role"},
+                {"q": "Priority 1?", "a": "Focus on work"},
+                {"q": "Priority 2?", "a": "Complete report"},
+                {"q": "Priority 3?", "a": "Diligence"},
             ],
             "body_template": "# {{DATE}}\n\n{{MORNING_CONTENT}}\n\n{{EVENING_CONTENT}}",
         }
@@ -240,10 +328,14 @@ class TestStoicMorningEveningWorkflow(unittest.IsolatedAsyncioTestCase):
             "active_persona": "STOIC_JOURNAL",
             "mode": "evening",
             "answers": [
-                {"q": "Wins?", "a": "Completed report"},
-                {"q": "Challenges?", "a": "Meeting ran long"},
-                {"q": "Lesson?", "a": "Better time estimates"},
+                {"q": "Completed?", "a": "Yes, 2 of 3"},
+                {"q": "Prof wins?", "a": "Completed report"},
+                {"q": "Personal wins?", "a": "Exercise done"},
+                {"q": "Went wrong?", "a": "Meeting ran long"},
+                {"q": "Control?", "a": "My prep"},
+                {"q": "Progress?", "a": "One step"},
                 {"q": "Grateful?", "a": "Team support"},
+                {"q": "Tomorrow?", "a": "Better time estimates"},
             ],
             "body_template": "# {{DATE}}\n\n{{MORNING_CONTENT}}\n\n{{EVENING_CONTENT}}",
         }
@@ -296,20 +388,41 @@ class TestStoicMorningEveningWorkflow(unittest.IsolatedAsyncioTestCase):
 
         message = AsyncMock()
 
-        # Existing note with REAL evening content (not placeholder)
+        # Existing note with REAL evening content (not placeholder, BF-009 structure)
         existing_body = """# 2026-03-04
 
 ### 🌞 Morning
 
-- **Intention:** Start strong
+- **Professional Objective:**
+  Start strong
+
+- **Personal Objective:**
+  -
+
+- **Obstacle & Response:**
+  -
+
+- **Greater Goals:**
+  -
+
+- **Top 3 Priorities:**
+  1. Start strong
+  2. -
+  3. -
 
 ### 🌙 Evening
 
-- **Wins:**
-  - Completed task
+- **Morning Priorities Completed?**
+  Completed task
 
-- **Challenges:**
-  - Time ran out"""
+- **What Went Well (Professional):**
+  Time ran out
+
+- **What Went Well (Personal):**
+  -
+
+- **Tomorrow:**
+  -"""
 
         state = {
             "active_persona": "STOIC_JOURNAL",
@@ -348,22 +461,40 @@ class TestStoicMorningEveningWorkflow(unittest.IsolatedAsyncioTestCase):
 
         message = AsyncMock()
 
-        # Note with real morning, empty evening placeholder
+        # Note with real morning, empty evening placeholder (BF-009 structure)
         existing_body_with_placeholder = """# 2026-03-04
 
 ### 🌞 Morning (09:00)
 
-- **Intention:** Wake up
+- **Professional Objective:**
+  Wake up
+
+- **Personal Objective:**
+  -
+
+- **Obstacle & Response:**
+  -
+
+- **Greater Goals:**
+  -
+
+- **Top 3 Priorities:**
+  1. Wake up
+  2. -
+  3. -
 
 ### 🌙 Evening
 
-- **Wins:**
+- **Morning Priorities Completed?**
   -
 
-- **Challenges:**
+- **What Went Well (Professional):**
   -
 
-- **Lesson Learned:**
+- **What Went Well (Personal):**
+  -
+
+- **Tomorrow:**
   -"""
 
         state = {

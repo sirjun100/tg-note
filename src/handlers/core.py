@@ -92,24 +92,44 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
     else:
         time_greeting = "Hello! 🌙"
 
+    # Use HTML: underscores in /daily_report, /weekly_report, /monthly_report break Markdown.
+    # In HTML, _ is not special. Escape < > & for literal display. See BF-010.
     return (
         f"{time_greeting} I'm your Second Brain assistant.\n\n"
-        "**📝 Capture**\n"
+        "<b>📝 Capture</b>\n"
         "• Send any text → Save as Joplin note\n"
-        "• /task <text> → Create Google Task\n"
-        "• /note <text> → Force note creation\n\n"
-        "**🔍 Search**\n"
-        "• /find <query> or /search <query> → Quick note search\n\n"
-        "**🧠 Productivity**\n"
+        "• /task &lt;text&gt; → Create Google Task\n"
+        "• /note &lt;text&gt; → Force note creation\n\n"
+        "<b>🔍 Search</b>\n"
+        "• /find &lt;query&gt; or /search &lt;query&gt; → Quick note search\n\n"
+        "<b>🧠 Productivity</b>\n"
         "• /braindump → 15-min GTD brain dump session\n"
         "• /stoic → Guided morning/evening reflection\n"
         "• /recipe → Save and organize recipes\n\n"
-        "**📊 Review**\n"
+        "<b>📊 Review</b>\n"
         "• /daily_report → Today's priorities\n"
         "• /weekly_report → Weekly productivity review\n"
         "• /monthly_report → Monthly review with insights\n\n"
         "💡 Type anything to get started, or use a command above!"
     )
+
+
+def _greeting_to_plain(html_text: str) -> str:
+    """Strip HTML tags and unescape entities for plain-text fallback (BF-010)."""
+    out = re.sub(r"</?b>", "", html_text)
+    return out.replace("&lt;", "<").replace("&gt;", ">")
+
+
+async def _send_greeting_safe(message: Message, greeting: str) -> None:
+    """Send greeting with HTML formatting; fall back to plain text on parse error (BF-010)."""
+    try:
+        await message.reply_text(greeting, parse_mode="HTML")
+    except Exception as exc:
+        if "parse" in str(exc).lower() or "entities" in str(exc).lower():
+            logger.warning("Greeting HTML parse failed, falling back to plain text: %s", exc)
+            await message.reply_text(_greeting_to_plain(greeting))
+        else:
+            raise
 
 
 def _start(orch: TelegramOrchestrator):
@@ -124,7 +144,7 @@ def _start(orch: TelegramOrchestrator):
         orch.state_manager.clear_state(user.id)
 
         welcome = _build_greeting_response(user.id, orch)
-        await update.message.reply_text(welcome, parse_mode="Markdown")
+        await _send_greeting_safe(update.message, welcome)
         logger.info("Started conversation with user %d", user.id)
 
     return handler
@@ -495,7 +515,7 @@ def _message(orch: TelegramOrchestrator):
 
             if not pending and _is_greeting(validated):
                 greeting = _build_greeting_response(user_id, orch)
-                await message.reply_text(greeting, parse_mode="Markdown")
+                await _send_greeting_safe(message, greeting)
                 logger.info("Greeting response sent to user %d", user_id)
                 return
 

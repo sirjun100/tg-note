@@ -526,42 +526,53 @@ class LLMOrchestrator:
             structure = """Output ONLY valid markdown in this exact structure (use the timestamp given):
 ### 🌞 Morning (TIMESTAMP)
 
-- **Intention:**
+- **Professional Objective:**
   USER_ANSWER_OR_DASH
 
-- **Focus:**
+- **Personal Objective:**
   USER_ANSWER_OR_DASH
 
-- **Virtue:**
+- **Obstacle & Response:**
   USER_ANSWER_OR_DASH
 
-- **Gratitude:**
-  - item 1
-  - item 2 (or single line if one answer)
+- **Greater Goals:**
+  USER_ANSWER_OR_DASH
 
-- **Top 3 Tasks:**
-  1. [ ] task one
-  2. [ ] task two
-  3. [ ] task three
+- **Top 3 Priorities:**
+  1. USER_ANSWER_OR_DASH
+  2. USER_ANSWER_OR_DASH
+  3. USER_ANSWER_OR_DASH
 
-Replace TIMESTAMP with the time, and fill each section from the user's Q&A. Use " -" for empty. For tasks, add "[ ] " if the user didn't. Keep it concise."""
+Replace TIMESTAMP with the time. Fill from the user's Q&A (7 answers: professional, personal, obstacle, greater goals, priority 1, 2, 3). Use " -" for empty. Keep it concise."""
         else:
             structure = """Output ONLY valid markdown in this exact structure (use the timestamp given):
 ### 🌙 Evening (TIMESTAMP)
 
-- **Wins:**
-  - USER_ANSWER_OR_DASH
+- **Morning Priorities Completed?**
+  USER_ANSWER_OR_DASH
 
-- **Challenges:**
-  - USER_ANSWER_OR_DASH
+- **What Went Well (Professional):**
+  USER_ANSWER_OR_DASH
 
-- **Lesson Learned:**
-  - USER_ANSWER_OR_DASH
+- **What Went Well (Personal):**
+  USER_ANSWER_OR_DASH
 
-- **Gratitude:** (only if the user gave a gratitude answer)
-  - USER_ANSWER
+- **What Went Wrong / Will Correct:**
+  USER_ANSWER_OR_DASH
 
-Replace TIMESTAMP with the time. Fill each section from the user's Q&A. Use " -" for empty. Keep it concise."""
+- **Within My Control / Not:**
+  USER_ANSWER_OR_DASH
+
+- **Progress Toward Greater Goals:**
+  USER_ANSWER_OR_DASH
+
+- **Grateful For:**
+  USER_ANSWER_OR_DASH
+
+- **Tomorrow:**
+  USER_ANSWER_OR_DASH
+
+Replace TIMESTAMP with the time. Fill from the user's Q&A (8 answers in order). Use " -" for empty. Keep it concise."""
 
         system_prompt = f"""You format a Stoic journal reflection from a list of question-answer pairs into clean markdown.
 

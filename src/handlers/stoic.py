@@ -73,13 +73,16 @@ def _get_answer(answers: list[dict[str, str]], index: int) -> str:
 
 
 def _format_morning_content(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
-    """Fill morning template: professional objective, personal objective, obstacle, greater goals."""
+    """Fill morning template: professional objective, personal objective, obstacle, greater goals, top 3 priorities."""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     ts = now.strftime("%H:%M")
     professional = _get_answer(answers, 0)
     personal = _get_answer(answers, 1)
     obstacle = _get_answer(answers, 2)
     greater_goals = _get_answer(answers, 3)
+    p1 = _get_answer(answers, 4)
+    p2 = _get_answer(answers, 5)
+    p3 = _get_answer(answers, 6)
 
     lines = [
         f"### 🌞 Morning ({ts})",
@@ -95,24 +98,33 @@ def _format_morning_content(answers: list[dict[str, str]], user_id: int, orch: T
         "",
         "- **Greater Goals:**",
         f"  {greater_goals}" if greater_goals else "  -",
+        "",
+        "- **Top 3 Priorities:**",
+        f"  1. {p1}" if p1 else "  1. -",
+        f"  2. {p2}" if p2 else "  2. -",
+        f"  3. {p3}" if p3 else "  3. -",
     ]
     return "\n".join(lines)
 
 
 def _format_evening_content(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
-    """Fill evening template: professional wins, personal wins, what went wrong, control, progress, gratitude, tomorrow."""
+    """Fill evening template: morning priorities completed, prof/personal wins, went wrong, control, progress, gratitude, tomorrow."""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     ts = now.strftime("%H:%M")
-    prof_wins = _get_answer(answers, 0)
-    personal_wins = _get_answer(answers, 1)
-    went_wrong = _get_answer(answers, 2)
-    control = _get_answer(answers, 3)
-    progress = _get_answer(answers, 4)
-    gratitude = _get_answer(answers, 5)
-    tomorrow = _get_answer(answers, 6)
+    priorities_completed = _get_answer(answers, 0)
+    prof_wins = _get_answer(answers, 1)
+    personal_wins = _get_answer(answers, 2)
+    went_wrong = _get_answer(answers, 3)
+    control = _get_answer(answers, 4)
+    progress = _get_answer(answers, 5)
+    gratitude = _get_answer(answers, 6)
+    tomorrow = _get_answer(answers, 7)
 
     lines = [
         f"### 🌙 Evening ({ts})",
+        "",
+        "- **Morning Priorities Completed?**",
+        f"  {priorities_completed}" if priorities_completed else "  -",
         "",
         "- **What Went Well (Professional):**",
         f"  {prof_wins}" if prof_wins else "  -",
@@ -147,12 +159,12 @@ def _format_section(mode: str, answers: list[dict[str, str]], user_id: int, orch
 
 def _empty_morning_placeholder() -> str:
     """Placeholder when no morning content yet."""
-    return "### 🌞 Morning\n\n- **Professional Objective:**\n  -\n\n- **Personal Objective:**\n  -\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -"
+    return "### 🌞 Morning\n\n- **Professional Objective:**\n  -\n\n- **Personal Objective:**\n  -\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -\n\n- **Top 3 Priorities:**\n  1. -\n  2. -\n  3. -"
 
 
 def _empty_evening_placeholder() -> str:
     """Placeholder when no evening content yet."""
-    return "### 🌙 Evening\n\n- **What Went Well (Professional):**\n  -\n\n- **What Went Well (Personal):**\n  -\n\n- **What Went Wrong / Will Correct:**\n  -\n\n- **Within My Control / Not:**\n  -\n\n- **Progress Toward Greater Goals:**\n  -\n\n- **Grateful For:**\n  -\n\n- **Tomorrow:**\n  -"
+    return "### 🌙 Evening\n\n- **Morning Priorities Completed?**\n  -\n\n- **What Went Well (Professional):**\n  -\n\n- **What Went Well (Personal):**\n  -\n\n- **What Went Wrong / Will Correct:**\n  -\n\n- **Within My Control / Not:**\n  -\n\n- **Progress Toward Greater Goals:**\n  -\n\n- **Grateful For:**\n  -\n\n- **Tomorrow:**\n  -"
 
 
 def _build_full_body(

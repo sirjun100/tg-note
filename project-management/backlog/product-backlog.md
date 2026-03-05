@@ -1,6 +1,6 @@
 ---
 template_version: 1.1.0
-last_updated: 2026-01-24
+last_updated: 2026-03-05
 compatible_with: [feature-request, bug-fix, sprint-planning]
 requires: [markdown-support]
 ---
@@ -9,7 +9,7 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-05 (Sprint 10 complete: FR-023, FR-024, FR-029, FR-031)
+**Last Updated**: 2026-03-05 (BF-010: greeting parse entities error)
 
 ## Project Overview
 
@@ -32,6 +32,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 - (Sprint 7b) Provides stoic journaling with morning/evening guided reflection
 - (Sprint 8) Generates weekly productivity reviews with trends
 - (Sprint 9) Reorganizes Joplin with PARA methodology
+- (Sprint 10) Greeting & command help, quick note search (/find, /search), intelligent content routing (note/task/both), monthly report, Joplin 24/7
 
 **Sprints Completed**: 9 of 12 planned
 **Current Sprint**: Sprint 9 (FR-016 - DB Reorganization, 21 points, Mar 10-31) — ~55% complete
@@ -84,6 +85,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-003](bugs/BF-003-scheduler-not-working.md) | Scheduler Not Working — App Down | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
 | [BF-004](bugs/BF-004-flyctl-deploy-no-access-token.md) | Fly.io Deploy Fails: No Access Token Available | 🔴 Critical | 1 | ✅ | Backlog | 2026-03-03 | 2026-03-03 |
 | [BF-005](bugs/BF-005-stoic-journal-timezone-and-data-loss.md) | Stoic Journal: Timezone Mismatch & Data Loss on Update | 🔴 Critical | 5 | ⭕ | Backlog | 2026-03-03 | 2026-03-03 |
+| [BF-009](bugs/BF-009-stoic-questions-template-mismatch.md) | Stoic Journal: Questions Do Not Match Template | 🟠 High | 3 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-010](bugs/BF-010-greeting-parse-entities-error.md) | Greeting Response: "Something Went Wrong" (Parse Entities) | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 
 ---
 
@@ -141,7 +144,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 ## Backlog Statistics
 
-**Total Items**: 32 Features + 5 Bugs = 37 items
+**Total Items**: 32 Features + 6 Bugs = 38 items
 
 **Features by Status**:
 - ⭕ Not Started: 6 (FR-025–FR-030, FR-032, assigned to Sprints 11–12)
@@ -149,7 +152,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 - ✅ Completed: 24 (FR-001–FR-015, FR-017, FR-019–FR-024, FR-029, FR-031)
 
 **Bugs by Status**:
-- ⭕ Not Started: 1 (BF-005)
+- ⭕ Not Started: 2 (BF-005, BF-009)
 - ✅ Completed: 4 (BF-001, BF-002, BF-003, BF-004)
 
 **By Priority (all items)**:
@@ -163,9 +166,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
   - In Progress: 29 points (FR-016 ~55%, FR-018 ~30%)
   - Not Started: 43 points (FR-025–FR-030, FR-032)
 
-**Bug Story Points**: 16
+**Bug Story Points**: 19
   - Completed: 11 points (BF-001–BF-004)
-  - Not Started: 5 points (BF-005)
+  - Not Started: 8 points (BF-005, BF-009)
 
 **Overall Completion Rate**: 71% features completed (147/206 points)
 **Current**: 71% (147/206 points) ✅

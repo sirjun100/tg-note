@@ -17,21 +17,24 @@ class TestLoadStoicTemplate(unittest.TestCase):
     """Test _load_stoic_template returns correct question counts and body."""
 
     def test_morning_questions_count(self):
-        """Morning must have 4 questions: professional, personal, obstacle, greater goals."""
+        """Morning must have 7 questions: objectives, obstacle, goals, top 3 priorities (BF-009)."""
         morning_q, evening_q, body_tpl = stoic_module._load_stoic_template()
         self.assertGreaterEqual(
-            len(morning_q), 4,
-            "Template should define at least 4 morning questions"
+            len(morning_q), 7,
+            "Template should define at least 7 morning questions"
         )
         self.assertIn("professional", (morning_q[0] or "").lower())
         self.assertIn("personal", (morning_q[1] or "").lower())
         self.assertIn("obstacle", (morning_q[2] or "").lower())
         self.assertIn("goal", (morning_q[3] or "").lower())
+        self.assertIn("priority", (morning_q[4] or "").lower())
+        self.assertIn("priority", (morning_q[5] or "").lower())
+        self.assertIn("priority", (morning_q[6] or "").lower())
 
     def test_evening_questions_count(self):
-        """Evening must have 7 questions."""
+        """Evening must have 8 questions: completed + wins + reflection + tomorrow (BF-009)."""
         morning_q, evening_q, body_tpl = stoic_module._load_stoic_template()
-        self.assertGreaterEqual(len(evening_q), 7)
+        self.assertGreaterEqual(len(evening_q), 8)
 
     def test_body_template_has_placeholders(self):
         """Body template must contain placeholders for morning/evening content."""
@@ -45,46 +48,52 @@ class TestFormatSection(unittest.TestCase):
     """Test _format_section and _format_morning_content / _format_evening_content."""
 
     def test_format_morning_content_fills_all_sections(self):
-        """With 4 answers, morning content includes Professional, Personal, Obstacle, Greater Goals."""
+        """With 7 answers, morning content includes objectives, obstacle, goals, Top 3 Priorities (BF-009)."""
         answers = [
             {"q": "professional?", "a": "Finish quarterly report"},
             {"q": "personal?", "a": "30 min exercise"},
             {"q": "obstacle?", "a": "Interruptions - will block time"},
             {"q": "goals?", "a": "Moving toward senior role"},
+            {"q": "priority 1?", "a": "Complete report"},
+            {"q": "priority 2?", "a": "Block time for deep work"},
+            {"q": "priority 3?", "a": "One difficult conversation"},
         ]
         orch = MagicMock()
         orch.logging_service.get_report_configuration.return_value = {"timezone": "US/Eastern"}
         out = stoic_module._format_morning_content(answers, 123, orch)
         self.assertIn("Professional Objective", out)
-        self.assertIn("Finish quarterly report", out)
         self.assertIn("Personal Objective", out)
-        self.assertIn("30 min exercise", out)
         self.assertIn("Obstacle", out)
         self.assertIn("Greater Goals", out)
+        self.assertIn("Top 3 Priorities", out)
+        self.assertIn("Complete report", out)
+        self.assertIn("Block time for deep work", out)
 
     def test_format_evening_content_fills_all_sections(self):
-        """Evening content includes Professional wins, Personal wins, What went wrong, Control, Progress, Gratitude, Tomorrow."""
+        """Evening content includes Morning Priorities Completed + wins + reflection + Tomorrow (BF-009)."""
         answers = [
-            {"q": "prof wins?", "a": "Finished report on time"},
+            {"q": "completed?", "a": "Finished report on time, kept exercise commitment"},
+            {"q": "prof wins?", "a": "Delivered report"},
             {"q": "personal wins?", "a": "Kept exercise commitment"},
             {"q": "went wrong?", "a": "Lost hour to email"},
             {"q": "control?", "a": "My effort was mine"},
-            {"q": "progress?", "a": "One step closer to launch"},
+            {"q": "progress?", "a": "One step closer"},
             {"q": "grateful?", "a": "Support of my team"},
             {"q": "tomorrow?", "a": "Begin proposal draft"},
         ]
         orch = MagicMock()
         orch.logging_service.get_report_configuration.return_value = {"timezone": "US/Eastern"}
         out = stoic_module._format_evening_content(answers, 123, orch)
-        self.assertIn("What Went Well (Professional)", out)
+        self.assertIn("Morning Priorities Completed", out)
         self.assertIn("Finished report on time", out)
+        self.assertIn("What Went Well (Professional)", out)
         self.assertIn("What Went Well (Personal)", out)
         self.assertIn("What Went Wrong", out)
         self.assertIn("Within My Control", out)
         self.assertIn("Progress Toward Greater Goals", out)
         self.assertIn("Grateful For", out)
-        self.assertIn("Support of my team", out)
         self.assertIn("Tomorrow", out)
+        self.assertIn("Begin proposal draft", out)
 
     def test_format_section_morning(self):
         """_format_section(mode='morning', answers) returns morning block."""
