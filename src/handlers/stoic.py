@@ -6,7 +6,6 @@ Guided reflection with questions from template; create or append to today's note
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -200,7 +199,6 @@ async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, messag
     existing_body = state.get("existing_body", "")
     new_section = state.get("new_section_content", "")
     mode = state.get("mode", "morning")
-    date_str = get_current_date_str(user_id, orch.logging_service)
 
     if not note_id or not new_section:
         await message.reply_text("❌ Missing required information. Please try again.")
