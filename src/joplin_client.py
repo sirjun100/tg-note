@@ -322,6 +322,14 @@ class JoplinClient:
         except JoplinError:
             return False
 
+    async def unlink_tag_from_note(self, tag_id: str, note_id: str) -> bool:
+        """Remove a tag from a note. Returns True on success."""
+        try:
+            await self._request("DELETE", f"/tags/{tag_id}/notes/{note_id}")
+            return True
+        except JoplinError:
+            return False
+
     PROJECT_STATUS_TAG_NAMES = (
         "status/planning",
         "status/building",

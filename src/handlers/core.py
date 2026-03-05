@@ -98,6 +98,8 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         f"{time_greeting} I'm your Second Brain assistant.\n\n"
         "<b>📝 Capture</b>\n"
         "• Send any text → Save as Joplin note\n"
+        "• Send a photo → OCR and save to Joplin\n"
+        "• /readlater &lt;url&gt; or /rl &lt;url&gt; → Save to reading queue\n"
         "• /task &lt;text&gt; → Create Google Task\n"
         "• /note &lt;text&gt; → Force note creation\n\n"
         "<b>🔍 Search</b>\n"
@@ -105,6 +107,7 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "<b>🧠 Productivity</b>\n"
         "• /braindump → 15-min GTD brain dump session\n"
         "• /stoic → Guided morning/evening reflection\n"
+        "• /dream → Jungian dream analysis\n"
         "• /recipe → Save and organize recipes\n\n"
         "<b>📊 Review</b>\n"
         "• /daily_report → Today's priorities\n"
@@ -524,6 +527,9 @@ def _message(orch: TelegramOrchestrator):
                     await _handle_braindump_message(orch, user_id, validated, message)
                 elif pending.get("active_persona") == "STOIC_JOURNAL":
                     await _handle_stoic_message(orch, user_id, validated, message)
+                elif pending.get("active_persona") == "DREAM_ANALYST":
+                    from src.handlers.dream import handle_dream_message
+                    await handle_dream_message(orch, user_id, validated, message)
                 elif pending.get("active_persona") == "SEARCH":
                     await _handle_search_message(orch, user_id, validated, message)
                 else:
@@ -992,6 +998,7 @@ async def create_note_in_joplin(
     note_data: dict[str, Any],
     url_context: dict[str, Any] | None = None,
     message: Message | None = None,
+    image_data_url: str | None = None,
 ) -> dict[str, Any] | None:
     try:
         requested_folder = (note_data.get("parent_id") or "").strip()
@@ -1035,44 +1042,45 @@ async def create_note_in_joplin(
             logger.error("Note validation failed: %s", errors)
             return None
 
-        image_data_url: str | None = None
-        needs_image = (
-            (url_context and url_context.get("content_type") == "recipe")
-            or (
-                url_context
+        final_image_data_url: str | None = image_data_url
+        if final_image_data_url is None:
+            needs_image = (
+                (url_context and url_context.get("content_type") == "recipe")
+                or (
+                    url_context
+                    and url_context.get("url")
+                    and not url_context.get("skip_screenshot")
+                )
+            )
+            if needs_image and message:
+                await message.reply_text("🖼️ Adding image...")
+            if url_context and url_context.get("url") and url_context.get("skip_screenshot") and message:
+                error_msg = url_context.get("error", "")
+                if error_msg:
+                    await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")
+                else:
+                    await message.reply_text("⚠️ Screenshot skipped (site uses security verification).")
+            if url_context and url_context.get("content_type") == "recipe":
+                from src.recipe_image import generate_recipe_image
+                final_image_data_url = await generate_recipe_image(normalized_note["title"])
+            if (
+                final_image_data_url is None
+                and url_context
                 and url_context.get("url")
                 and not url_context.get("skip_screenshot")
-            )
-        )
-        if needs_image and message:
-            await message.reply_text("🖼️ Adding image...")
-        if url_context and url_context.get("url") and url_context.get("skip_screenshot") and message:
-            error_msg = url_context.get("error", "")
-            if error_msg:
-                await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")
-            else:
-                await message.reply_text("⚠️ Screenshot skipped (site uses security verification).")
-        if url_context and url_context.get("content_type") == "recipe":
-            from src.recipe_image import generate_recipe_image
-            image_data_url = await generate_recipe_image(normalized_note["title"])
-        if (
-            image_data_url is None
-            and url_context
-            and url_context.get("url")
-            and not url_context.get("skip_screenshot")
-        ):
-            from src.url_screenshot import capture_url_screenshot
-            image_data_url = await capture_url_screenshot(url_context["url"])
-            if image_data_url is None and message:
-                await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
-        if image_data_url is None and url_context and url_context.get("content_type") == "recipe" and url_context.get("image_url"):
-            image_data_url = await _fetch_image_as_data_url(url_context["image_url"])
+            ):
+                from src.url_screenshot import capture_url_screenshot
+                final_image_data_url = await capture_url_screenshot(url_context["url"])
+                if final_image_data_url is None and message:
+                    await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
+            if final_image_data_url is None and url_context and url_context.get("content_type") == "recipe" and url_context.get("image_url"):
+                final_image_data_url = await _fetch_image_as_data_url(url_context["image_url"])
 
         note_id = await orch.joplin_client.create_note(
             folder_id=resolved_folder_id,
             title=normalized_note["title"],
             body=normalized_note["body"],
-            image_data_url=image_data_url,
+            image_data_url=final_image_data_url,
         )
 
         tags = normalized_note.get("tags", [])

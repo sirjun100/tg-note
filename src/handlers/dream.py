@@ -1,0 +1,305 @@
+"""
+Jungian Dream Analysis handlers: /dream, /dream_done, /dream_cancel.
+
+Guided dream analysis with symbolic image generation and life associations.
+Sprint 11 Story 3 - FR-025.
+"""
+
+from __future__ import annotations
+
+import logging
+from io import BytesIO
+from typing import TYPE_CHECKING, Any
+
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
+
+from src.security_utils import check_whitelist, format_error_message
+from src.timezone_utils import get_user_timezone_aware_now
+
+if TYPE_CHECKING:
+    from src.telegram_orchestrator import TelegramOrchestrator
+
+logger = logging.getLogger(__name__)
+
+DREAM_JOURNAL_PATH = ["Areas", "📓 Journaling", "Dream Journal"]
+DREAM_TAGS = ["dream-journal", "jungian"]
+DREAM_DISCLAIMER = (
+    "\n\n🌙 *Note: This analysis is for self-reflection and personal growth. "
+    "It is not a substitute for professional psychological support. "
+    "If your dreams are causing distress, please consult a qualified therapist.*"
+)
+
+
+def _extract_symbols_from_analysis(analysis_text: str) -> list[str]:
+    """Extract symbol names from Key Symbols section (• Symbol - Interpretation)."""
+    symbols: list[str] = []
+    in_section = False
+    for line in analysis_text.splitlines():
+        line = line.strip()
+        if "**Key Symbols:**" in line or "Key Symbols:" in line:
+            in_section = True
+            continue
+        if in_section:
+            if line.startswith("**") and ":" in line:
+                break
+            if line.startswith("•") or line.startswith("-"):
+                part = line.lstrip("•- ").split(" - ", 1)[0].strip()
+                if part and len(part) < 80:
+                    symbols.append(part)
+    return symbols[:5]
+
+
+def _build_dream_note_body(
+    dream_text: str,
+    analysis: str,
+    associations: str,
+    image_data_url: str | None,
+    user_id: int,
+    orch: TelegramOrchestrator,
+) -> str:
+    """Build dream journal note body."""
+    now = get_user_timezone_aware_now(user_id, orch.logging_service)
+    date_str = now.strftime("%Y-%m-%d")
+
+    lines = [
+        f"# Dream Analysis - {date_str}",
+        "",
+        "## The Dream",
+        dream_text,
+        "",
+    ]
+    if image_data_url:
+        lines.extend(["## Symbolic Image", "", "(Image attached)", ""])
+    lines.extend(["## Jungian Analysis", "", analysis, ""])
+    if associations:
+        lines.extend(["## Life Associations", "", associations, ""])
+    lines.extend(["---", "*Analysis generated with Jungian AI Assistant*"])
+    return "\n".join(lines)
+
+
+async def handle_dream_message(
+    orch: TelegramOrchestrator,
+    user_id: int,
+    text: str,
+    message: Any,
+) -> None:
+    """Handle incoming message when user is in DREAM_ANALYST session."""
+    state = orch.state_manager.get_state(user_id)
+    if not state or state.get("active_persona") != "DREAM_ANALYST":
+        return
+
+    phase = state.get("phase", "dream_description")
+    text_lower = text.strip().lower()
+
+    if phase == "dream_description":
+        if len(text.strip()) < 20:
+            await message.reply_text(
+                "Please share more detail about your dream. "
+                "The richer your description, the more meaningful the analysis. "
+                "What happened? Who was there? What did you see, hear, feel?"
+            )
+            return
+
+        state["dream_text"] = text.strip()
+        state["phase"] = "analyzing"
+        orch.state_manager.update_state(user_id, state)
+
+        await message.reply_text("🎨 Creating a symbolic image of your dream...")
+        from src.dream_image import generate_dream_image
+
+        analysis_prompt = (
+            f"Analyze this dream from a Jungian perspective. "
+            f"Provide: Key Symbols, Archetypes Present, Shadow Elements, Overall Theme.\n\n"
+            f"Dream:\n{text.strip()}"
+        )
+        analysis_response = None
+        try:
+            analysis_response = await orch.llm_orchestrator.process_message(
+                analysis_prompt,
+                persona="jungian_analyst",
+            )
+        except Exception as exc:
+            logger.error("Dream analysis LLM failed: %s", exc)
+            state["phase"] = "dream_description"
+            orch.state_manager.update_state(user_id, state)
+            await message.reply_text(format_error_message("Analysis failed. Please try again."))
+            return
+
+        analysis = ""
+        if analysis_response and analysis_response.question:
+            analysis = analysis_response.question
+        elif analysis_response and analysis_response.note and analysis_response.note.get("body"):
+            analysis = analysis_response.note["body"]
+        if not analysis:
+            analysis = "Analysis could not be generated. Please try again with more detail."
+
+        state["interpretation"] = analysis
+        symbols = _extract_symbols_from_analysis(analysis)
+        symbols = symbols or ["dream", "symbol", "unconscious"]
+        image_url = await generate_dream_image(text.strip(), symbols)
+
+        if image_url:
+            try:
+                import base64
+                data = image_url.split(",", 1)[1] if "," in image_url else ""
+                if data:
+                    image_bytes = base64.b64decode(data)
+                    await message.reply_photo(photo=BytesIO(image_bytes))
+            except Exception as exc:
+                logger.warning("Failed to send dream image: %s", exc)
+
+        state["dream_image_url"] = image_url
+        state["phase"] = "association_prompt"
+        orch.state_manager.update_state(user_id, state)
+
+        msg = f"📖 **Jungian Analysis**\n\n{analysis}\n\n---\n\n"
+        msg += "Would you like to explore how this dream connects to your current life? (yes/no)"
+        msg += DREAM_DISCLAIMER
+        await message.reply_text(msg, parse_mode="Markdown")
+        return
+
+    if phase == "association_prompt":
+        if text_lower in ("yes", "y"):
+            state["phase"] = "association"
+            orch.state_manager.update_state(user_id, state)
+            await message.reply_text(
+                "Let's connect this dream to your waking life.\n\n"
+                "🔮 **Reflection Questions:**\n\n"
+                "1. What current situation in your life feels similar to something in the dream?\n"
+                "2. Which symbol or archetype resonates most with you right now?\n"
+                "3. Is there something you're avoiding or seeking that the dream might point to?\n\n"
+                "Take your time. Share what resonates. When you're done, type /dream_done to save.",
+                parse_mode="Markdown",
+            )
+        elif text_lower in ("no", "n"):
+            state["phase"] = "ready_to_save"
+            state["associations"] = ""
+            orch.state_manager.update_state(user_id, state)
+            await message.reply_text(
+                "No problem. Type /dream_done when you're ready to save this analysis."
+            )
+        else:
+            await message.reply_text("Please reply with yes or no.")
+
+        return
+
+    if phase == "association":
+        state["associations"] = state.get("associations", "") + "\n\n" + text.strip()
+        state["phase"] = "ready_to_save"
+        orch.state_manager.update_state(user_id, state)
+        await message.reply_text(
+            "Thank you for sharing. Type /dream_done to save this analysis to your Dream Journal."
+        )
+
+
+async def _save_dream_to_joplin(orch: TelegramOrchestrator, user_id: int, state: dict) -> bool:
+    """Save dream analysis to Joplin. Returns True on success."""
+    dream_text = state.get("dream_text", "")
+    interpretation = state.get("interpretation", "")
+    associations = state.get("associations", "").strip()
+    image_url = state.get("dream_image_url")
+
+    if not dream_text or not interpretation:
+        return False
+
+    now = get_user_timezone_aware_now(user_id, orch.logging_service)
+    date_str = now.strftime("%Y-%m-%d")
+    title = f"Dream Analysis - {date_str}"
+
+    body = _build_dream_note_body(
+        dream_text, interpretation, associations, image_url, user_id, orch
+    )
+
+    folder_id = await orch.joplin_client.get_or_create_folder_by_path(DREAM_JOURNAL_PATH)
+    note_id = await orch.joplin_client.create_note(
+        folder_id, title, body, image_data_url=image_url
+    )
+    await orch.joplin_client.apply_tags(note_id, DREAM_TAGS)
+    return True
+
+
+def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> None:
+    """Register dream analysis handlers."""
+
+    async def dream_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        msg = update.message
+        if not user or not msg:
+            return
+        if not check_whitelist(user.id):
+            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            return
+
+        state = {
+            "active_persona": "DREAM_ANALYST",
+            "phase": "dream_description",
+            "dream_text": "",
+            "dream_image_url": "",
+            "interpretation": "",
+            "associations": "",
+        }
+        orch.state_manager.update_state(user.id, state)
+        await msg.reply_text(
+            "🌙 **Welcome to Dream Analysis**\n\n"
+            "Take a moment to recall your dream...\n\n"
+            "When you're ready, describe everything you remember:\n"
+            "• What happened?\n"
+            "• Who was there?\n"
+            "• What did you see, hear, feel?\n"
+            "• Any symbols, colors, or unusual elements?\n\n"
+            "Take your time. The more detail, the richer the analysis.\n\n"
+            "Type /dream_cancel to cancel anytime.",
+            parse_mode="Markdown",
+        )
+        logger.info("Dream session started for user %d", user.id)
+
+    async def dream_done_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        msg = update.message
+        if not user or not msg:
+            return
+        if not check_whitelist(user.id):
+            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            return
+
+        state = orch.state_manager.get_state(user.id)
+        if not state or state.get("active_persona") != "DREAM_ANALYST":
+            await msg.reply_text("You don't have an active dream session. Use /dream to start one.")
+            return
+
+        if state.get("phase") == "dream_description":
+            await msg.reply_text("Please describe your dream first before saving.")
+            return
+
+        try:
+            ok = await _save_dream_to_joplin(orch, user.id, state)
+            orch.state_manager.clear_state(user.id)
+            if ok:
+                await msg.reply_text("✅ Dream analysis saved to your Dream Journal.")
+            else:
+                await msg.reply_text(format_error_message("Failed to save. Please try again."))
+        except Exception as exc:
+            logger.error("Dream save failed: %s", exc)
+            await msg.reply_text(format_error_message("Failed to save. Please try again."))
+
+    async def dream_cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        msg = update.message
+        if not user or not msg:
+            return
+        if not check_whitelist(user.id):
+            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            return
+
+        state = orch.state_manager.get_state(user.id)
+        if state and state.get("active_persona") == "DREAM_ANALYST":
+            orch.state_manager.clear_state(user.id)
+            await msg.reply_text("Dream session cancelled. Nothing was saved.")
+        else:
+            await msg.reply_text("No active dream session to cancel.")
+
+    application.add_handler(CommandHandler("dream", dream_cmd))
+    application.add_handler(CommandHandler("dream_done", dream_done_cmd))
+    application.add_handler(CommandHandler("dream_cancel", dream_cancel_cmd))
+    logger.info("Dream handlers registered")

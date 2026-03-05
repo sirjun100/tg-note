@@ -159,7 +159,10 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
     from src.handlers import (
         register_braindump_handlers,
         register_core_handlers,
+        register_dream_handlers,
         register_google_tasks_handlers,
+        register_photo_handlers,
+        register_reading_handlers,
         register_reorg_handlers,
         register_report_handlers,
         register_search_handlers,
@@ -170,8 +173,11 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
     register_report_handlers(application, orchestrator)
     register_braindump_handlers(application, orchestrator)
     register_stoic_handlers(application, orchestrator)
+    register_dream_handlers(application, orchestrator)
     register_reorg_handlers(application, orchestrator)
     register_search_handlers(application, orchestrator)
+    register_photo_handlers(application, orchestrator)
+    register_reading_handlers(application, orchestrator)
     register_core_handlers(application, orchestrator)
 
     return application
