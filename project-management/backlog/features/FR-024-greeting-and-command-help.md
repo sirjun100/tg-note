@@ -1,6 +1,6 @@
 # Feature Request: FR-024 - Greeting Response and Command Discovery
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟡 Medium
 **Story Points**: 3
 **Created**: 2026-03-05

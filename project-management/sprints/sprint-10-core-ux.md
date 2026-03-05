@@ -42,12 +42,12 @@
 **User Story**: As a new or returning user, I want to say hello and get a friendly response with available commands, so that I can quickly learn what the bot can do and start using it effectively.
 
 **Acceptance Criteria**:
-- [ ] LLM recognizes common greetings (hello, hi, hey, good morning, etc.)
-- [ ] Bot responds with a friendly greeting
-- [ ] Response includes top 5-7 most useful commands with brief descriptions
-- [ ] Response is concise (not overwhelming)
-- [ ] Does NOT trigger note creation flow
-- [ ] Greeting detection has high confidence (avoid false positives)
+- [x] LLM recognizes common greetings (hello, hi, hey, good morning, etc.)
+- [x] Bot responds with a friendly greeting
+- [x] Response includes top 5-7 most useful commands with brief descriptions
+- [x] Response is concise (not overwhelming)
+- [x] Does NOT trigger note creation flow
+- [x] Greeting detection has high confidence (avoid false positives)
 
 **Reference Documents**:
 - [FR-024: Greeting Response and Command Discovery](../backlog/features/FR-024-greeting-and-command-help.md)
@@ -60,7 +60,7 @@
 
 **Priority**: 🟡 Medium
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-024](../backlog/features/FR-024-greeting-and-command-help.md)
 
@@ -68,10 +68,10 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Add greeting detection (regex or pre-classification) | `core.py` | FR-024 Greeting Detection | ⭕ | 0.5 | — |
-| T-002 | Create greeting response template with command list | `core.py:_start()` | FR-024 Response Template | ⭕ | 1 | — |
-| T-003 | Modify `/start` and add `/help` alias | `core.py` | FR-024 Commands | ⭕ | 0.5 | — |
-| T-004 | Integrate greeting into message routing (skip note flow) | `core.py:_message()` | FR-024 Routing | ⭕ | 1 | — |
+| T-001 | Add greeting detection (regex or pre-classification) | `core.py` | FR-024 Greeting Detection | ✅ | 0.5 | — |
+| T-002 | Create greeting response template with command list | `core.py:_start()` | FR-024 Response Template | ✅ | 1 | — |
+| T-003 | Modify `/start` and add `/help` alias | `core.py` | FR-024 Commands | ✅ | 0.5 | — |
+| T-004 | Integrate greeting into message routing (skip note flow) | `core.py:_message()` | FR-024 Routing | ✅ | 1 | — |
 
 **Total Task Points**: 3
 
@@ -82,14 +82,14 @@
 **User Story**: As a user who has captured many notes, I want to quickly search my notes from Telegram, so that I can find information without opening Joplin.
 
 **Acceptance Criteria**:
-- [ ] `/find <query>` searches note titles and bodies
-- [ ] Returns up to 5-10 matching notes
-- [ ] Shows note title, folder, and content snippet
-- [ ] Snippet highlights matching text
-- [ ] Results sorted by relevance or recency
-- [ ] Search is case-insensitive
-- [ ] Empty results shows helpful message
-- [ ] `/find` without query shows usage help
+- [x] `/find <query>` searches note titles and bodies
+- [x] Returns up to 5-10 matching notes
+- [x] Shows note title, folder, and content snippet
+- [x] Snippet highlights matching text
+- [x] Results sorted by relevance or recency
+- [x] Search is case-insensitive
+- [x] Empty results shows helpful message
+- [x] `/find` without query shows usage help
 
 **Reference Documents**:
 - [FR-029: Quick Note Search](../backlog/features/FR-029-quick-note-search.md)
@@ -102,7 +102,7 @@
 
 **Priority**: 🟡 Medium
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-029](../backlog/features/FR-029-quick-note-search.md)
 
@@ -110,10 +110,10 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Add `search_notes(query, limit)` to JoplinClient | `JoplinClient.search_notes()` | FR-029 Joplin Search API | ⭕ | 1 | — |
-| T-002 | Create search handler with `/find` and `/search` commands | `handlers/search.py` | FR-029 Commands | ⭕ | 1 | — |
-| T-003 | Implement snippet extraction and folder resolution | `handlers/search.py` | FR-029 Result Format | ⭕ | 0.5 | — |
-| T-004 | Add state for interactive result selection (reply with number) | `state_manager.py` | FR-029 Interactive Results | ⭕ | 0.5 | — |
+| T-001 | Add `search_notes(query, limit)` to JoplinClient | `JoplinClient.search_notes()` | FR-029 Joplin Search API | ✅ | 1 | — |
+| T-002 | Create search handler with `/find` and `/search` commands | `handlers/search.py` | FR-029 Commands | ✅ | 1 | — |
+| T-003 | Implement snippet extraction and folder resolution | `handlers/search.py` | FR-029 Result Format | ✅ | 0.5 | — |
+| T-004 | Add state for interactive result selection (reply with number) | `state_manager.py` | FR-029 Interactive Results | ✅ | 0.5 | — |
 
 **Total Task Points**: 3
 
@@ -124,16 +124,16 @@
 **User Story**: As a user who captures both knowledge and action items through Telegram, I want the bot to automatically determine whether my message is a note or a task, so that I don't have to manually specify the type for every message.
 
 **Acceptance Criteria**:
-- [ ] LLM classifies each message as `note`, `task`, or `both`
-- [ ] Classification uses semantic analysis (not just keyword matching)
-- [ ] Tasks are created in Google Tasks with extracted due dates when present
-- [ ] Notes are created in Joplin with appropriate folder/tags
-- [ ] "Both" creates a linked note and task
-- [ ] `/tasks <text>` forces task creation (bypasses LLM classification)
-- [ ] `/notes <text>` forces note creation (bypasses LLM classification)
-- [ ] Plain text messages use LLM classification
-- [ ] Fallback to NEED_INFO when classification is ambiguous
-- [ ] Logging captures classification decisions
+- [x] LLM classifies each message as `note`, `task`, or `both`
+- [x] Classification uses semantic analysis (not just keyword matching)
+- [x] Tasks are created in Google Tasks with extracted due dates when present
+- [x] Notes are created in Joplin with appropriate folder/tags
+- [x] "Both" creates a linked note and task
+- [x] `/task <text>` forces task creation (bypasses LLM classification)
+- [x] `/note <text>` forces note creation (bypasses LLM classification)
+- [x] Plain text messages use LLM classification
+- [x] Fallback to NEED_INFO when classification is ambiguous
+- [x] Logging captures classification decisions
 
 **Reference Documents**:
 - [FR-023: Intelligent Content Routing](../backlog/features/FR-023-intelligent-content-routing.md)
@@ -146,7 +146,7 @@
 
 **Priority**: 🟠 High
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-023](../backlog/features/FR-023-intelligent-content-routing.md)
 
@@ -154,13 +154,13 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Define ContentDecision schema (note, task, both) | `llm_orchestrator.py` | FR-023 Extended Schema | ⭕ | 1 | — |
-| T-002 | Add content type classification to system prompt | `llm_orchestrator.py` | FR-023 Classification | ⭕ | 2 | — |
-| T-003 | Modify `_message()` to dispatch based on content_type | `core.py:_message()` | FR-023 Routing Logic | ⭕ | 2 | — |
-| T-004 | Implement task-only flow (create Google Task, no note) | `core.py` | FR-023 Task Flow | ⭕ | 1 | — |
-| T-005 | Implement both flow (note + task) | `core.py` | FR-023 Both Flow | ⭕ | 1 | — |
-| T-006 | Ensure `/tasks` and `/notes` override classification | `core.py` | FR-023 Force Commands | ⭕ | 0.5 | — |
-| T-007 | Add classification logging | `logging_service.py` | FR-023 Logging | ⭕ | 0.5 | — |
+| T-001 | Define ContentDecision schema (note, task, both) | `llm_orchestrator.py` | FR-023 Extended Schema | ✅ | 1 | — |
+| T-002 | Add content type classification to system prompt | `llm_orchestrator.py` | FR-023 Classification | ✅ | 2 | — |
+| T-003 | Modify `_message()` to dispatch based on content_type | `core.py:_message()` | FR-023 Routing Logic | ✅ | 2 | — |
+| T-004 | Implement task-only flow (create Google Task, no note) | `core.py` | FR-023 Task Flow | ✅ | 1 | — |
+| T-005 | Implement both flow (note + task) | `core.py` | FR-023 Both Flow | ✅ | 1 | — |
+| T-006 | Ensure `/task` and `/note` override classification | `core.py` | FR-023 Force Commands | ✅ | 0.5 | — |
+| T-007 | Add classification logging | `logging_service.py` | FR-023 Logging | ✅ | 0.5 | — |
 
 **Total Task Points**: 8
 
@@ -171,14 +171,14 @@
 **User Story**: As a user focused on long-term growth and productivity, I want a monthly report summarizing my progress and patterns, so that I can reflect on what's working, adjust my systems, and track progress toward goals.
 
 **Acceptance Criteria**:
-- [ ] `/monthly_report` generates report for current/previous month
-- [ ] `/monthly_report 2026-02` generates report for specific month
-- [ ] Report aggregates: notes created, tasks completed, completion rates
-- [ ] Shows week-over-week trends
-- [ ] Shows most active projects/areas
-- [ ] Shows most used tags
-- [ ] Shows productivity patterns (day of week, time of day)
-- [ ] Includes AI-generated insights and recommendations
+- [x] `/monthly_report` generates report for current/previous month
+- [x] `/monthly_report 2026-02` generates report for specific month
+- [x] Report aggregates: notes created, tasks completed, completion rates
+- [x] Shows week-over-week trends
+- [x] Shows most active projects/areas
+- [x] Shows most used tags
+- [x] Shows productivity patterns (day of week, time of day)
+- [x] Includes AI-generated insights and recommendations
 
 **Reference Documents**:
 - [FR-031: Monthly Review Report](../backlog/features/FR-031-monthly-review-report.md)
@@ -193,7 +193,7 @@
 
 **Priority**: 🟢 Low
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-031](../backlog/features/FR-031-monthly-review-report.md)
 
@@ -201,10 +201,10 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create MonthlyReportGenerator class | `monthly_report_generator.py` | FR-031 Data Aggregation | ⭕ | 2 | — |
-| T-002 | Implement metrics calculation (notes, tasks, trends) | `MonthlyReportGenerator._calculate_metrics()` | FR-031 Metrics | ⭕ | 1.5 | — |
-| T-003 | Add AI insight generation via DeepSeek | `MonthlyReportGenerator._generate_insights()` | FR-031 AI Insights | ⭕ | 1 | — |
-| T-004 | Add `/monthly_report` command handler | `handlers/reports.py` | FR-031 Command | ⭕ | 0.5 | — |
+| T-001 | Create MonthlyReportGenerator class | `monthly_report_generator.py` | FR-031 Data Aggregation | ✅ | 2 | — |
+| T-002 | Implement metrics calculation (notes, tasks, trends) | `MonthlyReportGenerator._calculate_metrics()` | FR-031 Metrics | ✅ | 1.5 | — |
+| T-003 | Add AI insight generation via DeepSeek | `MonthlyReportGenerator._generate_insights()` | FR-031 AI Insights | ✅ | 1 | — |
+| T-004 | Add `/monthly_report` command handler | `handlers/reports.py` | FR-031 Command | ✅ | 0.5 | — |
 
 **Total Task Points**: 5
 
@@ -215,9 +215,9 @@
 **User Story**: As a user, I want the Joplin app to stay up 24/7, so that the bot can always access my notes and I never have to wait for a cold start.
 
 **Acceptance Criteria**:
-- [ ] Fly.io machine runs continuously (min_machines_running = 1)
-- [ ] Joplin server is always available (no cold-start delay on first message)
-- [ ] Bot responds immediately on first message of the day
+- [x] Fly.io machine runs continuously (min_machines_running = 1)
+- [x] Joplin server is always available (no cold-start delay on first message)
+- [x] Bot responds immediately on first message of the day
 
 **Reference Documents**:
 - [Fly.io Joplin Deployment](../../docs/fly-io-joplin-deployment.md)
@@ -229,7 +229,7 @@
 
 **Priority**: 🟠 High
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: Operational requirement (no FR)
 
@@ -237,8 +237,8 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Set min_machines_running = 1 in fly.toml | `fly.toml` | Fly.io config | ⭕ | 0.5 | — |
-| T-002 | Deploy and verify machine stays running | `fly deploy` | Deployment | ⭕ | 0.5 | — |
+| T-001 | Set min_machines_running = 1 in fly.toml | `fly.toml` | Fly.io config | ✅ | 0.5 | — |
+| T-002 | Deploy and verify machine stays running | `fly deploy` | Deployment | ✅ | 0.5 | — |
 
 **Total Task Points**: 1
 
@@ -257,15 +257,16 @@
 - Week 2: Stories 3-4 (Content Routing, Monthly Report) - 13 points
 
 **Sprint Review Notes**:
-- [To be filled at sprint review]
+- All 5 stories delivered and deployed. Greeting, search, content routing, monthly report, and Joplin 24/7 all live.
 
 **Sprint Retrospective Notes**:
 - **What went well?**
-  - [To be filled]
+  - Clean implementation following existing patterns. Weekly report generator reused for monthly report.
+  - Content routing integrates cleanly with existing `/note` and `/task` force commands.
 - **What could be improved?**
-  - [To be filled]
+  - Consider adding tests for new search and routing handlers.
 - **Action items for next sprint**
-  - [To be filled]
+  - Proceed to Sprint 11 (New Modalities).
 
 ---
 

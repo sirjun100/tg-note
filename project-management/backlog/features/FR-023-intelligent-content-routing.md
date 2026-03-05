@@ -1,6 +1,6 @@
 # Feature Request: FR-023 - Intelligent Content Routing (Notes vs Tasks)
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟠 High
 **Story Points**: 8
 **Created**: 2026-03-05
