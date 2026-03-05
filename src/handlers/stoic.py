@@ -553,6 +553,11 @@ async def _finish_stoic_session(
             )
             return False
 
+        # Debug logging for data loss investigation
+        logger.info("BF-008 DEBUG: mode=%s, existing_body length=%d", mode, len(existing_body))
+        logger.info("BF-008 DEBUG: existing has Morning: %s", "### 🌞 Morning" in existing_body)
+        logger.info("BF-008 DEBUG: existing has Evening: %s", "### 🌙 Evening" in existing_body)
+
         # Check for duplicate sections with REAL content
         if _check_section_exists(existing_body, mode):
             await message.reply_text(
@@ -578,9 +583,17 @@ async def _finish_stoic_session(
         if section_exists_empty:
             # Section exists but is empty - replace the placeholder
             new_body = _replace_section(existing_body, section_content, mode)
+            logger.info("BF-008 DEBUG: Replaced empty %s placeholder", mode)
         else:
             # Section doesn't exist at all - append
             new_body = f"{existing_body}\n\n{section_content}" if existing_body else section_content
+            logger.info("BF-008 DEBUG: Appended %s section", mode)
+
+        # Debug logging for data loss investigation
+        logger.info("BF-008 DEBUG: new_body length=%d", len(new_body))
+        logger.info("BF-008 DEBUG: new has Morning: %s", "### 🌞 Morning" in new_body)
+        logger.info("BF-008 DEBUG: new has Evening: %s", "### 🌙 Evening" in new_body)
+
         try:
             await orch.joplin_client.update_note(note_id, {"body": new_body})
         except Exception as exc:
