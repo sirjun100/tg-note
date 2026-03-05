@@ -23,13 +23,13 @@ class TestStoicDataLossScenarios(unittest.TestCase):
         full_body = stoic_module._build_full_body(
             body_template,
             "2026-03-04",
-            "### 🌞 Morning\n\n- **Intention:** Wake up early",  # Real content
+            "### 🌞 Morning\n\n- **Professional Objective:** Complete report",  # Real content
             "",  # Evening empty - will get placeholder
         )
 
         # Verify placeholder is present
         self.assertIn("### 🌙 Evening", full_body)
-        self.assertIn("- **Wins:**", full_body)
+        self.assertIn("- **What Went Well (Professional):**", full_body)
 
         # The question: does _check_section_exists consider the placeholder as "existing"?
         exists = stoic_module._check_section_exists(full_body, "evening")

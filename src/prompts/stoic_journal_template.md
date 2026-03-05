@@ -1,33 +1,19 @@
 MORNING_QUESTIONS:
-What is your intention for today? (e.g. Stay present in meetings, or finish one key task without distraction)
-One thing you will focus on?
-What virtue will you practice? (e.g. Temperance, Courage, Wisdom, Justice)
-What are you grateful for? (e.g. 1. I am losing weight  2. Nice house in a nice neighbourhood)
-What are your top 3 tasks today? (e.g. 1. [ ] Rembourser laptop  2. [ ] Rembourser Marge personal  3. [ ] Déplacer argent études)
+What is your primary professional objective today? (e.g. Complete the Q3 budget review, Finish code refactor for auth module)
+What is your primary personal objective today? (e.g. 30 minutes of focused reading, Walk 10,000 steps, One difficult conversation)
+What obstacle might arise, and how will you meet it? (e.g. Interruptions—I will block time. Fatigue—I will work in shorter intervals)
+How does today serve your greater goals? (e.g. Professional: This project moves me toward senior role. Personal: Each day of discipline builds the health I want)
 EVENING_QUESTIONS:
-What went well today?
-What did you control? What didn't you?
-What will you do differently tomorrow?
-What are you grateful for?
+What went well today? (Professional) (e.g. Delivered report on time, Solved the blocking bug, Led the meeting with clarity)
+What went well today? (Personal) (e.g. Kept commitment to exercise, Present at dinner—no phone, Read for 30 minutes)
+What went wrong or remains undone? What will you correct? (e.g. Lost an hour to email—tomorrow check only at 9, 12, 5)
+What was within your control today? What was not? (e.g. My preparation was thorough (mine). The decision was delayed (not mine))
+What progress did you make toward your greater goals? (e.g. Professional: One step closer to launch. Personal: Fourth day of exercise)
+What are you grateful for today? (e.g. The support of a colleague, Another day to improve, Time with family)
+What is one thing you will do tomorrow? (e.g. Begin the proposal draft, Schedule the medical appointment, Have the conversation)
 ---
 # {{DATE}} - Daily Stoic Reflection
 
-## Stoic State Assessment
-
-(Internal control, emotional regulation, virtue focus – fill in Joplin.)
-
-## Morning Reflection
-
 {{MORNING_CONTENT}}
-
-## Challenges Faced
-
-(Optional – add in Joplin.)
-
-## Lessons Learned
-
-(Optional – add in Joplin.)
-
-## Evening Reflection
 
 {{EVENING_CONTENT}}

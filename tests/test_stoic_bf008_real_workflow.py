@@ -34,13 +34,12 @@ class TestBF008RealWorkflow(unittest.TestCase):
         """
         date_str = "2026-03-04"
 
-        # Step 1: User answers morning questions
+        # Step 1: User answers morning questions (4 questions now)
         morning_answers = [
-            {"q": self.morning_q[0], "a": "Be focused and present"},  # Intention
-            {"q": self.morning_q[1], "a": "Complete the project"},     # Focus
-            {"q": self.morning_q[2], "a": "Patience with challenges"}, # Virtue
-            {"q": self.morning_q[3], "a": "My health\nMy family"},    # Gratitude
-            {"q": self.morning_q[4], "a": "Write report\nMeet client\nReview code"},  # Tasks
+            {"q": self.morning_q[0], "a": "Complete the quarterly report"},  # Professional
+            {"q": self.morning_q[1], "a": "30 minutes exercise"},            # Personal
+            {"q": self.morning_q[2], "a": "Interruptions—block time"},       # Obstacle
+            {"q": self.morning_q[3], "a": "Moving toward senior role"},      # Greater goals
         ]
 
         # Step 2: Bot creates note with morning content
@@ -62,19 +61,22 @@ class TestBF008RealWorkflow(unittest.TestCase):
 
         # Verify morning is there
         assert "🌞 Morning" in initial_body
-        assert "Be focused and present" in initial_body
+        assert "Complete the quarterly report" in initial_body
         print("✅ Morning content saved correctly")
 
         # Verify evening structure exists (as placeholder)
         assert "🌙 Evening" in initial_body
         print("✅ Evening section placeholder present")
 
-        # Step 3: User answers evening questions
+        # Step 3: User answers evening questions (7 questions now)
         evening_answers = [
-            {"q": self.evening_q[0], "a": "Completed report ahead of schedule"},  # Wins
-            {"q": self.evening_q[1], "a": "Client asked for revisions"},          # Challenges
-            {"q": self.evening_q[2], "a": "Communicate earlier next time"},       # Lesson
-            {"q": self.evening_q[3], "a": "Great team support"},                  # Gratitude
+            {"q": self.evening_q[0], "a": "Completed report ahead of schedule"},  # Prof wins
+            {"q": self.evening_q[1], "a": "Kept exercise commitment"},            # Personal wins
+            {"q": self.evening_q[2], "a": "Lost hour to email"},                  # Went wrong
+            {"q": self.evening_q[3], "a": "My effort was mine"},                  # Control
+            {"q": self.evening_q[4], "a": "One step closer"},                     # Progress
+            {"q": self.evening_q[5], "a": "Great team support"},                  # Gratitude
+            {"q": self.evening_q[6], "a": "Begin proposal draft"},                # Tomorrow
         ]
 
         # Step 4: Bot checks if evening section exists
@@ -99,9 +101,9 @@ class TestBF008RealWorkflow(unittest.TestCase):
 
             # THE CRITICAL TEST
             assert "🌞 Morning" in final_body, "❌ BUG: Morning header deleted!"
-            assert "Be focused and present" in final_body, "❌ BUG: Morning content deleted!"
+            assert "Complete the quarterly report" in final_body, "❌ BUG: Morning content deleted!"
             assert "🌙 Evening" in final_body, "❌ BUG: Evening header missing!"
-            assert "Completed report" in final_body, "❌ BUG: Evening content missing!"
+            assert "Completed report ahead of schedule" in final_body, "❌ BUG: Evening content missing!"
 
             print("\n✅ PASSED: Both morning and evening preserved after replace")
 
@@ -115,9 +117,9 @@ class TestBF008RealWorkflow(unittest.TestCase):
 
             # Verify both exist
             assert "🌞 Morning" in final_body
-            assert "Be focused and present" in final_body
+            assert "Complete the quarterly report" in final_body
             assert "🌙 Evening" in final_body
-            assert "Completed report" in final_body
+            assert "Completed report ahead of schedule" in final_body
 
             print("\n✅ PASSED: Both sections in note")
 

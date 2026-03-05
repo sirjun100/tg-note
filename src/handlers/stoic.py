@@ -73,72 +73,68 @@ def _get_answer(answers: list[dict[str, str]], index: int) -> str:
 
 
 def _format_morning_content(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
-    """Fill morning template from answers: intention, focus, virtue, gratitude, top 3 tasks."""
+    """Fill morning template: professional objective, personal objective, obstacle, greater goals."""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     ts = now.strftime("%H:%M")
-    intention = _get_answer(answers, 0)
-    focus = _get_answer(answers, 1)
-    virtue = _get_answer(answers, 2)
-    gratitude_raw = _get_answer(answers, 3)
-    tasks_raw = _get_answer(answers, 4)
-
-    gratitude_lines = [ln.strip() for ln in gratitude_raw.splitlines() if ln.strip()] if gratitude_raw else []
-    if not gratitude_lines and gratitude_raw:
-        gratitude_lines = [gratitude_raw]
-    task_lines = [ln.strip() for ln in tasks_raw.splitlines() if ln.strip()] if tasks_raw else []
-    if not task_lines and tasks_raw:
-        task_lines = [tasks_raw]
-    for i, t in enumerate(task_lines):
-        if not t.lstrip().startswith("["):
-            task_lines[i] = f"[ ] {t}"
+    professional = _get_answer(answers, 0)
+    personal = _get_answer(answers, 1)
+    obstacle = _get_answer(answers, 2)
+    greater_goals = _get_answer(answers, 3)
 
     lines = [
         f"### 🌞 Morning ({ts})",
         "",
-        "- **Intention:**",
-        intention or " -",
+        "- **Professional Objective:**",
+        f"  {professional}" if professional else "  -",
         "",
-        "- **Focus:**",
-        focus or " -",
+        "- **Personal Objective:**",
+        f"  {personal}" if personal else "  -",
         "",
-        "- **Virtue:**",
-        virtue or " -",
+        "- **Obstacle & Response:**",
+        f"  {obstacle}" if obstacle else "  -",
         "",
-        "- **Gratitude:**",
+        "- **Greater Goals:**",
+        f"  {greater_goals}" if greater_goals else "  -",
     ]
-    for g in gratitude_lines or [" -"]:
-        lines.append(f"  - {g}")
-    lines.extend(["", "- **Top 3 Tasks:**"])
-    for i, t in enumerate(task_lines[:3], 1):
-        lines.append(f"  {i}. {t}")
-    if not task_lines:
-        lines.append("  -")
     return "\n".join(lines)
 
 
 def _format_evening_content(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
-    """Fill evening template from answers: wins, challenges, lesson learned, gratitude."""
+    """Fill evening template: professional wins, personal wins, what went wrong, control, progress, gratitude, tomorrow."""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     ts = now.strftime("%H:%M")
-    wins = _get_answer(answers, 0)
-    challenges = _get_answer(answers, 1)
-    lesson = _get_answer(answers, 2)
-    gratitude = _get_answer(answers, 3)
+    prof_wins = _get_answer(answers, 0)
+    personal_wins = _get_answer(answers, 1)
+    went_wrong = _get_answer(answers, 2)
+    control = _get_answer(answers, 3)
+    progress = _get_answer(answers, 4)
+    gratitude = _get_answer(answers, 5)
+    tomorrow = _get_answer(answers, 6)
 
     lines = [
         f"### 🌙 Evening ({ts})",
         "",
-        "- **Wins:**",
-        f"  - {wins}" if wins else "  -",
+        "- **What Went Well (Professional):**",
+        f"  {prof_wins}" if prof_wins else "  -",
         "",
-        "- **Challenges:**",
-        f"  - {challenges}" if challenges else "  -",
+        "- **What Went Well (Personal):**",
+        f"  {personal_wins}" if personal_wins else "  -",
         "",
-        "- **Lesson Learned:**",
-        f"  - {lesson}" if lesson else "  -",
+        "- **What Went Wrong / Will Correct:**",
+        f"  {went_wrong}" if went_wrong else "  -",
+        "",
+        "- **Within My Control / Not:**",
+        f"  {control}" if control else "  -",
+        "",
+        "- **Progress Toward Greater Goals:**",
+        f"  {progress}" if progress else "  -",
+        "",
+        "- **Grateful For:**",
+        f"  {gratitude}" if gratitude else "  -",
+        "",
+        "- **Tomorrow:**",
+        f"  {tomorrow}" if tomorrow else "  -",
     ]
-    if gratitude:
-        lines.extend(["", "- **Gratitude:**", f"  - {gratitude}"])
     return "\n".join(lines)
 
 
@@ -151,12 +147,12 @@ def _format_section(mode: str, answers: list[dict[str, str]], user_id: int, orch
 
 def _empty_morning_placeholder() -> str:
     """Placeholder when no morning content yet."""
-    return "### 🌞 Morning\n\n- **Intention:** -\n- **Focus:** -\n- **Virtue:** -\n- **Gratitude:**\n  -\n- **Top 3 Tasks:**\n  -"
+    return "### 🌞 Morning\n\n- **Professional Objective:**\n  -\n\n- **Personal Objective:**\n  -\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -"
 
 
 def _empty_evening_placeholder() -> str:
     """Placeholder when no evening content yet."""
-    return "### 🌙 Evening\n\n- **Wins:**\n  -\n- **Challenges:**\n  -\n- **Lesson Learned:**\n  -"
+    return "### 🌙 Evening\n\n- **What Went Well (Professional):**\n  -\n\n- **What Went Well (Personal):**\n  -\n\n- **What Went Wrong / Will Correct:**\n  -\n\n- **Within My Control / Not:**\n  -\n\n- **Progress Toward Greater Goals:**\n  -\n\n- **Grateful For:**\n  -\n\n- **Tomorrow:**\n  -"
 
 
 def _build_full_body(
