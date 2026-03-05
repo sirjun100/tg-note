@@ -232,6 +232,35 @@ After Sprint 5 completion (Jan 31), 4 major features remain to be implemented ac
 
 ---
 
+## Sprints 10-12: Feature Expansion (63 Points)
+
+Planned sprints for FR-023 through FR-032. See sprint documents for full task breakdowns.
+
+### Sprint 10: Core UX (Mar 10-23, 20 pts)
+- **FR-024** Greeting Response and Command Help (3 pts)
+- **FR-029** Quick Note Search (3 pts)
+- **FR-023** Intelligent Content Routing (8 pts)
+- **FR-031** Monthly Review Report (5 pts)
+- **Operational** Joplin 24/7 availability (1 pt)
+
+[Sprint 10 Plan](../sprints/sprint-10-core-ux.md)
+
+### Sprint 11: New Modalities (Mar 24-Apr 6, 23 pts)
+- **FR-030** Photo/Screenshot OCR Capture (5 pts)
+- **FR-028** Read Later Queue (5 pts)
+- **FR-025** Jungian Dream Analysis (8 pts)
+- **FR-032** Habit Check-ins and Tracking (5 pts)
+
+[Sprint 11 Plan](../sprints/sprint-11-new-modalities.md)
+
+### Sprint 12: Advanced Intelligence (Apr 7-20, 21 pts)
+- **FR-026** Semantic Search and Q&A Over Notes (13 pts)
+- **FR-027** Weekly Planning Session (8 pts)
+
+[Sprint 12 Plan](../sprints/sprint-12-advanced-intelligence.md)
+
+---
+
 ## Full Project Timeline
 
 ### Gantt View
@@ -246,9 +275,12 @@ Sprint 5  (Jan 27-31):     ⏳ FR-013 (Tags)
 Sprint 6  (Feb 3-16):      ⭕ FR-014 (Daily Reports)
 Sprint 7  (Feb 17-23):     ⭕ FR-017 (GTD Expert)
 Sprint 8  (Feb 24-Mar 9):  ⭕ FR-015 (Weekly Reports)
-Sprint 9  (Mar 10-31):     ⭕ FR-016 (DB Reorganization)
+Sprint 9  (Mar 10-31):     ⏳ FR-016 (DB Reorganization)
+Sprint 10 (Mar 10-23):     ⭕ FR-024, FR-029, FR-023, FR-031 (Core UX)
+Sprint 11 (Mar 24-Apr 6):  ⭕ FR-030, FR-028, FR-025, FR-032 (New Modalities)
+Sprint 12 (Apr 7-20):      ⭕ FR-026, FR-027 (Advanced Intelligence)
 
-Project Completion: March 31, 2025
+Project Completion: April 20, 2026 (Sprints 10-12)
 ```
 
 ### Completion Forecast

@@ -31,8 +31,11 @@ flowchart LR
 
 ## Reference
 
+- [External API Reference](api-reference.md) — Every API the bot uses: what, why, cost, capabilities, and provider selection guide.
+- [Fly.io Joplin Deployment](fly-io-joplin-deployment.md) — How Joplin is deployed inside the same container on Fly.io.
 - [Google Tasks OAuth and token refresh](google-tasks-oauth-and-token-refresh.md) — Why tokens expire, how we preserve the refresh token, when re-authorization is needed.
 - [Fly.io scheduled scaling](fly-scheduled-scaling.md) — Run 6am–10pm, scale to zero at night, wake on first request.
+- [Joplin backup](joplin-backup.md) — How to back up Joplin data from Fly.io or local installs.
 
 ## Runtime and Root Hygiene
 
