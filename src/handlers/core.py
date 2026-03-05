@@ -20,6 +20,7 @@ from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.constants import is_action_item
 from src.logging_service import Decision, TelegramMessage
+from src.timezone_utils import get_user_timezone_aware_now
 from src.security_utils import (
     check_whitelist,
     format_error_message,
@@ -43,9 +44,24 @@ PROJECT_STATUS_TAGS = {
     "status/done",
 }
 
+GREETING_PATTERNS = [
+    r"^(hi|hello|hey|howdy|greetings|yo)[\s!?.]*$",
+    r"^good\s+(morning|afternoon|evening|day|night)[\s!?.]*$",
+    r"^(bonjour|salut|coucou|bonsoir|bonne\s+journée)[\s!?.]*$",
+    r"^what'?s?\s+up[\s!?.]*$",
+    r"^(hola|buenos\s+días|buenas\s+tardes)[\s!?.]*$",
+]
+
+
+def _is_greeting(text: str) -> bool:
+    """Check if text is a simple greeting (avoids triggering note creation)."""
+    text_lower = text.strip().lower()
+    return any(re.match(pattern, text_lower) for pattern in GREETING_PATTERNS)
+
 
 def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("start", _start(orch)))
+    application.add_handler(CommandHandler("help", _start(orch)))  # Alias for /start
     application.add_handler(CommandHandler("status", _status(orch)))
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
     application.add_handler(CommandHandler("sync", _sync(orch)))
@@ -62,6 +78,39 @@ def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None
 # ---------------------------------------------------------------------------
 
 
+def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
+    """Build greeting message with time-aware salutation and command list."""
+    now = get_user_timezone_aware_now(user_id, orch.logging_service)
+    hour = now.hour
+
+    if 5 <= hour < 12:
+        time_greeting = "Good morning! ☀️"
+    elif 12 <= hour < 17:
+        time_greeting = "Good afternoon! 👋"
+    elif 17 <= hour < 21:
+        time_greeting = "Good evening! 🌆"
+    else:
+        time_greeting = "Hello! 🌙"
+
+    return (
+        f"{time_greeting} I'm your Second Brain assistant.\n\n"
+        "**📝 Capture**\n"
+        "• Send any text → Save as Joplin note\n"
+        "• /task <text> → Create Google Task\n"
+        "• /note <text> → Force note creation\n\n"
+        "**🔍 Search**\n"
+        "• /find <query> or /search <query> → Quick note search\n\n"
+        "**🧠 Productivity**\n"
+        "• /braindump → 15-min GTD brain dump session\n"
+        "• /stoic → Guided morning/evening reflection\n"
+        "• /recipe → Save and organize recipes\n\n"
+        "**📊 Review**\n"
+        "• /daily_report → Today's priorities\n"
+        "• /weekly_report → Weekly productivity review\n\n"
+        "💡 Type anything to get started, or use a command above!"
+    )
+
+
 def _start(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
@@ -73,23 +122,8 @@ def _start(orch: TelegramOrchestrator):
 
         orch.state_manager.clear_state(user.id)
 
-        welcome = (
-            "🤖 Welcome to the Intelligent Joplin Librarian!\n\n"
-            "I can help you create notes in Joplin from your messages. "
-            "Just send me what you'd like to note, and I'll figure out the details.\n\n"
-            "If I need clarification, I'll ask questions. You can also reply to my questions.\n\n"
-            "Quick Commands:\n"
-            "/note <content> - Save as Joplin note only\n"
-            "/task <item> - Create Google Task only\n"
-            "/start - Show this message\n"
-            "/helpme - Show detailed help with all commands\n"
-            "/status - Check bot status\n"
-            "/sync - Force Joplin sync with Dropbox\n"
-            "/project_status - Show project status (planning, building, blocked, done)\n"
-            "/list_inbox_tasks - List pending Google Tasks\n\n"
-            "For more commands, use: /helpme"
-        )
-        await update.message.reply_text(welcome)
+        welcome = _build_greeting_response(user.id, orch)
+        await update.message.reply_text(welcome, parse_mode="Markdown")
         logger.info("Started conversation with user %d", user.id)
 
     return handler
@@ -298,6 +332,8 @@ def _helpme(orch: TelegramOrchestrator):
             "🔹 /note <content> → Joplin note only (URLs fetched)\n"
             "🔹 /task <item> → Google Task only\n"
             "🔹 Plain message → Bot chooses (note or task by keywords)\n\n"
+            "🔍 **Search**\n"
+            "🔹 /find <query> or /search <query> → Search notes, reply with number to view\n\n"
             "📋 **Commands**\n"
             "/start - Welcome message & quick command list\n"
             "/status - Check if Joplin & Google Tasks are connected\n"
@@ -456,11 +492,19 @@ def _message(orch: TelegramOrchestrator):
 
             pending = orch.state_manager.get_state(user_id)
 
+            if not pending and _is_greeting(validated):
+                greeting = _build_greeting_response(user_id, orch)
+                await message.reply_text(greeting, parse_mode="Markdown")
+                logger.info("Greeting response sent to user %d", user_id)
+                return
+
             if pending:
                 if pending.get("active_persona") == "GTD_EXPERT":
                     await _handle_braindump_message(orch, user_id, validated, message)
                 elif pending.get("active_persona") == "STOIC_JOURNAL":
                     await _handle_stoic_message(orch, user_id, validated, message)
+                elif pending.get("active_persona") == "SEARCH":
+                    await _handle_search_message(orch, user_id, validated, message)
                 else:
                     await _handle_clarification_reply(orch, user_id, validated, message, context)
             else:
@@ -514,6 +558,148 @@ def _task_sync_status_line(orch: TelegramOrchestrator, user_id: int) -> str:
         return ""
 
 
+async def _route_plain_message(
+    orch: TelegramOrchestrator,
+    user_id: int,
+    text: str,
+    message: Message,
+    telegram_message_id: int | None,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> bool:
+    """
+    Route plain messages via LLM (note, task, or both). Returns True if handled.
+    """
+    if not await ping_joplin_api():
+        return False
+
+    existing_tags = []
+    try:
+        tags = await orch.joplin_client.fetch_tags()
+        existing_tags = [t.get("title", "") for t in tags if t.get("title")]
+    except Exception as exc:
+        logger.warning("Failed to fetch tags: %s", exc)
+
+    urls = extract_urls(text)
+    if urls:
+        await _send_typing(message, context)
+        await message.reply_text("🔗 Fetching link...")
+    url_context = await _build_url_context(validated_text=text)
+
+    await _send_typing(message, context)
+    await message.reply_text("🤖 Analyzing...")
+
+    folders = await orch.joplin_client.get_folders()
+    ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
+
+    routing = await orch.llm_orchestrator.process_message_for_routing(text, ctx)
+
+    if routing.status == "NEED_INFO" and routing.question:
+        state = {
+            "original_message": text,
+            "existing_tags": existing_tags,
+            "routing_pending": True,
+        }
+        orch.state_manager.update_state(user_id, state)
+        await message.reply_text(f"🤔 {routing.question}")
+        return True
+
+    if routing.status != "SUCCESS":
+        return False
+
+    # Task only
+    if routing.content_type == "task" and routing.task and orch.task_service:
+        task = routing.task
+        created = orch.task_service.create_task_with_metadata(
+            title=task.title,
+            user_id=str(user_id),
+            notes=task.notes or "",
+            due_date=task.due_date,
+        )
+        if created:
+            orch.logging_service.log_decision(
+                Decision(
+                    user_id=user_id,
+                    telegram_message_id=telegram_message_id,
+                    status="SUCCESS",
+                    note_title=task.title,
+                    note_body=task.notes or "",
+                    tags=[],
+                )
+            )
+            status_line = _task_sync_status_line(orch, user_id)
+            await message.reply_text(
+                format_success_message(
+                    f"✅ Created Google Task: '{task.title}'{status_line}"
+                )
+            )
+        else:
+            has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+            if has_token:
+                await message.reply_text(
+                    format_error_message("Failed to create task. Check /google_tasks_status.")
+                )
+            else:
+                await message.reply_text(
+                    format_error_message(
+                        "Google Tasks not connected. Use /authorize_google_tasks first."
+                    )
+                )
+        return True
+
+    # Note only or both
+    if routing.content_type in ("note", "both") and routing.note:
+        note_data = dict(routing.note)
+        if routing.content_type == "both" and routing.task:
+            task = routing.task
+            note_data["body"] = (note_data.get("body") or "") + f"\n\n---\n📋 **Linked Task**: {task.title}"
+        # Build a JoplinNoteSchema-like object for _process_llm_response
+        class _RoutingNoteResponse:
+            status = "SUCCESS"
+            note = note_data
+            question = None
+            log_entry = routing.log_entry
+
+        await _process_llm_response(
+            orch,
+            user_id,
+            _RoutingNoteResponse(),
+            message,
+            telegram_message_id,
+            clear_state=True,
+            url_context=url_context,
+            context=context,
+        )
+
+        # If both: create task with link to note
+        if routing.content_type == "both" and routing.task and orch.task_service:
+            note_title = (routing.note or {}).get("title", "Note")
+            task = routing.task
+            task_notes = f"📝 See Joplin note: {note_title}\n\n{task.notes or ''}".strip()
+            created = orch.task_service.create_task_with_metadata(
+                title=task.title,
+                user_id=str(user_id),
+                notes=task_notes,
+                due_date=task.due_date,
+            )
+            if created:
+                orch.logging_service.log_decision(
+                    Decision(
+                        user_id=user_id,
+                        status="SUCCESS",
+                        note_title=task.title,
+                        note_body=task_notes,
+                        tags=[],
+                    )
+                )
+            status_line = _task_sync_status_line(orch, user_id)
+            await message.reply_text(
+                format_success_message(f"✅ Also created linked Google Task: '{task.title}'{status_line}")
+            )
+        return True
+
+    return False
+
+
 async def _handle_new_request(
     orch: TelegramOrchestrator,
     user_id: int,
@@ -557,45 +743,13 @@ async def _handle_new_request(
                 ))
         return
 
-    if not force_note and is_action_item(text):
-        logger.info("Detected action item from user %d", user_id)
-        if not orch.task_service:
-            await message.reply_text(
-                "⚠️ Google Tasks integration is not available. "
-                "Please authorize first with /authorize_google_tasks"
-            )
+    # Plain messages: use LLM content routing (note, task, or both)
+    if not force_note and not force_task:
+        routed = await _route_plain_message(
+            orch, user_id, text, message, telegram_message_id, context
+        )
+        if routed:
             return
-        try:
-            decision = Decision(
-                user_id=user_id,
-                telegram_message_id=telegram_message_id,
-                status="SUCCESS",
-                note_title=text,
-                note_body="",
-                tags=[],
-            )
-            created = orch.task_service.create_tasks_from_decision(decision, str(user_id))
-            count = len(created) if created else 0
-            if count > 0:
-                orch.logging_service.log_decision(decision)
-                status_line = _task_sync_status_line(orch, user_id)
-                await message.reply_text(format_success_message(f"✅ Created {count} Google Task(s): '{text}'{status_line}"))
-            else:
-                has_token = orch.logging_service.load_google_token(str(user_id)) is not None
-                if has_token:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
-                else:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks to connect your Google account first."))
-        except Exception as exc:
-            logger.error("Error creating Google Task: %s", exc, exc_info=True)
-            has_token = orch.logging_service.load_google_token(str(user_id)) is not None
-            if has_token:
-                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status for details."))
-            else:
-                await message.reply_text(format_error_message(
-                    f"Failed to create task: {exc}\n\nUse /authorize_google_tasks to connect your Google account first."
-                ))
-        return
 
     logger.info("Processing as Joplin note for user %d", user_id)
     await _send_typing(message, context)
@@ -649,6 +803,12 @@ async def _handle_clarification_reply(
 
     original = state.get("original_message", "")
     combined = f"{original}\n\nClarification: {text}"
+
+    # Routing clarification: re-run content routing with combined message
+    if state.get("routing_pending"):
+        orch.state_manager.clear_state(user_id)
+        await _route_plain_message(orch, user_id, combined, message, None, context)
+        return
 
     if is_action_item(combined) and orch.task_service:
         try:
@@ -707,6 +867,13 @@ async def _handle_stoic_message(
 ) -> None:
     from src.handlers.stoic import handle_stoic_message
     await handle_stoic_message(orch, user_id, text, message)
+
+
+async def _handle_search_message(
+    orch: TelegramOrchestrator, user_id: int, text: str, message: Message
+) -> None:
+    from src.handlers.search import handle_search_selection
+    await handle_search_selection(orch, user_id, text, message)
 
 
 async def _process_llm_response(

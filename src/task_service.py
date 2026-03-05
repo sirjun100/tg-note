@@ -150,10 +150,15 @@ class TaskService:
         else:
             return "normal"
 
-    def create_task_directly(self, title: str, user_id: str) -> list[dict[str, Any]]:
-        """Create a single Google Task directly from user text (used by /task command).
-        Bypasses action-item extraction — the user explicitly asked to create this task."""
-        logger.info("Direct task creation for user %s: %s", user_id, title[:80])
+    def create_task_with_metadata(
+        self,
+        title: str,
+        user_id: str,
+        notes: str = "",
+        due_date: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Create a Google Task with optional notes and due date (used by content routing)."""
+        logger.info("Task creation with metadata for user %s: %s", user_id, title[:80])
 
         token = self.logging_service.load_google_token(user_id)
         if not token:
@@ -161,13 +166,13 @@ class TaskService:
             return []
 
         config = self.logging_service.get_google_tasks_config(int(user_id))
-        if not config or not config.get('enabled'):
+        if not config or not config.get("enabled"):
             logger.warning("Google Tasks disabled for user %s", user_id)
             return []
 
         self.tasks_client.set_token(token)
 
-        task_list_id = config.get('task_list_id')
+        task_list_id = config.get("task_list_id")
         if not task_list_id:
             try:
                 task_list_id = self.tasks_client.get_default_task_list()
@@ -176,26 +181,38 @@ class TaskService:
                 return []
 
         try:
-            task = self.tasks_client.create_task(title=title, task_list_id=task_list_id)
+            task = self.tasks_client.create_task(
+                title=title,
+                notes=notes,
+                task_list_id=task_list_id,
+                due_date=due_date,
+            )
             if task:
-                logger.info("Created Google Task for user %s: %s (ID: %s)", user_id, title[:50], task.get('id'))
+                logger.info("Created Google Task for user %s: %s (ID: %s)", user_id, title[:50], task.get("id"))
                 self.logging_service.log_task_sync(
-                    user_id=int(user_id), task_link_id=None,
-                    google_task_id=task.get('id', ''), action="created",
-                    old_status=None, new_status="needsAction",
-                    sync_direction="joplin_to_google", sync_result="success",
+                    user_id=int(user_id),
+                    task_link_id=None,
+                    google_task_id=task.get("id", ""),
+                    action="created",
+                    old_status=None,
+                    new_status="needsAction",
+                    sync_direction="joplin_to_google",
+                    sync_result="success",
                 )
                 if self.tasks_client.token and self.tasks_client.token != token:
                     self.logging_service.save_google_token(user_id, self.tasks_client.token)
                 return [task]
-            else:
-                logger.warning("User %s: API returned empty response for task: %s", user_id, title[:50])
-                return []
+            return []
         except Exception as e:
             logger.warning("User %s: Error creating task: %s", user_id, e)
             if self.tasks_client.token and self.tasks_client.token != token:
                 self.logging_service.save_google_token(user_id, self.tasks_client.token)
             return []
+
+    def create_task_directly(self, title: str, user_id: str) -> list[dict[str, Any]]:
+        """Create a single Google Task directly from user text (used by /task command).
+        Bypasses action-item extraction — the user explicitly asked to create this task."""
+        return self.create_task_with_metadata(title=title, user_id=user_id)
 
     def create_tasks_from_decision(self, decision: Decision, user_id: str) -> list[dict[str, Any]]:
         """Create Google Tasks from a decision with enhanced error handling and linking

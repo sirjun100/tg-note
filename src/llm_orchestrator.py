@@ -26,6 +26,32 @@ class JoplinNoteSchema(BaseModel):
     log_entry: str = Field(description="Log entry describing the AI decision")
     note: dict[str, Any] | None = Field(default=None, description="Note data with title, body, parent_id, tags")
 
+
+class TaskData(BaseModel):
+    """Task data for content routing (Google Tasks)."""
+    title: str = Field(description="Task title")
+    due_date: str | None = Field(default=None, description="Due date in ISO format (YYYY-MM-DD) or RFC3339")
+    notes: str | None = Field(default=None, description="Additional notes for the task")
+
+
+class ContentDecision(BaseModel):
+    """LLM response for intelligent content routing (note, task, or both)."""
+    status: str = Field(description="Either 'SUCCESS' or 'NEED_INFO'")
+    content_type: str = Field(
+        description="One of: 'note', 'task', 'both'. Determines what to create."
+    )
+    confidence_score: float = Field(description="Confidence score between 0.0 and 1.0")
+    question: str | None = Field(default=None, description="Clarification question if status is NEED_INFO")
+    log_entry: str = Field(description="Log entry describing the AI decision")
+    note: dict[str, Any] | None = Field(
+        default=None,
+        description="Note data (title, body, parent_id, tags) when content_type is 'note' or 'both'",
+    )
+    task: TaskData | None = Field(
+        default=None,
+        description="Task data (title, due_date, notes) when content_type is 'task' or 'both'",
+    )
+
 class LLMOrchestrator:
     """Orchestrates LLM interactions for note generation"""
 
@@ -300,6 +326,102 @@ class LLMOrchestrator:
             logger.error(f"💥 Unexpected error in LLM processing with {self.provider_name}: {e}")
             logger.debug(f"Error details: {type(e).__name__}: {str(e)}", exc_info=True)
             return self._create_error_response(f"Unexpected error: {str(e)}")
+
+    async def process_message_for_routing(
+        self,
+        user_message: str,
+        context: dict[str, Any] | None = None,
+    ) -> ContentDecision:
+        """
+        Process a plain user message and return a content routing decision (note, task, or both).
+        Used for intelligent content routing when the user does not force note or task via command.
+        """
+        context = context or {}
+        system_prompt = self._build_routing_system_prompt(context)
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+
+        logger.info("Routing message with %s: '%s'", self.provider_name, user_message[:80])
+
+        try:
+            if self.provider_name in ["openai", "deepseek"]:
+                schema = ContentDecision.model_json_schema()
+                functions = [{
+                    "name": "create_content_decision",
+                    "description": "Classify and create note/task/both based on user message",
+                    "parameters": schema,
+                }]
+                response = await self.provider.generate_response(
+                    messages=messages,
+                    functions=functions,
+                    function_call={"name": "create_content_decision"},
+                    temperature=0.3,
+                    max_tokens=1200,
+                )
+                function_call = response.get("function_call")
+                args = None
+                if function_call:
+                    try:
+                        args = json.loads(function_call.get("arguments", "{}"))
+                    except json.JSONDecodeError:
+                        return self._create_content_decision_error("Invalid function call format")
+                else:
+                    content = (response.get("content") or "").strip()
+                    json_start = content.find("{")
+                    json_end = content.rfind("}") + 1
+                    if json_start != -1 and json_end > json_start:
+                        try:
+                            args = json.loads(content[json_start:json_end])
+                        except json.JSONDecodeError:
+                            return self._create_content_decision_error("Invalid JSON in response")
+                    else:
+                        return self._create_content_decision_error("No structured response")
+
+                if args:
+                    args.setdefault("content_type", "note")
+                    if args.get("task") and isinstance(args["task"], dict):
+                        args["task"] = TaskData(**args["task"])
+                    return ContentDecision(**args)
+                return self._create_content_decision_error("Failed to parse response")
+
+            elif self.provider_name == "ollama":
+                response = await self.provider.generate_response(
+                    messages=messages,
+                    temperature=0.3,
+                    max_tokens=1200,
+                )
+                content = (response.get("content") or "").strip()
+                json_start = content.find("{")
+                json_end = content.rfind("}") + 1
+                if json_start != -1 and json_end > json_start:
+                    try:
+                        args = json.loads(content[json_start:json_end])
+                        args.setdefault("content_type", "note")
+                        if args.get("task") and isinstance(args["task"], dict):
+                            args["task"] = TaskData(**args["task"])
+                        return ContentDecision(**args)
+                    except (json.JSONDecodeError, ValueError) as e:
+                        logger.warning("Ollama routing parse failed: %s", e)
+                return self._create_content_decision_error("No structured response from Ollama")
+
+            return self._create_content_decision_error(f"Unsupported provider: {self.provider_name}")
+        except Exception as e:
+            logger.error("Routing failed: %s", e, exc_info=True)
+            return self._create_content_decision_error(str(e))
+
+    def _create_content_decision_error(self, error_msg: str) -> ContentDecision:
+        return ContentDecision(
+            status="NEED_INFO",
+            content_type="note",
+            confidence_score=0.0,
+            question="I'm sorry, I encountered an error. Please try again.",
+            log_entry=f"Error: {error_msg}",
+            note=None,
+            task=None,
+        )
 
     async def classify_note(self, note_title: str, note_content: str, folder_list: str) -> dict[str, Any]:
         """Classify a note into PARA structure using LLM"""
@@ -657,6 +779,83 @@ When URL context is provided:
 3) Keep the source URL visible in the note body.
 4) Follow the required template sections for the selected template.
 5) Write the entire note (title, body, and all section headings) in the same language as the source content — do not mix languages. If the page is in French, write the whole note in French; if in English, in English; etc.
+"""
+
+        return prompt
+
+    def _build_routing_system_prompt(self, context: dict[str, Any]) -> str:
+        """Build system prompt for intelligent content routing (note, task, or both)."""
+        folders = context.get("folders", [])
+        folder_list = ""
+        if folders:
+            for f in folders:
+                title = (f.get("title") or "Unknown").lower()
+                if "archive" in title:
+                    continue
+                fid = f.get("id", "unknown")
+                folder_list += f"- {fid}: {title.title()}\n"
+        else:
+            folder_list = "No folders available.\n"
+
+        existing_tags = context.get("existing_tags", [])
+        tags_block = "\n".join(f"- {t}" for t in existing_tags[:20]) if existing_tags else "No existing tags. You can create new tags."
+
+        prompt = f"""You are an intelligent assistant that routes user messages to either Joplin notes, Google Tasks, or both.
+
+## Content Type Classification
+
+First, classify each message as one of:
+- **note**: Information to preserve (meeting notes, ideas, research, URLs, recipes, reflections)
+- **task**: Action item (buy X, call Y, schedule Z, reminders, to-dos)
+- **both**: Action item with context worth preserving (e.g. "Call John about the proposal - key points: ...")
+
+### Create TASK when:
+- Action verbs (buy, call, send, schedule, book, fix, submit, review)
+- Time references (tomorrow, by Friday, next week)
+- Short, actionable (< 50 words typically)
+- Imperative mood ("Do X", "Remember to Y")
+
+### Create NOTE when:
+- Information to preserve (meeting notes, ideas, research)
+- URLs/links, recipes, how-tos
+- Long-form content (> 100 words)
+- Journal entries, reflections
+
+### Create BOTH when:
+- Action item with extensive context
+- "Do X and here's the background: ..."
+- Task with research, links, or reference material
+
+## Joplin Folders
+{folder_list}
+
+## Existing Tags
+{tags_block}
+
+## Response Format
+Return a ContentDecision with:
+- status: "SUCCESS" or "NEED_INFO"
+- content_type: "note", "task", or "both"
+- confidence_score: 0.0-1.0 (use NEED_INFO if < 0.8)
+- log_entry: brief decision description
+- note: (when content_type is "note" or "both") {{ title, body, parent_id, tags }}
+- task: (when content_type is "task" or "both") {{ title, due_date (ISO YYYY-MM-DD if extractable), notes }}
+
+For task.due_date: extract from "tomorrow", "by Friday", "next week", "March 15" etc. Use ISO format. Omit if no date mentioned.
+"""
+
+        url_ctx = context.get("url_context")
+        if url_ctx and url_ctx.get("url"):
+            extracted = (url_ctx.get("extracted_text") or "").strip()
+            if len(extracted) > 1500:
+                extracted = extracted[:1500] + "..."
+            prompt += f"""
+
+## URL Context
+URL: {url_ctx.get("url")}
+Title: {url_ctx.get("title", "")}
+Extracted text: {extracted}
+When URL is present, prefer content_type "note" and use extracted content in the note body.
 """
 
         return prompt

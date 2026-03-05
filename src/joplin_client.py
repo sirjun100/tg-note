@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from urllib.parse import quote
 from datetime import datetime
 from typing import Any
 
@@ -136,6 +137,19 @@ class JoplinClient:
 
     async def get_notes_in_folder(self, folder_id: str) -> list[dict[str, Any]]:
         return await self._paginated_items(f"/folders/{folder_id}/notes")
+
+    async def search_notes(
+        self, query: str, limit: int = 10
+    ) -> list[dict[str, Any]]:
+        """Search notes using Joplin's full-text search. Returns matching notes."""
+        if not query or not query.strip():
+            return []
+        fields = "id,title,body,parent_id,updated_time"
+        endpoint = f"/search?query={quote(query.strip())}&type=note&fields={fields}&limit={limit}"
+        result = await self._request("GET", endpoint)
+        if not isinstance(result, dict):
+            return []
+        return result.get("items") or []
 
     # -- folders --
 
