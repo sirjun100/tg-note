@@ -1,5 +1,7 @@
 # Intelligent Joplin Librarian
 
+[![CI](https://github.com/martinfou/telegram-joplin/actions/workflows/ci.yml/badge.svg)](https://github.com/martinfou/telegram-joplin/actions/workflows/ci.yml) [🔄 Force Deploy](https://github.com/martinfou/telegram-joplin/actions/workflows/ci.yml)
+
 **Stop carrying everything in your head.** This Telegram bot combines two of the most powerful productivity systems ever created — **Getting Things Done (GTD)** and the **Second Brain (PARA)** — into a single, frictionless interface you already use every day: your phone.
 
 Send a message. The AI figures out the rest.
