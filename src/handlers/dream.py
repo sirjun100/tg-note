@@ -85,11 +85,13 @@ async def handle_dream_message(
     message: Any,
 ) -> None:
     """Handle incoming message when user is in DREAM_ANALYST session."""
+    logger.debug("Dream message: user=%d phase=checking", user_id)
     state = orch.state_manager.get_state(user_id)
     if not state or state.get("active_persona") != "DREAM_ANALYST":
         return
 
     phase = state.get("phase", "dream_description")
+    logger.debug("Dream message: user=%d phase=%s len=%d", user_id, phase, len(text or ""))
     text_lower = text.strip().lower()
 
     if phase == "dream_description":
@@ -104,6 +106,7 @@ async def handle_dream_message(
         state["dream_text"] = text.strip()
         state["phase"] = "analyzing"
         orch.state_manager.update_state(user_id, state)
+        logger.info("Dream: user=%d starting analysis (dream len=%d)", user_id, len(text.strip()))
 
         await message.reply_text("🎨 Creating a symbolic image of your dream...")
         from src.dream_image import generate_dream_image
@@ -159,6 +162,7 @@ async def handle_dream_message(
         msg += "Would you like to explore how this dream connects to your current life? (yes/no)"
         msg += DREAM_DISCLAIMER
         await message.reply_text(msg)
+        logger.info("Dream: user=%d analysis sent, awaiting yes/no", user_id)
         return
 
     if phase == "association_prompt":
@@ -225,11 +229,14 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
     """Register dream analysis handlers."""
 
     async def dream_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        logger.info("Dream command received")
         user = update.effective_user
         msg = update.message
         if not user or not msg:
+            logger.warning("Dream command: missing user or message")
             return
         if not check_whitelist(user.id):
+            logger.info("Dream command: user %d not whitelisted", user.id)
             await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
             return
 
@@ -241,8 +248,15 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             "interpretation": "",
             "associations": "",
         }
-        orch.state_manager.update_state(user.id, state)
-        await msg.reply_text(
+        try:
+            orch.state_manager.update_state(user.id, state)
+            logger.info("Dream command: state updated for user %d", user.id)
+        except Exception as exc:
+            logger.error("Dream command: state update failed for user %d: %s", user.id, exc, exc_info=True)
+            await msg.reply_text(format_error_message("Could not start dream session. Please try again."))
+            return
+
+        welcome = (
             "🌙 **Welcome to Dream Analysis**\n\n"
             "Take a moment to recall your dream...\n\n"
             "When you're ready, describe everything you remember:\n"
@@ -251,21 +265,43 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             "• What did you see, hear, feel?\n"
             "• Any symbols, colors, or unusual elements?\n\n"
             "Take your time. The more detail, the richer the analysis.\n\n"
-            "Type /dream_cancel to cancel anytime.",
-            parse_mode="Markdown",
+            "Type /dream_cancel to cancel anytime."
         )
-        logger.info("Dream session started for user %d", user.id)
+        try:
+            await msg.reply_text(welcome, parse_mode="Markdown")
+            logger.info("Dream session started for user %d", user.id)
+        except Exception as exc:
+            logger.error("Dream command: welcome message failed for user %d: %s", user.id, exc, exc_info=True)
+            try:
+                await msg.reply_text(
+                    "🌙 Welcome to Dream Analysis\n\n"
+                    "Take a moment to recall your dream...\n\n"
+                    "When you're ready, describe everything you remember:\n"
+                    "• What happened?\n"
+                    "• Who was there?\n"
+                    "• What did you see, hear, feel?\n"
+                    "• Any symbols, colors, or unusual elements?\n\n"
+                    "Take your time. The more detail, the richer the analysis.\n\n"
+                    "Type /dream_cancel to cancel anytime."
+                )
+                logger.info("Dream session started (plain fallback) for user %d", user.id)
+            except Exception as fallback_exc:
+                logger.error("Dream command: plain fallback also failed for user %d: %s", user.id, fallback_exc, exc_info=True)
+                raise exc from fallback_exc
 
     async def dream_done_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        logger.info("Dream done command received")
         user = update.effective_user
         msg = update.message
         if not user or not msg:
+            logger.warning("Dream done: missing user or message")
             return
         if not check_whitelist(user.id):
             await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
             return
 
         state = orch.state_manager.get_state(user.id)
+        logger.debug("Dream done: user=%d state=%s", user.id, "present" if state else "none")
         if not state or state.get("active_persona") != "DREAM_ANALYST":
             await msg.reply_text("You don't have an active dream session. Use /dream to start one.")
             return
@@ -275,17 +311,21 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             return
 
         try:
+            logger.info("Dream done: user=%d saving to Joplin", user.id)
             ok = await _save_dream_to_joplin(orch, user.id, state)
             orch.state_manager.clear_state(user.id)
             if ok:
                 await msg.reply_text("✅ Dream analysis saved to your Dream Journal.")
+                logger.info("Dream done: user=%d saved successfully", user.id)
             else:
                 await msg.reply_text(format_error_message("Failed to save. Please try again."))
+                logger.warning("Dream done: user=%d save returned False", user.id)
         except Exception as exc:
-            logger.error("Dream save failed: %s", exc)
+            logger.error("Dream save failed for user %d: %s", user.id, exc, exc_info=True)
             await msg.reply_text(format_error_message("Failed to save. Please try again."))
 
     async def dream_cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        logger.info("Dream cancel command received")
         user = update.effective_user
         msg = update.message
         if not user or not msg:

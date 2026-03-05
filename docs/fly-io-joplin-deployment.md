@@ -184,14 +184,43 @@ See [fly-scheduled-scaling.md](fly-scheduled-scaling.md) for setup details.
 
 ---
 
-## 8. Useful Commands
+## 8. Viewing Logs
+
+Logs are written to stdout (JSON in production) and captured by Fly.io. To view them:
+
+```bash
+# Stream logs in real time (recommended for debugging)
+fly logs -f
+
+# Show last 100 lines
+fly logs
+
+# Specify app if you have multiple
+fly logs -a telegram-joplin -f
+```
+
+**Log format**: In production (when `FLY_APP_NAME` is set), logs are JSON with `event`, `level`, `timestamp`, etc. Example:
+```json
+{"event": "Dream command received", "level": "info", "timestamp": "2026-03-05T18:26:05.123Z"}
+```
+
+**More verbose logs**: Set `DEBUG=true` in Fly secrets to enable DEBUG level:
+```bash
+fly secrets set DEBUG=true
+fly deploy
+```
+
+---
+
+## 9. Useful Commands
 
 | Task | Command |
 |------|---------|
 | Deploy | `fly deploy` |
+| **View logs (stream)** | `fly logs -f` |
 | SSH into container | `fly ssh console` |
-| View logs | `fly logs` |
 | Check app status | `fly status` |
+| View logs (last 100) | `fly logs` |
 | List volumes | `fly volumes list` |
 | Set a secret | `fly secrets set KEY=value` |
 | List secrets | `fly secrets list` |
