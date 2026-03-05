@@ -12,6 +12,7 @@ import asyncio
 import base64
 import json
 import logging
+import os
 
 import httpx
 
@@ -44,7 +45,7 @@ async def extract_text_from_image(image_bytes: bytes, mime_type: str = "image/jp
     Returns None if GEMINI_API_KEY is missing or request fails.
     """
     settings = get_settings()
-    api_key = settings.google.gemini_api_key
+    api_key = settings.google.gemini_api_key or os.environ.get("GEMINI_API_KEY")
     if not api_key or not api_key.strip():
         logger.info("GEMINI_API_KEY not set; skipping OCR")
         return None

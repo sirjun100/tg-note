@@ -90,6 +90,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-009](bugs/BF-009-stoic-questions-template-mismatch.md) | Stoic Journal: Questions Do Not Match Template | 🟠 High | 3 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-010](bugs/BF-010-greeting-parse-entities-error.md) | Greeting Response: "Something Went Wrong" (Parse Entities) | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-011](bugs/BF-011-content-decision-validation-error.md) | ContentDecision Validation + Greeting Shows Menu | 🟠 High | 1 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-012](bugs/BF-012-mypy-module-resolution.md) | Mypy Module Resolution Error | 🟡 Medium | 0.5 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-013](bugs/BF-013-double-check-mark-success.md) | Double Check Mark on Task/Note Creation Success | 🟢 Low | 0.5 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-014](bugs/BF-014-dream-parse-entities-error.md) | /dream Parse Entities Error (BadRequest) | 🟠 High | 2 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
 
 ---
 
@@ -147,7 +150,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 ## Backlog Statistics
 
-**Total Items**: 33 Features + 8 Bugs = 41 items
+**Total Items**: 33 Features + 10 Bugs = 43 items
 
 **Features by Status**:
 - ⭕ Not Started: 2 (FR-026, FR-033)
@@ -155,23 +158,23 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 - ✅ Completed: 29 (FR-001–FR-015, FR-017, FR-019–FR-024, FR-025, FR-027–FR-032)
 
 **Bugs by Status**:
-- ⭕ Not Started: 1 (BF-005)
-- ✅ Completed: 7 (BF-001–BF-004, BF-009, BF-010, BF-011)
+- ⭕ Not Started: 2 (BF-005, BF-013)
+- ✅ Completed: 8 (BF-001–BF-004, BF-009, BF-010, BF-011, BF-012)
 
 **By Priority (all items)**:
 - 🔴 Critical: 4 (BF-002, BF-003, BF-004 resolved; BF-005 not started)
 - 🟠 High: 13
-- 🟡 Medium: 13
-- 🟢 Low: 2
+- 🟡 Medium: 14
+- 🟢 Low: 3
 
 **Feature Story Points**: 214
   - Completed: 198 points (FR-001–FR-015, FR-017, FR-019–FR-025, FR-027–FR-032) — 93%
   - In Progress: 29 points (FR-016 ~55%, FR-018 ~30%)
   - Not Started: 21 points (FR-026, FR-033)
 
-**Bug Story Points**: 19
-  - Completed: 18 points (BF-001–BF-004, BF-009, BF-010, BF-011)
-  - Not Started: 5 points (BF-005)
+**Bug Story Points**: 20
+  - Completed: 18.5 points (BF-001–BF-004, BF-009, BF-010, BF-011, BF-012)
+  - Not Started: 6 points (BF-005, BF-013)
 
 **Overall Completion Rate**: 93% features completed (198/214 points)
 **Current**: 93% (198/214 points) ✅
