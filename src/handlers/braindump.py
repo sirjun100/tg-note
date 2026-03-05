@@ -5,7 +5,6 @@ GTD Brain Dump handlers: /braindump, /braindump_stop, in-session messages.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -14,6 +13,7 @@ from telegram.ext import CommandHandler, ContextTypes
 
 from src.logging_service import Decision
 from src.security_utils import check_whitelist
+from src.timezone_utils import get_current_date_str, get_user_timezone_aware_now
 
 if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
@@ -52,9 +52,10 @@ def _braindump(orch: TelegramOrchestrator):
             )
             return
 
+        session_start = get_user_timezone_aware_now(user_id, orch.logging_service)
         new_state: dict[str, Any] = {
             "active_persona": "GTD_EXPERT",
-            "session_start": datetime.now().isoformat(),
+            "session_start": session_start.isoformat(),
             "captured_items": [],
             "conversation_history": [],
         }
@@ -183,8 +184,9 @@ async def _finish_session(
                     await message.reply_text(
                         "⚠️ Couldn't generate a structured summary. I'll save our conversation as-is."
                     )
+                    date_str = get_current_date_str(user_id, orch.logging_service)
                     final_note = {
-                        "title": f"Brain Dump Session - {datetime.now().strftime('%Y-%m-%d')}",
+                        "title": f"Brain Dump Session - {date_str}",
                         "body": "\n".join(f"{h['role']}: {h['content']}" for h in history),
                         "parent_id": "Inbox",
                         "tags": ["brain-dump", "mindsweep"],
