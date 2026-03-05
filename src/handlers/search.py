@@ -75,14 +75,14 @@ def _find(orch: TelegramOrchestrator):
 
         if not results:
             await update.message.reply_text(
-                f'No notes found for "{query}".\nTry different keywords or check spelling.'
+                f"No notes found for '{query}'. Try different keywords or check spelling."
             )
             return
 
         folders = await orch.joplin_client.get_folders()
         folder_by_id = {f.get("id"): f.get("title") or "Unknown" for f in folders}
 
-        lines = [f'🔍 **Search results for "{query}"** ({len(results)} found)\n"]
+        lines = [f"🔍 **Search results for '{query}'** ({len(results)} found)\n"]
 
         for i, note in enumerate(results, 1):
             title = note.get("title") or "(Untitled)"
