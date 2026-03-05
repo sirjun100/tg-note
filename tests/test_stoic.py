@@ -56,7 +56,9 @@ class TestFormatSection(unittest.TestCase):
             {"q": "grateful?", "a": "Family\nHealth"},
             {"q": "tasks?", "a": "[ ] Task A\n[ ] Task B\n[ ] Task C"},
         ]
-        out = stoic_module._format_morning_content(answers)
+        orch = MagicMock()
+        orch.logging_service.get_report_configuration.return_value = {"timezone": "US/Eastern"}
+        out = stoic_module._format_morning_content(answers, 123, orch)
         self.assertIn("Intention", out)
         self.assertIn("Stay calm", out)
         self.assertIn("Focus", out)
@@ -73,7 +75,9 @@ class TestFormatSection(unittest.TestCase):
             {"q": "differently?", "a": "Start earlier"},
             {"q": "grateful?", "a": "Coffee"},
         ]
-        out = stoic_module._format_evening_content(answers)
+        orch = MagicMock()
+        orch.logging_service.get_report_configuration.return_value = {"timezone": "US/Eastern"}
+        out = stoic_module._format_evening_content(answers, 123, orch)
         self.assertIn("Wins", out)
         self.assertIn("Challenges", out)
         self.assertIn("Lesson Learned", out)
@@ -81,14 +85,18 @@ class TestFormatSection(unittest.TestCase):
     def test_format_section_morning(self):
         """_format_section(mode='morning', answers) returns morning block."""
         answers = [{"q": "q1", "a": "a1"}]
-        out = stoic_module._format_section("morning", answers)
+        orch = MagicMock()
+        orch.logging_service.get_report_configuration.return_value = {"timezone": "US/Eastern"}
+        out = stoic_module._format_section("morning", answers, 123, orch)
         self.assertIn("Morning", out)
         self.assertIn("a1", out)
 
     def test_format_section_evening(self):
         """_format_section(mode='evening', answers) returns evening block."""
         answers = [{"q": "q1", "a": "a1"}]
-        out = stoic_module._format_section("evening", answers)
+        orch = MagicMock()
+        orch.logging_service.get_report_configuration.return_value = {"timezone": "US/Eastern"}
+        out = stoic_module._format_section("evening", answers, 123, orch)
         self.assertIn("Evening", out)
 
 
@@ -170,6 +178,7 @@ class TestFinishStoicSession(unittest.IsolatedAsyncioTestCase):
     async def test_creates_note_when_no_existing_today(self):
         """When today's note does not exist, finish creates a new note and returns True."""
         orch = MagicMock()
+        orch.logging_service = MagicMock()
         orch.llm_orchestrator.format_stoic_reflection = AsyncMock(return_value=None)
         orch.joplin_client.get_or_create_folder_by_path = AsyncMock(return_value="folder_123")
         orch.joplin_client.get_notes_in_folder = AsyncMock(return_value=[])
@@ -184,8 +193,8 @@ class TestFinishStoicSession(unittest.IsolatedAsyncioTestCase):
             "body_template": "# {{DATE}} - Daily Stoic Reflection\n\n## Morning\n{{MORNING_CONTENT}}\n\n## Evening\n{{EVENING_CONTENT}}",
         }
 
-        with patch.object(stoic_module, "datetime") as mock_dt:
-            mock_dt.now.return_value = datetime(2025, 2, 28, 10, 30)
+        with patch.object(stoic_module, "get_current_date_str") as mock_date:
+            mock_date.return_value = "2025-02-28"
             result = await stoic_module._finish_stoic_session(orch, 999, message, state)
 
         self.assertTrue(result)
@@ -200,6 +209,7 @@ class TestFinishStoicSession(unittest.IsolatedAsyncioTestCase):
     async def test_updates_note_when_todays_note_exists(self):
         """When today's note exists, finish appends to it and returns True."""
         orch = MagicMock()
+        orch.logging_service = MagicMock()
         orch.llm_orchestrator.format_stoic_reflection = AsyncMock(return_value=None)
         orch.joplin_client.get_or_create_folder_by_path = AsyncMock(return_value="folder_123")
         orch.joplin_client.get_notes_in_folder = AsyncMock(return_value=[
@@ -217,8 +227,8 @@ class TestFinishStoicSession(unittest.IsolatedAsyncioTestCase):
             "body_template": "# {{DATE}}\n{{MORNING_CONTENT}}\n{{EVENING_CONTENT}}",
         }
 
-        with patch.object(stoic_module, "datetime") as mock_dt:
-            mock_dt.now.return_value = datetime(2025, 2, 28, 18, 0)
+        with patch.object(stoic_module, "get_current_date_str") as mock_date:
+            mock_date.return_value = "2025-02-28"
             result = await stoic_module._finish_stoic_session(orch, 999, message, state)
 
         self.assertTrue(result)
@@ -233,6 +243,7 @@ class TestFinishStoicSession(unittest.IsolatedAsyncioTestCase):
     async def test_finish_uses_body_template_from_template_if_missing_in_state(self):
         """When state has no body_template, finish loads it from template and still saves."""
         orch = MagicMock()
+        orch.logging_service = MagicMock()
         orch.llm_orchestrator.format_stoic_reflection = AsyncMock(return_value=None)
         orch.joplin_client.get_or_create_folder_by_path = AsyncMock(return_value="folder_123")
         orch.joplin_client.get_notes_in_folder = AsyncMock(return_value=[])
@@ -243,8 +254,8 @@ class TestFinishStoicSession(unittest.IsolatedAsyncioTestCase):
         message.reply_text = AsyncMock()
         state = {"mode": "morning", "answers": [{"q": "Q?", "a": "A"}], "body_template": ""}
 
-        with patch.object(stoic_module, "datetime") as mock_dt:
-            mock_dt.now.return_value = datetime(2025, 3, 1, 9, 0)
+        with patch.object(stoic_module, "get_current_date_str") as mock_date:
+            mock_date.return_value = "2025-03-01"
             result = await stoic_module._finish_stoic_session(orch, 999, message, state)
 
         self.assertTrue(result)
