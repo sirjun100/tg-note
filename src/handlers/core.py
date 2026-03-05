@@ -108,6 +108,7 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /braindump → 15-min GTD brain dump session\n"
         "• /stoic → Guided morning/evening reflection\n"
         "• /dream → Jungian dream analysis\n"
+        "• /habits → Daily habit check-in\n"
         "• /recipe → Save and organize recipes\n\n"
         "<b>📊 Review</b>\n"
         "• /daily_report → Today's priorities\n"
