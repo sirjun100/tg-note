@@ -18,7 +18,8 @@ from src.weekly_report_generator import (
 class TestWeekBounds:
     def test_monday_returns_full_week(self):
         monday = datetime(2026, 3, 2, 10, 0)  # Monday
-        start, end = _week_bounds(monday)
+        # Pass user_id=123 and logging_service=None for tests
+        start, end = _week_bounds(123, None, monday)
         assert start.weekday() == 0  # Monday
         assert end.weekday() == 6  # Sunday
         assert start.hour == 0
@@ -26,14 +27,18 @@ class TestWeekBounds:
 
     def test_sunday_stays_in_same_week(self):
         sunday = datetime(2026, 3, 8, 18, 0)  # Sunday
-        start, end = _week_bounds(sunday)
+        start, end = _week_bounds(123, None, sunday)
         assert start.date() == datetime(2026, 3, 2).date()  # Previous Monday
         assert end.date() == sunday.date()
 
     def test_none_uses_now(self):
-        start, end = _week_bounds(None)
+        start, end = _week_bounds(123, None, None)
+        # _week_bounds returns timezone-aware datetimes, so use naive comparison
         now = datetime.now()
-        assert start <= now <= end
+        # Convert to naive for comparison (strip tzinfo)
+        start_naive = start.replace(tzinfo=None)
+        end_naive = end.replace(tzinfo=None)
+        assert start_naive <= now <= end_naive
 
 
 class TestRecommendations:
