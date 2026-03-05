@@ -382,6 +382,7 @@ class LLMOrchestrator:
 
                 if args:
                     args.setdefault("content_type", "note")
+                    args["content_type"] = args.get("content_type") or "note"
                     if args.get("task") and isinstance(args["task"], dict):
                         args["task"] = TaskData(**args["task"])
                     return ContentDecision(**args)
@@ -400,6 +401,7 @@ class LLMOrchestrator:
                     try:
                         args = json.loads(content[json_start:json_end])
                         args.setdefault("content_type", "note")
+                        args["content_type"] = args.get("content_type") or "note"
                         if args.get("task") and isinstance(args["task"], dict):
                             args["task"] = TaskData(**args["task"])
                         return ContentDecision(**args)

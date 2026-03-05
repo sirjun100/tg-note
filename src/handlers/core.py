@@ -126,15 +126,28 @@ def _greeting_to_plain(html_text: str) -> str:
 
 
 async def _send_greeting_safe(message: Message, greeting: str) -> None:
-    """Send greeting with HTML formatting; fall back to plain text on parse error (BF-010)."""
+    """Send greeting with HTML; fall back to plain text on parse/send error (BF-010)."""
+    plain = _greeting_to_plain(greeting)
     try:
         await message.reply_text(greeting, parse_mode="HTML")
     except Exception as exc:
-        if "parse" in str(exc).lower() or "entities" in str(exc).lower():
-            logger.warning("Greeting HTML parse failed, falling back to plain text: %s", exc)
-            await message.reply_text(_greeting_to_plain(greeting))
-        else:
-            raise
+        exc_str = str(exc).lower()
+        exc_type = type(exc).__name__
+        is_parse_error = (
+            "parse" in exc_str
+            or "entities" in exc_str
+            or "badrequest" in exc_type.lower()
+        )
+        logger.warning(
+            "Greeting send failed (%s), falling back to plain text: %s",
+            "parse" if is_parse_error else "other",
+            exc,
+        )
+        try:
+            await message.reply_text(plain)
+        except Exception as fallback_exc:
+            logger.error("Greeting plain fallback also failed: %s", fallback_exc)
+            raise exc
 
 
 def _start(orch: TelegramOrchestrator):
@@ -518,7 +531,10 @@ def _message(orch: TelegramOrchestrator):
 
             pending = orch.state_manager.get_state(user_id)
 
-            if not pending and _is_greeting(validated):
+            # Greetings always show menu, never trigger LLM (BF-011 Part B).
+            # "hello" etc. act as escape hatch even when user has pending clarification.
+            if _is_greeting(validated):
+                orch.state_manager.clear_state(user_id)
                 greeting = _build_greeting_response(user_id, orch)
                 await _send_greeting_safe(message, greeting)
                 logger.info("Greeting response sent to user %d", user_id)
