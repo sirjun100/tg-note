@@ -8,10 +8,12 @@ Sprint 11 Story 3 - FR-025.
 from __future__ import annotations
 
 import logging
+import re
 from io import BytesIO
 from typing import TYPE_CHECKING, Any
 
 from telegram import Update
+from telegram.error import BadRequest
 from telegram.ext import CommandHandler, ContextTypes
 
 from src.security_utils import check_whitelist, format_error_message
@@ -29,6 +31,13 @@ DREAM_DISCLAIMER = (
     "It is not a substitute for professional psychological support. "
     "If your dreams are causing distress, please consult a qualified therapist.*"
 )
+
+
+def _dream_analysis_to_plain(text: str) -> str:
+    """Strip Markdown for plain-text fallback (BF-014)."""
+    out = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)  # **bold** -> bold
+    out = re.sub(r"\*([^*]+)\*", r"\1", out)  # *italic* -> italic
+    return out
 
 
 def _extract_symbols_from_analysis(analysis_text: str) -> list[str]:
@@ -156,7 +165,15 @@ async def handle_dream_message(
         msg = f"📖 **Jungian Analysis**\n\n{analysis}\n\n---\n\n"
         msg += "Would you like to explore how this dream connects to your current life? (yes/no)"
         msg += DREAM_DISCLAIMER
-        await message.reply_text(msg, parse_mode="Markdown")
+        plain_msg = _dream_analysis_to_plain(msg)
+        try:
+            await message.reply_text(msg, parse_mode="Markdown")
+        except BadRequest as exc:
+            if "parse" in str(exc).lower() or "entities" in str(exc).lower():
+                logger.warning("Dream analysis Markdown parse failed (BF-014), falling back to plain: %s", exc)
+                await message.reply_text(plain_msg)
+            else:
+                raise
         return
 
     if phase == "association_prompt":

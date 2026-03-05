@@ -1,6 +1,6 @@
 # Bug Fix: BF-005 - Stoic Journal: Timezone Mismatch & Data Loss on Update
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🔴 Critical
 **Story Points**: 5
 **Created**: 2026-03-03
@@ -161,6 +161,14 @@ if existing_note:
 - The `report_configurations` table already has a `timezone` column — we can either reuse it or create a dedicated `user_preferences` table.
 - Consider adding `/set_timezone US/Eastern` as a top-level command.
 
+## Resolution (Verified 2026-03-05)
+
+All three bugs are fixed in the current codebase:
+1. **Timezone**: `stoic.py` uses `get_user_timezone_aware_now()` and `get_current_date_str()` from `timezone_utils` (no `datetime.now()`).
+2. **Data loss**: `_finish_stoic_session()` aborts on `get_note()` failure with user-facing error (lines 419-429).
+3. **Duplicate session**: `_check_section_exists()` + prompt for `/stoic_replace` / `/stoic_append` when section already has content.
+
 ## History
 
 - 2026-03-03 - Created (user-reported: data loss + timezone mismatch in Montreal)
+- 2026-03-05 - Verified fixed: timezone_utils, abort on fetch failure, duplicate detection (BF-008)

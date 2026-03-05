@@ -114,4 +114,7 @@ def format_error_message(error: str) -> str:
 
 
 def format_success_message(message: str) -> str:
+    """Prepend check mark. Skips if message already starts with ✅ (BF-013)."""
+    if message.strip().startswith("✅"):
+        return message
     return f"✅ {message}"

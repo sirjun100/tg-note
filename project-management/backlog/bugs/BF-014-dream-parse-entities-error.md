@@ -1,6 +1,6 @@
 # Bug Fix: BF-014 - /dream Parse Entities Error (BadRequest)
 
-**Status**: ⭕ Open
+**Status**: ✅ Completed
 **Priority**: 🟠 High
 **Story Points**: 2
 **Created**: 2026-03-05
@@ -60,6 +60,10 @@ The `analysis` text comes from the LLM (Jungian analyst) and is inserted **witho
 - `src/handlers/dream.py`:
   - `handle_dream_message()` — line ~154–158: builds and sends analysis with `parse_mode="Markdown"`
   - The `analysis` variable (from LLM) is the unescaped source of the parse error
+
+## Resolution (2026-03-05)
+
+Added `_dream_analysis_to_plain()` to strip Markdown. On `BadRequest` (parse/entities), fall back to plain text so the user always receives the analysis. Same pattern as BF-010.
 
 ## References
 

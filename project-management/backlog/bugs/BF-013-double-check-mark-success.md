@@ -1,6 +1,6 @@
 # Bug Fix: BF-013 - Double Check Mark on Task/Note Creation Success
 
-**Status**: ⭕ Open
+**Status**: ✅ Completed
 **Priority**: 🟢 Low
 **Story Points**: 0.5
 **Created**: 2026-03-05
@@ -53,3 +53,7 @@ Either:
 - `src/security_utils.py`: `format_success_message()`
 - `src/handlers/core.py`: Calls with `f"✅ Created Google Task: ..."`, `f"✅ Note created: ..."`, etc.
 - Other handlers using `format_success_message` with messages that already include ✅
+
+## Resolution (2026-03-05)
+
+Updated `format_success_message()` to skip prepending ✅ when the message already starts with it (Option B).

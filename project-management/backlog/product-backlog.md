@@ -86,13 +86,13 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-002](bugs/BF-002-github-actions-build-failure.md) | GitHub Actions Build Failure | 🔴 Critical | 3 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
 | [BF-003](bugs/BF-003-scheduler-not-working.md) | Scheduler Not Working — App Down | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
 | [BF-004](bugs/BF-004-flyctl-deploy-no-access-token.md) | Fly.io Deploy Fails: No Access Token Available | 🔴 Critical | 1 | ✅ | Backlog | 2026-03-03 | 2026-03-03 |
-| [BF-005](bugs/BF-005-stoic-journal-timezone-and-data-loss.md) | Stoic Journal: Timezone Mismatch & Data Loss on Update | 🔴 Critical | 5 | ⭕ | Backlog | 2026-03-03 | 2026-03-03 |
+| [BF-005](bugs/BF-005-stoic-journal-timezone-and-data-loss.md) | Stoic Journal: Timezone Mismatch & Data Loss on Update | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-03 | 2026-03-05 |
 | [BF-009](bugs/BF-009-stoic-questions-template-mismatch.md) | Stoic Journal: Questions Do Not Match Template | 🟠 High | 3 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-010](bugs/BF-010-greeting-parse-entities-error.md) | Greeting Response: "Something Went Wrong" (Parse Entities) | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-011](bugs/BF-011-content-decision-validation-error.md) | ContentDecision Validation + Greeting Shows Menu | 🟠 High | 1 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-012](bugs/BF-012-mypy-module-resolution.md) | Mypy Module Resolution Error | 🟡 Medium | 0.5 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
-| [BF-013](bugs/BF-013-double-check-mark-success.md) | Double Check Mark on Task/Note Creation Success | 🟢 Low | 0.5 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
-| [BF-014](bugs/BF-014-dream-parse-entities-error.md) | /dream Parse Entities Error (BadRequest) | 🟠 High | 2 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-013](bugs/BF-013-double-check-mark-success.md) | Double Check Mark on Task/Note Creation Success | 🟢 Low | 0.5 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-014](bugs/BF-014-dream-parse-entities-error.md) | /dream Parse Entities Error (BadRequest) | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 
 ---
 
@@ -158,11 +158,11 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 - ✅ Completed: 29 (FR-001–FR-015, FR-017, FR-019–FR-024, FR-025, FR-027–FR-032)
 
 **Bugs by Status**:
-- ⭕ Not Started: 2 (BF-005, BF-013)
-- ✅ Completed: 8 (BF-001–BF-004, BF-009, BF-010, BF-011, BF-012)
+- ⭕ Not Started: 0
+- ✅ Completed: 11 (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014)
 
 **By Priority (all items)**:
-- 🔴 Critical: 4 (BF-002, BF-003, BF-004 resolved; BF-005 not started)
+- 🔴 Critical: 4 (BF-002, BF-003, BF-004, BF-005 resolved)
 - 🟠 High: 13
 - 🟡 Medium: 14
 - 🟢 Low: 3
@@ -173,8 +173,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
   - Not Started: 21 points (FR-026, FR-033)
 
 **Bug Story Points**: 20
-  - Completed: 18.5 points (BF-001–BF-004, BF-009, BF-010, BF-011, BF-012)
-  - Not Started: 6 points (BF-005, BF-013)
+  - Completed: 20 points (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014)
+  - Not Started: 0 points
 
 **Overall Completion Rate**: 93% features completed (198/214 points)
 **Current**: 93% (198/214 points) ✅
@@ -206,7 +206,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
   - Sprint 10 Complete: FR-023, FR-024, FR-029, FR-031, Joplin 24/7 ✅
   - Sprint 11 Complete: FR-025, FR-027, FR-028, FR-030, FR-032 ✅
   - Sprint 9 (Mar 10–31): FR-016 ~55% complete
-  - Backlog: FR-018 ~30%, FR-026, FR-033; BF-005 not started
+  - Backlog: FR-018 ~30%, FR-026, FR-033
 
 ## Tips for Maintaining the Backlog
 
