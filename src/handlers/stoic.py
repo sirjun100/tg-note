@@ -553,7 +553,7 @@ async def _finish_stoic_session(
             )
             return False
 
-        # Check for duplicate sections
+        # Check for duplicate sections with REAL content
         if _check_section_exists(existing_body, mode):
             await message.reply_text(
                 f"⚠️ You already have a {mode.capitalize()} reflection for today.\n\n"
@@ -569,7 +569,18 @@ async def _finish_stoic_session(
             orch.state_manager.update_state(user_id, state)
             return False
 
-        new_body = f"{existing_body}\n\n{section_content}" if existing_body else section_content
+        # No real content found - either replace empty placeholder or append
+        # Check if section exists at all (even if empty)
+        import re
+        pattern = r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)" if mode == "morning" else r"### 🌙 Evening.*$"
+        section_exists_empty = bool(re.search(pattern, existing_body, re.DOTALL))
+
+        if section_exists_empty:
+            # Section exists but is empty - replace the placeholder
+            new_body = _replace_section(existing_body, section_content, mode)
+        else:
+            # Section doesn't exist at all - append
+            new_body = f"{existing_body}\n\n{section_content}" if existing_body else section_content
         try:
             await orch.joplin_client.update_note(note_id, {"body": new_body})
         except Exception as exc:
