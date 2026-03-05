@@ -112,12 +112,7 @@ def format_date_for_user(user_id: int, logging_service: LoggingService | None, d
         tz = pytz.timezone(tz_str)
 
         # Convert to user's timezone if needed
-        if dt.tzinfo is None:
-            # Assume UTC if naive
-            dt_aware = pytz.UTC.localize(dt)
-        else:
-            dt_aware = dt
-
+        dt_aware = pytz.UTC.localize(dt) if dt.tzinfo is None else dt
         dt_in_tz = dt_aware.astimezone(tz)
         return dt_in_tz.strftime("%Y-%m-%d")
     except Exception as exc:
