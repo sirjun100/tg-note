@@ -7,7 +7,7 @@ Sprint 11 Story 2 - FR-028.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from telegram import Update
@@ -36,8 +36,8 @@ def _format_relative_time(saved_at: datetime | None) -> str:
     """Format saved_at as relative time (e.g. '2 days ago')."""
     if not saved_at:
         return "Unknown"
-    now = datetime.now(datetime.UTC)
-    dt = saved_at.replace(tzinfo=datetime.UTC) if saved_at.tzinfo is None else saved_at
+    now = datetime.now(timezone.utc)  # noqa: UP017
+    dt = saved_at.replace(tzinfo=timezone.utc) if saved_at.tzinfo is None else saved_at  # noqa: UP017
     delta = now - dt
     days = delta.days
     if days == 0:

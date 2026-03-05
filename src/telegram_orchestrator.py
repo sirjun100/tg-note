@@ -14,8 +14,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from typing import TYPE_CHECKING
 
 from telegram.ext import Application
+
+if TYPE_CHECKING:
+    from src.task_service import TaskService
 
 from config import TELEGRAM_BOT_TOKEN
 from src.enrichment_service import EnrichmentService
@@ -53,7 +57,7 @@ class TelegramOrchestrator:
         self.state_manager = StateManager(db_path=STATE_DB_PATH)
         self.logging_service = LoggingService(db_path=LOGS_DB_PATH)
 
-        self.task_service: object | None = None
+        self.task_service: TaskService | None = None
         if GOOGLE_TASKS_AVAILABLE:
             try:
                 from src.google_tasks_client import GoogleTasksClient

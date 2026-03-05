@@ -221,7 +221,9 @@ class EnrichmentService:
             # Call progress callback if provided
             if progress_callback:
                 try:
-                    await progress_callback(stats)
+                    result = progress_callback(stats)
+                    if result is not None and hasattr(result, "__await__"):
+                        await result  # type: ignore[misc]
                 except Exception as e:
                     logger.warning(f"Error in progress callback: {e}")
 

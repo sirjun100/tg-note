@@ -93,6 +93,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-012](bugs/BF-012-mypy-module-resolution.md) | Mypy Module Resolution Error | 🟡 Medium | 0.5 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-013](bugs/BF-013-double-check-mark-success.md) | Double Check Mark on Task/Note Creation Success | 🟢 Low | 0.5 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-014](bugs/BF-014-dream-parse-entities-error.md) | /dream Parse Entities Error (BadRequest) | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-015](bugs/BF-015-mypy-type-errors.md) | Mypy Type Errors (60 errors in 23 files) | 🟡 Medium | 5 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-016](bugs/BF-016-dream-parse-error-user-report.md) | /dream Parse Error: User Receives Nothing | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 
 ---
 
@@ -150,7 +152,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 ## Backlog Statistics
 
-**Total Items**: 33 Features + 10 Bugs = 43 items
+**Total Items**: 33 Features + 12 Bugs = 45 items
 
 **Features by Status**:
 - ⭕ Not Started: 2 (FR-026, FR-033)
@@ -159,7 +161,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 **Bugs by Status**:
 - ⭕ Not Started: 0
-- ✅ Completed: 11 (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014)
+- ✅ Completed: 13 (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014, BF-015, BF-016)
 
 **By Priority (all items)**:
 - 🔴 Critical: 4 (BF-002, BF-003, BF-004, BF-005 resolved)
@@ -172,8 +174,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
   - In Progress: 29 points (FR-016 ~55%, FR-018 ~30%)
   - Not Started: 21 points (FR-026, FR-033)
 
-**Bug Story Points**: 20
-  - Completed: 20 points (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014)
+**Bug Story Points**: 27
+  - Completed: 27 points (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014, BF-015, BF-016)
   - Not Started: 0 points
 
 **Overall Completion Rate**: 93% features completed (198/214 points)

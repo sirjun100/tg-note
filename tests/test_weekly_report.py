@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -186,16 +186,16 @@ class TestGenerateWeeklyReport:
         old_ts = (now - timedelta(days=30)).timestamp() * 1000
 
         mock_joplin = MagicMock()
-        mock_joplin._make_request.return_value = [
+        mock_joplin.get_all_notes = AsyncMock(return_value=[
             {"id": "n1", "title": "Recent Note", "parent_id": "f1",
              "created_time": this_week_ts, "updated_time": this_week_ts,
              "tags": "work,urgent"},
             {"id": "n2", "title": "Old Note", "parent_id": "f1",
              "created_time": old_ts, "updated_time": old_ts},
-        ]
-        mock_joplin.get_folders.return_value = [
+        ])
+        mock_joplin.get_folders = AsyncMock(return_value=[
             {"id": "f1", "title": "Inbox"}
-        ]
+        ])
 
         gen = WeeklyReportGenerator(joplin_client=mock_joplin)
         report = await gen.generate_weekly_report(user_id=123)
@@ -289,18 +289,18 @@ class TestGenerateWeeklyReport:
         yesterday = (now - timedelta(days=1)).isoformat() + "Z"
 
         mock_joplin = MagicMock()
-        mock_joplin._make_request.return_value = [
+        mock_joplin.get_all_notes = AsyncMock(return_value=[
             {"id": "n1", "title": "Project Plan", "parent_id": "f1",
              "created_time": this_week_ts, "updated_time": this_week_ts,
              "tags": "work"},
             {"id": "n2", "title": "Meeting Notes", "parent_id": "f2",
              "created_time": this_week_ts, "updated_time": this_week_ts,
              "tags": "meetings"},
-        ]
-        mock_joplin.get_folders.return_value = [
+        ])
+        mock_joplin.get_folders = AsyncMock(return_value=[
             {"id": "f1", "title": "Projects"},
             {"id": "f2", "title": "Meetings"},
-        ]
+        ])
 
         mock_tasks = MagicMock()
         mock_tasks.get_available_task_lists.return_value = [

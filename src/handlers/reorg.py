@@ -299,7 +299,8 @@ def _enrich(orch: TelegramOrchestrator):
                 logger.debug("Enrichment progress: %d/%d", processed, stats.total)
 
             stats = await orch.enrichment_service.enrich_notes_batch(
-                notes=notes, limit=limit, filter_func=filter_func, progress_callback=progress_callback
+                notes=notes, limit=limit, filter_func=filter_func,
+                progress_callback=progress_callback,  # type: ignore[arg-type]
             )
 
             await update.message.reply_text(

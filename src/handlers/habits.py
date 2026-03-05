@@ -243,9 +243,9 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             habits = get_habits(user.id)
             if habits:
                 stats = get_stats(user.id, today)
-                await query.message.reply_text(_format_stats(stats), parse_mode="Markdown")
+                await query.message.reply_text(_format_stats(stats), parse_mode="Markdown")  # type: ignore[attr-defined]
             else:
-                await query.message.reply_text("No habits yet.")
+                await query.message.reply_text("No habits yet.")  # type: ignore[attr-defined]
             return
 
         if data.startswith("habit_yes_"):

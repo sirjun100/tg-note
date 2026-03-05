@@ -342,8 +342,8 @@ class MonthlyReportGenerator:
 
         most = max(day_counts, key=day_counts.get) if day_counts else "N/A"
         least = min(day_counts, key=day_counts.get) if day_counts else "N/A"
-        peak_hours = sorted(hour_counts.items(), key=lambda x: -x[1])[:3]
-        peak_hours = [h for h, _ in peak_hours]
+        top_hours = sorted(hour_counts.items(), key=lambda x: -x[1])[:3]
+        peak_hours: list[int] = [h for h, _ in top_hours]
 
         return most, least, peak_hours
 

@@ -115,13 +115,11 @@ class WeeklyReportGenerator:
             return [], []
 
         try:
-            notes = self.joplin_client._make_request("GET", "/notes")
-            if isinstance(notes, dict) and "items" in notes:
-                notes = notes["items"]
+            notes = await self.joplin_client.get_all_notes()
             if not isinstance(notes, list):
                 return [], []
 
-            folders = self.joplin_client.get_folders()
+            folders = await self.joplin_client.get_folders()
             folder_map = {f["id"]: f.get("title", "Unknown") for f in (folders or [])}
 
             created: list[dict[str, Any]] = []

@@ -103,11 +103,11 @@ class AppSettings(BaseSettings):
 
     debug: bool = Field(default=False, alias="DEBUG")
 
-    telegram: TelegramSettings = Field(default_factory=TelegramSettings)
-    joplin: JoplinSettings = Field(default_factory=JoplinSettings)
-    llm: LLMSettings = Field(default_factory=LLMSettings)
-    google: GoogleSettings = Field(default_factory=GoogleSettings)
-    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+    telegram: TelegramSettings = Field(default_factory=TelegramSettings)  # type: ignore[arg-type]
+    joplin: JoplinSettings = Field(default_factory=JoplinSettings)  # type: ignore[arg-type]
+    llm: LLMSettings = Field(default_factory=LLMSettings)  # type: ignore[arg-type]
+    google: GoogleSettings = Field(default_factory=GoogleSettings)  # type: ignore[arg-type]
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)  # type: ignore[arg-type]
 
 
 @lru_cache

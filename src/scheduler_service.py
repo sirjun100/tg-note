@@ -64,7 +64,7 @@ class SchedulerService:
         except (ValueError, IndexError) as e:
             raise ValueError(f"Invalid time format. Use HH:MM (24-hour): {time_str}") from e
 
-    def _get_timezone(self, timezone_str: str) -> pytz.timezone:
+    def _get_timezone(self, timezone_str: str):  # Returns pytz.BaseTzInfo
         """
         Get pytz timezone object
 

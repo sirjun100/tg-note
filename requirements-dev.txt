@@ -5,6 +5,8 @@ ruff>=0.4.0
 
 # Type checking
 mypy>=1.10.0
+types-requests>=2.31.0
+types-pytz>=2024.1.0
 
 # Testing
 pytest>=8.0.0

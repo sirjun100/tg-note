@@ -283,7 +283,7 @@ class TaskService:
                     error_msg = f"Failed to get task list: {e}"
                     logger.warning("User %s: %s", user_id, error_msg)
                     self.logging_service.log_task_sync(
-                        user_id, None, "", "none", None, None,
+                        int(user_id), None, "", "none", None, None,
                         "joplin_to_google", "failed", error_msg
                     )
                     return []
@@ -519,7 +519,7 @@ if __name__ == "__main__":
 
     # Example decision
     decision = Decision(
-        user_id="123",
+        user_id=123,
         status="SUCCESS",
         note_title="Meeting Notes",
         note_body="TODO: Follow up with client about proposal\nCall Sarah next week\nSchedule demo for Thursday"

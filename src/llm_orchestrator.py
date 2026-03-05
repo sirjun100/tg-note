@@ -75,7 +75,7 @@ class LLMOrchestrator:
 
         # Persona storage
         self.prompts_dir = Path(__file__).parent / "prompts"
-        self._personas = {}
+        self._personas: dict[str, str] = {}
 
     async def process_message(
         self,

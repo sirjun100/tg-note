@@ -80,7 +80,7 @@ class ServiceContainer:
             from src.task_service import TaskService
 
             client = GoogleTasksClient()
-            return TaskService(client, self.logging_service)
+            return TaskService(client, self.logging_service)  # type: ignore[arg-type]
         except Exception as exc:
             logger.warning("Failed to init Google Tasks: %s", exc)
             return None

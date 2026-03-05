@@ -72,7 +72,8 @@ async def generate_dream_image(dream_description: str, key_symbols: list[str]) -
                 break
         except (httpx.HTTPError, Exception) as exc:
             last_exc = exc
-            if getattr(exc, "response", None) and getattr(exc.response, "status_code", None) == 429:
+            exc_resp = getattr(exc, "response", None)
+            if exc_resp is not None and getattr(exc_resp, "status_code", None) == 429:
                 if attempt < _MAX_RETRIES_429:
                     await asyncio.sleep(_RETRY_DELAY_SEC)
                     continue

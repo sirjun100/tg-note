@@ -156,7 +156,7 @@ class TelegramOAuthHandler:
         self.pending_auths[state] = user_id
         return auth_url
 
-    def complete_oauth_flow(self, authorization_code: str) -> str | None:
+    def complete_oauth_flow(self, authorization_code: str) -> dict[str, Any] | None:
         """Complete OAuth2 flow with authorization code"""
         try:
             token = self.auth_service.exchange_code_for_token(authorization_code)

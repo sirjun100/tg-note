@@ -135,14 +135,15 @@ class ReorgOrchestrator:
                     logger.debug(f"✓ Created main folder: {main_folder}")
 
                     # Create sub-folders (plain names or nested {name: [children]})
-                    for sub in sub_folders:
+                    for sub in sub_folders:  # type: ignore[attr-defined]
                         try:
                             if isinstance(sub, dict):
                                 for folder_name, children in sub.items():
                                     await self.joplin_client.get_or_create_folder_by_path([main_folder, folder_name])
                                     folders_created += 1
                                     logger.debug(f"  ✓ Created sub-folder: {folder_name}")
-                                    for child in children:
+                                    child_list = children if isinstance(children, (list, tuple)) else [children]
+                                    for child in child_list:
                                         try:
                                             await self.joplin_client.get_or_create_folder_by_path([main_folder, folder_name, child])
                                             folders_created += 1
@@ -185,7 +186,7 @@ class ReorgOrchestrator:
             for f in folders:
                 folder_text += f"- {f['id']}: {f['title']}\n"
 
-            plan = {
+            plan: dict[str, Any] = {
                 "summary": {
                     "total_notes": len(notes),
                     "notes_to_move": 0,
@@ -252,14 +253,14 @@ class ReorgOrchestrator:
         """Audit tags for duplicates, unused tags, or inconsistent casing"""
         tags = await self.joplin_client.fetch_tags()
 
-        audit = {
+        audit: dict[str, Any] = {
             "duplicate_names": [],
             "unused_tags": [],
             "total_tags": len(tags)
         }
 
         # Check for case-insensitive duplicates
-        seen_names = {} # lowercase -> original
+        seen_names: dict[str, str] = {}  # lowercase -> original
         for tag in tags:
             name = tag['title']
             name_lower = name.lower()
@@ -284,7 +285,7 @@ class ReorgOrchestrator:
         Returns:
             Dict with conflict types and details
         """
-        conflicts = {
+        conflicts: dict[str, Any] = {
             "duplicate_targets": [],
             "duplicate_titles_in_folder": [],
             "target_folder_issues": [],
@@ -301,7 +302,7 @@ class ReorgOrchestrator:
         folders_by_id = {f['id']: f for f in all_folders}
 
         # Track planned moves by target folder
-        moves_by_target = {}
+        moves_by_target: dict[str, list[dict[str, Any]]] = {}
 
         for move in plan:
             note_id = move.get("note_id")

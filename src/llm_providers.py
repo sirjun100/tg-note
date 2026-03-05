@@ -75,7 +75,7 @@ class OpenAIProvider(LLMProvider):
 
         response = await self.client.chat.completions.create(
             model=self.model_name,
-            messages=messages,
+            messages=messages,  # type: ignore[arg-type]
             tools=tools or None,
             tool_choice=tool_choice,
             temperature=kwargs.get("temperature", LLM_DEFAULT_TEMPERATURE),
@@ -85,7 +85,9 @@ class OpenAIProvider(LLMProvider):
         function_call = None
         if response.choices[0].message.tool_calls:
             tc = response.choices[0].message.tool_calls[0]
-            function_call = {"name": tc.function.name, "arguments": tc.function.arguments}
+            fn = getattr(tc, "function", None)
+            if fn:
+                function_call = {"name": fn.name, "arguments": fn.arguments}
 
         return {
             "content": response.choices[0].message.content,
@@ -116,7 +118,7 @@ class OllamaProvider(LLMProvider):
     async def generate_response(
         self, messages: list[dict[str, str]], **kwargs: Any
     ) -> dict[str, Any]:
-        prompt_parts = []
+        prompt_parts: list[str] = []
         for msg in messages:
             role, content = msg["role"], msg["content"]
             if role == "system":
