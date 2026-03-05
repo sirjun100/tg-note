@@ -454,11 +454,47 @@ def _stoic_done(orch: TelegramOrchestrator):
 
 
 def _check_section_exists(note_body: str, mode: str) -> bool:
-    """Check if morning/evening section already exists in note body."""
+    """Check if morning/evening section already exists with REAL content (not just placeholder)."""
     import re
 
-    pattern = r"### 🌞 Morning" if mode == "morning" else r"### 🌙 Evening"
-    return bool(re.search(pattern, note_body))
+    # Find the section
+    pattern = r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)" if mode == "morning" else r"### 🌙 Evening.*$"
+    match = re.search(pattern, note_body, re.DOTALL)
+
+    if not match:
+        return False
+
+    section = match.group(0)
+
+    # Check if section has actual content (not just empty placeholders)
+    # Empty placeholder: "- **Wins:**\n  -" or "- **Wins:**\n  - " (with just dash)
+    # Real content: "- **Wins:**\n  - Completed task"
+    lines = section.split("\n")
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Skip empty lines
+        if not stripped:
+            continue
+
+        # Skip section header (e.g., "### 🌙 Evening")
+        if stripped.startswith("###"):
+            continue
+
+        # Skip section labels (e.g., "- **Wins:**", "- **Challenges:**")
+        if stripped.startswith("- **") and stripped.endswith(":**"):
+            continue
+
+        # Skip empty bullet points (just "-" or nothing after dash)
+        if stripped == "-":
+            continue
+
+        # Any other line is real content
+        return True
+
+    # Only found header and labels, no real content
+    return False
 
 
 async def _finish_stoic_session(
