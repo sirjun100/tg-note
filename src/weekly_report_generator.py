@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from src.logging_service import LoggingService
     from src.task_service import TaskService
 
+from src.timezone_utils import get_user_timezone_aware_now
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,9 +70,19 @@ class WeeklyReportData:
     recommendations: list[str] = field(default_factory=list)
 
 
-def _week_bounds(reference: datetime | None = None) -> tuple[datetime, datetime]:
-    """Return (Monday 00:00, Sunday 23:59:59) for the week containing *reference*."""
-    ref = reference or datetime.now()
+def _week_bounds(
+    user_id: int, logging_service: LoggingService | None, reference: datetime | None = None
+) -> tuple[datetime, datetime]:
+    """
+    Return (Monday 00:00, Sunday 23:59:59) for the week containing *reference* in user's timezone.
+
+    If reference is not provided, uses current time in user's timezone.
+    """
+    if reference is None:
+        reference = get_user_timezone_aware_now(user_id, logging_service)
+
+    # Ensure we're working with timezone-aware datetime
+    ref = reference
     start = (ref - timedelta(days=ref.weekday())).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -277,8 +289,8 @@ class WeeklyReportGenerator:
         self, user_id: int, reference_date: datetime | None = None
     ) -> WeeklyReportData:
         """Generate a full weekly report for the week containing *reference_date*."""
-        current_start, current_end = _week_bounds(reference_date)
-        prev_start, prev_end = _week_bounds(current_start - timedelta(days=1))
+        current_start, current_end = _week_bounds(user_id, self.logging_service, reference_date)
+        prev_start, prev_end = _week_bounds(user_id, self.logging_service, current_start - timedelta(days=1))
 
         current = await self._build_metrics(user_id, current_start, current_end)
         previous = await self._build_metrics(user_id, prev_start, prev_end)

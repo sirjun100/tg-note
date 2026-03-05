@@ -521,7 +521,7 @@ class LoggingService:
             conn.commit()
             logger.debug(f"Deleted report configuration for user {user_id}")
 
-    def log_daily_report(self, user_id: int, report_data: dict[str, Any]):
+    def log_daily_report(self, user_id: int, report_data: dict[str, Any], report_date: datetime | None = None):
         """Log a daily report generation event"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -533,7 +533,7 @@ class LoggingService:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
-                datetime.now().date(),
+                (report_date or datetime.now()).date(),
                 report_data.get('joplin_count', 0),
                 report_data.get('google_tasks_count', 0),
                 report_data.get('clarification_count', 0),

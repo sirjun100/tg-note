@@ -9,7 +9,7 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-03 (Completed FR-015, FR-021, FR-022, BF-004; all pending items resolved)
+**Last Updated**: 2026-03-03 (Added BF-005: Stoic Journal timezone + data loss)
 
 ## Project Overview
 
@@ -73,6 +73,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-002](bugs/BF-002-github-actions-build-failure.md) | GitHub Actions Build Failure | 🔴 Critical | 3 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
 | [BF-003](bugs/BF-003-scheduler-not-working.md) | Scheduler Not Working — App Down | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
 | [BF-004](bugs/BF-004-flyctl-deploy-no-access-token.md) | Fly.io Deploy Fails: No Access Token Available | 🔴 Critical | 1 | ✅ | Backlog | 2026-03-03 | 2026-03-03 |
+| [BF-005](bugs/BF-005-stoic-journal-timezone-and-data-loss.md) | Stoic Journal: Timezone Mismatch & Data Loss on Update | 🔴 Critical | 5 | ⭕ | Backlog | 2026-03-03 | 2026-03-03 |
 
 ---
 
@@ -127,17 +128,18 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 ## Backlog Statistics
 
-**Total Items**: 22 Features + 4 Bugs = 26 items
+**Total Items**: 22 Features + 5 Bugs = 27 items
 
 **Features by Status**:
 - ⏳ In Progress: 2 (FR-016, FR-018)
 - ✅ Completed: 20 (FR-001–FR-015, FR-017, FR-019–FR-022)
 
 **Bugs by Status**:
+- ⭕ Not Started: 1 (BF-005)
 - ✅ Completed: 4 (BF-001, BF-002, BF-003, BF-004)
 
 **By Priority (all items)**:
-- 🔴 Critical: 3 (BF-002, BF-003, BF-004) — all resolved ✅
+- 🔴 Critical: 4 (BF-002, BF-003, BF-004 resolved; BF-005 not started)
 - 🟠 High: 12
 - 🟡 Medium: 8
 - 🟢 Low: 0
@@ -146,8 +148,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
   - Completed: 127 points (FR-001–FR-015, FR-017, FR-019–FR-022) — 89%
   - In Progress: 29 points (FR-016 ~55%, FR-018 ~30%) — 20%
 
-**Bug Story Points**: 11
-  - Completed: 11 points (BF-001–BF-004) — 100%
+**Bug Story Points**: 16
+  - Completed: 11 points (BF-001–BF-004)
+  - Not Started: 5 points (BF-005)
 
 **Overall Completion Rate**: 89% features completed (127/143 points)
 **Current**: 89% (127/143 points) ✅

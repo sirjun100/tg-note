@@ -13,6 +13,7 @@ from telegram.ext import CommandHandler, ContextTypes
 
 from src.report_generator import PriorityLevel
 from src.security_utils import check_whitelist
+from src.timezone_utils import get_user_timezone_aware_now
 from src.weekly_report_generator import WeeklyReportGenerator
 
 if TYPE_CHECKING:
@@ -161,7 +162,7 @@ def _weekly_report(orch: TelegramOrchestrator):
             if context.args:
                 arg = context.args[0].lower()
                 if arg == "last":
-                    ref_date = datetime.now() - timedelta(days=7)
+                    ref_date = get_user_timezone_aware_now(user.id, orch.logging_service) - timedelta(days=7)
 
             generator = WeeklyReportGenerator(
                 joplin_client=orch.joplin_client,
