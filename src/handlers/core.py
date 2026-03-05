@@ -859,7 +859,11 @@ async def create_note_in_joplin(
         if needs_image and message:
             await message.reply_text("🖼️ Adding image...")
         if url_context and url_context.get("url") and url_context.get("skip_screenshot") and message:
-            await message.reply_text("⚠️ Screenshot skipped (site uses security verification).")
+            error_msg = url_context.get("error", "")
+            if error_msg:
+                await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")
+            else:
+                await message.reply_text("⚠️ Screenshot skipped (site uses security verification).")
         if url_context and url_context.get("content_type") == "recipe":
             from src.recipe_image import generate_recipe_image
             image_data_url = await generate_recipe_image(normalized_note["title"])

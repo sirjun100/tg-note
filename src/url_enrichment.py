@@ -268,6 +268,89 @@ def _is_challenge_page(html_text: str, title: str) -> bool:
     return any(phrase in text_lower or phrase in title_lower for phrase in indicators)
 
 
+def _is_error_page(html_text: str, title: str, url: str) -> tuple[bool, str]:
+    """Detect 200 OK responses that show error content instead of actual page content."""
+    if not html_text:
+        return False, ""
+
+    text_lower = html_text[:100_000].lower()
+    title_lower = (title or "").lower()
+    url_lower = url.lower()
+
+    # Check for specific error patterns
+    error_patterns = [
+        (["not found", "404"], "Page not found (404)"),
+        (["403 forbidden", "access denied"], "Access forbidden (403)"),
+        (["500 error", "internal server error"], "Server error (500)"),
+        (["not available", "unavailable"], "Content not available"),
+        (["geo-restricted", "geo-blocked"], "Geo-blocked"),
+        (["sign in required", "login required"], "Login required"),
+        (["paywall", "subscription required"], "Subscription/paywall"),
+        (["video not available"], "Video not available"),
+        (["page not found"], "Page not found"),
+    ]
+
+    for keywords, reason in error_patterns:
+        for kw in keywords:
+            if kw in text_lower or kw in title_lower:
+                return True, reason
+
+    # Check for YouTube error domain
+    if "dws.youtube" in url_lower or "youtube.com/error" in url_lower:
+        return True, "YouTube error page"
+
+    return False, ""
+
+
+def _check_domain_mismatch(original_url: str, final_url: str) -> tuple[bool, str]:
+    """
+    Detect suspicious domain redirects.
+    Returns (True, "") for valid redirects, (False, error_reason) for suspicious ones.
+    """
+    original_parsed = urlparse(original_url)
+    final_parsed = urlparse(final_url)
+
+    original_domain = (original_parsed.netloc or "").lower()
+    final_domain = (final_parsed.netloc or "").lower()
+
+    if original_domain == final_domain:
+        return True, ""
+
+    # Extract base domains (remove www. and common subdomains)
+    def get_base_domain(domain: str) -> str:
+        parts = domain.replace("www.", "").split(".")
+        # For domains like example.co.uk, we want to keep the last 2 parts
+        if len(parts) >= 2:
+            # Very simple heuristic: keep last 2 parts
+            return ".".join(parts[-2:])
+        return domain
+
+    original_base = get_base_domain(original_domain)
+    final_base = get_base_domain(final_domain)
+
+    if original_base == final_base:
+        return True, ""
+
+    # Allow known legitimate redirects
+    legitimate_redirects = {
+        ("youtube.com", "youtu.be"),
+        ("youtube.com", "m.youtube.com"),
+        ("youtu.be", "youtube.com"),
+        ("youtu.be", "m.youtube.com"),
+        ("twitter.com", "x.com"),
+        ("x.com", "twitter.com"),
+        ("reddit.com", "old.reddit.com"),
+        ("old.reddit.com", "reddit.com"),
+        ("instagram.com", "www.instagram.com"),
+    }
+
+    if (original_base, final_base) in legitimate_redirects or (final_base, original_base) in legitimate_redirects:
+        return True, ""
+
+    # Suspicious redirect detected
+    return False, f"Suspicious redirect from {original_domain} to {final_domain}"
+
+
 async def fetch_url_context(url: str) -> dict[str, Any]:
     """
     Fetch and parse URL metadata/content for LLM enrichment.
@@ -304,9 +387,30 @@ async def fetch_url_context(url: str) -> dict[str, Any]:
         if not title:
             title = _extract_meta(html_text, ["og:title", "twitter:title"]) or ""
 
+        # Validation pipeline: domain mismatch (most severe), then challenge, then error pages
+        domain_valid, domain_error = _check_domain_mismatch(url, final_url)
+        if not domain_valid:
+            result["skip_screenshot"] = True
+            result["error"] = domain_error
+            result.update(
+                {
+                    "final_url": final_url,
+                    "domain": urlparse(final_url).netloc.lower(),
+                    "title": title,
+                }
+            )
+            return result
+
         # Skip screenshot when page is a Cloudflare (or similar) security challenge
         if _is_challenge_page(html_text, title):
             result["skip_screenshot"] = True
+            result["error"] = "Security verification required"
+
+        # Check for error pages (404, paywall, etc.)
+        is_error, error_reason = _is_error_page(html_text, title, final_url)
+        if is_error:
+            result["skip_screenshot"] = True
+            result["error"] = error_reason
 
         description = _extract_meta(
             html_text,
