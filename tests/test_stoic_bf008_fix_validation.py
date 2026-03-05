@@ -350,6 +350,58 @@ class TestBF008WorkflowWithFix(unittest.TestCase):
             "Should prompt when real evening content already exists"
         )
 
+    def test_replace_empty_placeholder_preserves_other_sections(self):
+        """HOTFIX validation: Replacing empty placeholder should NOT delete other sections."""
+        # Note with morning content and empty evening placeholder
+        note_with_placeholder = """# 2026-03-04 - Daily Stoic Reflection
+
+### 🌞 Morning (09:00)
+
+- **Intention:**
+  Be focused and productive
+
+- **Focus:**
+  Complete the project
+
+### 🌙 Evening
+
+- **Wins:**
+  -
+
+- **Challenges:**
+  -
+
+- **Lesson Learned:**
+  -"""
+
+        # New evening content to replace the placeholder
+        new_evening = """### 🌙 Evening (18:00)
+
+- **Wins:**
+  - Completed report ahead of schedule
+
+- **Challenges:**
+  - Client asked for revisions
+
+- **Lesson Learned:**
+  - Communicate progress earlier in the day"""
+
+        # Replace the empty evening section
+        result = stoic_module._replace_section(note_with_placeholder, new_evening, "evening")
+
+        # Critical: Morning section must still exist
+        self.assertIn("### 🌞 Morning", result, "Morning section header deleted!")
+        self.assertIn("Be focused and productive", result, "Morning content deleted!")
+        self.assertIn("Complete the project", result, "Morning content deleted!")
+
+        # Evening section should be updated
+        self.assertIn("### 🌙 Evening (18:00)", result, "New evening section not present!")
+        self.assertIn("Completed report ahead of schedule", result, "Evening content not added!")
+
+        # Should have exactly one evening section header
+        evening_count = result.count("### 🌙 Evening")
+        self.assertEqual(evening_count, 1, "Should have exactly one evening section")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
