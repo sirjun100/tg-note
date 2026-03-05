@@ -23,6 +23,7 @@ Template files for creating backlog items:
 
 Process documentation explaining workflows:
 
+- **pre-commit-checklist.md** - **Run lint and tests before every commit**
 - **backlog-management-process.md** - How to manage the backlog
 - **product-backlog-structure.md** - Backlog structure and conventions
 - **documentation-standards.md** - Use Mermaid for charts and graphs
@@ -33,6 +34,9 @@ Process documentation explaining workflows:
 - Share with new team members
 
 ## Quick Reference
+
+### Before Every Commit
+Run **lint and tests** before committing. See [Pre-Commit Checklist](processes/pre-commit-checklist.md).
 
 ### Creating a Feature Request
 

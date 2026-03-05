@@ -2,19 +2,25 @@
 
 **Purpose**: Ensure CI passes before pushing. The [GitHub Actions workflow](https://github.com/martinfou/telegram-joplin/actions) runs on every push to `main` and will fail if lint or tests fail.
 
-## Before Every Commit and Push
+## ⚠️ Run Before Every Commit
 
-Run these commands locally before committing and pushing:
+> **Do not commit until lint and tests pass.** Run these checks *before* `git commit`, not after.
+
+### Step 1: Lint (run first)
 
 ```bash
-# 1. Lint (must pass — CI fails on lint errors)
 ruff check src/ config.py main.py
+```
 
-# 2. Tests (must pass)
+If using venv: `.venv/bin/ruff check src/ config.py main.py`
+
+### Step 2: Tests
+
+```bash
 pytest tests/ -v --ignore=tests/e2e
 ```
 
-Or in one command:
+### One-liner (lint then tests)
 
 ```bash
 ruff check src/ config.py main.py && pytest tests/ -v --ignore=tests/e2e
@@ -38,4 +44,7 @@ Then re-run `ruff check` to confirm no remaining errors.
 
 ## Rule
 
-> **Always run `ruff check` and `pytest` before committing and pushing to `main`.**
+> **1. Run `ruff check` — fix any lint errors.**  
+> **2. Run `pytest` — fix any failing tests.**  
+> **3. Then commit.**  
+> Do not skip step 1 or 2.

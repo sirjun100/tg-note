@@ -33,7 +33,7 @@ project-management/
 ## Workflow
 
 ### Before Commit and Push
-- **Run lint and tests** before every commit/push to avoid CI failures. See [Pre-Commit Checklist](docs/processes/pre-commit-checklist.md).
+- **Run lint and tests *before* every commit** — not after. CI fails on lint errors. See [Pre-Commit Checklist](docs/processes/pre-commit-checklist.md).
 
 ### Daily Work
 - Update status in `backlog/product-backlog.md`

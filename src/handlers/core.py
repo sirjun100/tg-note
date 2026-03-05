@@ -147,7 +147,7 @@ async def _send_greeting_safe(message: Message, greeting: str) -> None:
             await message.reply_text(plain)
         except Exception as fallback_exc:
             logger.error("Greeting plain fallback also failed: %s", fallback_exc)
-            raise exc
+            raise exc from fallback_exc
 
 
 def _start(orch: TelegramOrchestrator):
