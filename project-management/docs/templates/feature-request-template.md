@@ -75,6 +75,8 @@ Examples:
 
 [Technical implementation details and requirements. Include any constraints, performance requirements, or technical considerations.]
 
+**Note**: Use **Mermaid** for architecture diagrams, flowcharts, or sequence diagrams. See [documentation-standards.md](../processes/documentation-standards.md).
+
 Examples:
 - Must support 1000+ concurrent users
 - Response time < 200ms
@@ -175,4 +177,5 @@ Before submitting, ensure:
 - [ ] Links to related documents are correct
 - [ ] File is saved with correct naming convention: `FR-XXX-feature-name.md`
 - [ ] Entry is added to product backlog table
+- [ ] Any charts/diagrams use **Mermaid** (see [documentation-standards.md](../processes/documentation-standards.md))
 

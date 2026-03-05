@@ -25,6 +25,7 @@ Process documentation explaining workflows:
 
 - **backlog-management-process.md** - How to manage the backlog
 - **product-backlog-structure.md** - Backlog structure and conventions
+- **documentation-standards.md** - Use Mermaid for charts and graphs
 
 **Usage:**
 - Reference when learning the process
@@ -72,6 +73,7 @@ Use kebab-case (lowercase with hyphens) for names.
 3. **Update regularly** - Keep status and dates current
 4. **Link properly** - Use correct relative paths in links
 5. **Follow naming** - Use consistent ID formats and naming
+6. **Use Mermaid for charts and graphs** - Never ASCII art or images for flowcharts, sequences, or architecture. See [Documentation Standards](processes/documentation-standards.md).
 
 ---
 

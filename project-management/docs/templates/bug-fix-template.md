@@ -230,4 +230,5 @@ Before submitting, ensure:
 - [ ] Links to related documents are correct
 - [ ] File is saved with correct naming convention: `BF-XXX-bug-description.md`
 - [ ] Entry is added to product backlog table
+- [ ] Any charts/diagrams use **Mermaid** (see [documentation-standards.md](../processes/documentation-standards.md))
 

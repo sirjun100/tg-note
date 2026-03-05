@@ -1,6 +1,6 @@
 # Feature Request: FR-032 - Habit Check-ins and Tracking
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟢 Low
 **Story Points**: 5
 **Created**: 2026-03-05

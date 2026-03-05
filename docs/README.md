@@ -12,6 +12,11 @@ Feature requests, sprint plans, and implementation summaries live in `project-ma
 - Developer: `docs/for-developers/README.md`
 - End users: `docs/for-users/README.md`
 
+## State Management
+
+- [State Management (Technical)](for-programmers/state-management.md) — Storage, API, routing, and state keys for developers.
+- [State Management (Business)](for-business-analyst/state-management.md) — User-facing behavior, clarification flows, and escape hatches for product/business users.
+
 ## Architecture Snapshot
 
 ```mermaid

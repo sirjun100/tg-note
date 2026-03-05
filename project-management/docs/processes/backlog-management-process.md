@@ -272,6 +272,7 @@ For each backlog item:
 3. **Acceptance Criteria**: Specific, testable criteria
 4. **Technical References**: Link to relevant documents
 5. **Business Value**: Why is this important?
+6. **Charts and Graphs**: Use **Mermaid** (flowcharts, sequence diagrams, architecture). See [documentation-standards.md](documentation-standards.md).
 
 ### Managing Backlog
 

@@ -14,8 +14,8 @@ if [ -n "${JOPLIN_WEB_CLIPPER_TOKEN:-}" ]; then
     joplin --profile "$JOPLIN_PROFILE" config api.token "$JOPLIN_WEB_CLIPPER_TOKEN" 2>/dev/null || true
 fi
 
-# Start Joplin server in background
-joplin --profile "$JOPLIN_PROFILE" server start &
+# Start Joplin server in background (redirect output to avoid logging API token in request URLs)
+joplin --profile "$JOPLIN_PROFILE" server start >/dev/null 2>&1 &
 
 # Wait for the API to be ready (up to 30 seconds)
 echo "Waiting for Joplin API on localhost:41184..."

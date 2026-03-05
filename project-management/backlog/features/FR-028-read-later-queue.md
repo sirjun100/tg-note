@@ -1,6 +1,6 @@
 # Feature Request: FR-028 - Read Later Queue
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟡 Medium
 **Story Points**: 5
 **Created**: 2026-03-05

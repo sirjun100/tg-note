@@ -3,7 +3,8 @@
 **Sprint Goal**: Expand capture modalities with photo OCR, read-later queue, Jungian dream analysis, and habit tracking.
 
 **Duration**: 2026-03-24 - 2026-04-06 (2 weeks)
-**Team Velocity**: 23 points (target)
+**Status**: ✅ Complete
+**Team Velocity**: 31 points (delivered)
 **Sprint Planning Date**: 2026-03-05
 **Sprint Review Date**: 2026-04-06
 **Sprint Retrospective Date**: 2026-04-06
@@ -65,7 +66,7 @@
 
 **Priority**: 🟡 Medium
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-030](../backlog/features/FR-030-photo-ocr-capture.md)
 
@@ -73,10 +74,10 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create ocr_service with Gemini vision extraction | `ocr_service.py:extract_text_from_image()` | FR-030 Gemini OCR | ⭕ | 1.5 | — |
-| T-002 | Add create_resource() to JoplinClient | `JoplinClient.create_resource()` | FR-030 Joplin Resources | ⭕ | 1 | — |
-| T-003 | Create photo handler with progress indicator | `handlers/photo.py` | FR-030 Handler | ⭕ | 1.5 | — |
-| T-004 | Integrate caption, classification, note creation | `handlers/photo.py` | FR-030 Flow | ⭕ | 1 | — |
+| T-001 | Create ocr_service with Gemini vision extraction | `ocr_service.py:extract_text_from_image()` | FR-030 Gemini OCR | ✅ | 1.5 | — |
+| T-002 | Add create_resource() to JoplinClient | `JoplinClient.create_resource()` | FR-030 Joplin Resources | ✅ | 1 | — |
+| T-003 | Create photo handler with progress indicator | `handlers/photo.py` | FR-030 Handler | ✅ | 1.5 | — |
+| T-004 | Integrate caption, classification, note creation | `handlers/photo.py` | FR-030 Flow | ✅ | 1 | — |
 
 **Total Task Points**: 5
 
@@ -108,7 +109,7 @@
 
 **Priority**: 🟡 Medium
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-028](../backlog/features/FR-028-read-later-queue.md)
 
@@ -116,10 +117,10 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create reading_service for queue CRUD | `reading_service.py` | FR-028 Service | ⭕ | 1.5 | — |
-| T-002 | Implement /readlater with URL enrichment | `handlers/reading.py` | FR-028 Save | ⭕ | 1 | — |
-| T-003 | Implement /reading and /reading done | `handlers/reading.py` | FR-028 Queue Display | ⭕ | 1.5 | — |
-| T-004 | Add Reading List folder setup | `reading_service.py` | FR-028 Folder Structure | ⭕ | 1 | — |
+| T-001 | Create reading_service for queue CRUD | `reading_service.py` | FR-028 Service | ✅ | 1.5 | — |
+| T-002 | Implement /readlater with URL enrichment | `handlers/reading.py` | FR-028 Save | ✅ | 1 | — |
+| T-003 | Implement /reading and /reading done | `handlers/reading.py` | FR-028 Queue Display | ✅ | 1.5 | — |
+| T-004 | Add Reading List folder setup | `reading_service.py` | FR-028 Folder Structure | ✅ | 1 | — |
 
 **Total Task Points**: 5
 
@@ -152,7 +153,7 @@
 
 **Priority**: 🟡 Medium
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-025](../backlog/features/FR-025-jungian-dream-analysis.md)
 
@@ -160,11 +161,11 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create dream handler with /dream, /dream_done, /dream_cancel | `handlers/dream.py` | FR-025 Commands | ⭕ | 1.5 | — |
-| T-002 | Add DREAM_ANALYST persona state and routing | `core.py`, `state_manager.py` | FR-025 State | ⭕ | 1.5 | — |
-| T-003 | Implement dream description and Jungian analysis prompts | `prompts/` | FR-025 Analysis | ⭕ | 2 | — |
-| T-004 | Add dream image generation via Gemini | `handlers/dream.py` | FR-025 Image Gen | ⭕ | 2 | — |
-| T-005 | Save dream note to Joplin (Dream Journal folder) | `handlers/dream.py` | FR-025 Output | ⭕ | 1 | — |
+| T-001 | Create dream handler with /dream, /dream_done, /dream_cancel | `handlers/dream.py` | FR-025 Commands | ✅ | 1.5 | — |
+| T-002 | Add DREAM_ANALYST persona state and routing | `core.py`, `state_manager.py` | FR-025 State | ✅ | 1.5 | — |
+| T-003 | Implement dream description and Jungian analysis prompts | `prompts/` | FR-025 Analysis | ✅ | 2 | — |
+| T-004 | Add dream image generation via Gemini | `handlers/dream.py` | FR-025 Image Gen | ✅ | 2 | — |
+| T-005 | Save dream note to Joplin (Dream Journal folder) | `handlers/dream.py` | FR-025 Output | ✅ | 1 | — |
 
 **Total Task Points**: 8
 
@@ -196,7 +197,7 @@
 
 **Priority**: 🟢 Low
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Complete
 
 **Backlog Reference**: [FR-032](../backlog/features/FR-032-habit-tracking.md)
 
@@ -204,10 +205,10 @@
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create habit_service with SQLite schema | `habit_service.py` | FR-032 Data Model | ⭕ | 1.5 | — |
-| T-002 | Implement streak calculation | `HabitService.calculate_streak()` | FR-032 Streaks | ⭕ | 1 | — |
-| T-003 | Create habits handler with /habits, add, remove, list, stats | `handlers/habits.py` | FR-032 Commands | ⭕ | 1.5 | — |
-| T-004 | Add inline keyboard and callback handler | `handlers/habits.py` | FR-032 Buttons | ⭕ | 1 | — |
+| T-001 | Create habit_service with SQLite schema | `habit_service.py` | FR-032 Data Model | ✅ | 1.5 | — |
+| T-002 | Implement streak calculation | `HabitService.calculate_streak()` | FR-032 Streaks | ✅ | 1 | — |
+| T-003 | Create habits handler with /habits, add, remove, list, stats | `handlers/habits.py` | FR-032 Commands | ✅ | 1.5 | — |
+| T-004 | Add inline keyboard and callback handler | `handlers/habits.py` | FR-032 Buttons | ✅ | 1 | — |
 
 **Total Task Points**: 5
 
@@ -215,16 +216,17 @@
 
 ## Sprint Summary
 
-**Total Story Points**: 23
+**Total Story Points**: 31 (includes FR-027 from Sprint 12)
 **Total Task Points**: 23
-**Estimated Velocity**: 23 points (based on story points)
+**Status**: ✅ Complete
 
 **Sprint Burndown Plan**:
 - Week 1: Stories 1-2 (Photo OCR, Read Later) - 10 points
 - Week 2: Stories 3-4 (Dream Analysis, Habit Tracking) - 13 points
+- FR-027 (Weekly Planning) implemented in Sprint 11 scope
 
 **Sprint Review Notes**:
-- [To be filled at sprint review]
+- All 5 features delivered: FR-025, FR-027, FR-028, FR-030, FR-032
 
 **Sprint Retrospective Notes**:
 - **What went well?**
@@ -236,4 +238,4 @@
 
 ---
 
-**Last Updated**: 2026-03-05
+**Last Updated**: 2026-03-05 (Sprint complete - status synced with code)

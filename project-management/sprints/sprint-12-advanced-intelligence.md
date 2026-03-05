@@ -1,9 +1,10 @@
 # Sprint 12: Advanced Intelligence
 
-**Sprint Goal**: Add semantic search/Q&A over notes and guided weekly planning session.
+**Sprint Goal**: Add semantic search/Q&A over notes. (FR-027 Weekly Planning completed in Sprint 11.)
 
 **Duration**: 2026-04-07 - 2026-04-20 (2 weeks)
-**Team Velocity**: 21 points (target)
+**Status**: ⭕ Planned
+**Team Velocity**: 13 points (FR-026 only)
 **Sprint Planning Date**: 2026-03-05
 **Sprint Review Date**: 2026-04-20
 **Sprint Retrospective Date**: 2026-04-20
@@ -13,13 +14,13 @@
 **Focus Areas**:
 - Semantic search with vector embeddings (Gemini)
 - Q&A synthesis over note context
-- Guided weekly planning (GTD complement to braindump)
 
 **Key Deliverables**:
 - `/ask <question>` semantic Q&A with source citations
 - `/reindex` for note index rebuild
-- `/plan` guided weekly planning session
 - Note index with Gemini embeddings and SQLite storage
+
+**Note**: FR-027 (Weekly Planning) was implemented in Sprint 11.
 
 **Dependencies**:
 - Sprint 10 (Quick Search - extends search.py)
@@ -85,63 +86,20 @@
 
 ---
 
-### Story 2: Weekly Planning Session - 8 Points
+### Story 2: Weekly Planning Session — ✅ Completed in Sprint 11
 
-**User Story**: As a productivity-focused user, I want a guided weekly planning session, so that I can start each week with clear priorities and intentions rather than reactive chaos.
-
-**Acceptance Criteria**:
-- [ ] `/plan` starts a guided planning session
-- [ ] Bot asks structured questions about the week ahead
-- [ ] User can review incomplete tasks from Google Tasks
-- [ ] User sets 3-5 priorities for the week
-- [ ] User identifies potential obstacles and mitigation strategies
-- [ ] Session generates structured planning note in Joplin
-- [ ] Tasks created for each priority in Google Tasks
-- [ ] `/plan_done` ends session early with summary
-- [ ] `/plan_cancel` exits without saving
-- [ ] Session timeout after 30 minutes of inactivity
-
-**Reference Documents**:
-- [FR-027: Weekly Planning Session](../backlog/features/FR-027-weekly-planning-session.md)
-- [FR-017: GTD Expert](../backlog/features/FR-017-gtd-expert-persona.md) - Braindump flow pattern
-
-**Technical References**:
-- File: `src/handlers/braindump.py` - Conversation flow pattern
-- File: `src/handlers/planning.py` (new) - Planning session
-- File: `src/task_service.py` - Google Tasks for priority tasks
-- File: `src/joplin_client.py` - Planning note creation
-
-**Story Points**: 8
-
-**Priority**: 🟡 Medium
-
-**Status**: ⭕ Not Started
-
-**Backlog Reference**: [FR-027](../backlog/features/FR-027-weekly-planning-session.md)
-
-**Tasks**:
-
-| Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
-|---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create planning handler with /plan, /plan_done, /plan_cancel | `handlers/planning.py` | FR-027 Commands | ⭕ | 1.5 | — |
-| T-002 | Add PLANNING_COACH persona state and routing | `core.py`, `state_manager.py` | FR-027 State | ⭕ | 1 | — |
-| T-003 | Create planning coach prompt and phase flow | `prompts/planning_coach.txt` | FR-027 Flow | ⭕ | 2 | — |
-| T-004 | Implement review phase (fetch tasks + notes) | `handlers/planning.py` | FR-027 Review | ⭕ | 1.5 | — |
-| T-005 | Generate planning note and create priority tasks | `handlers/planning.py` | FR-027 Output | ⭕ | 2 | — |
-
-**Total Task Points**: 8
+FR-027 was implemented in Sprint 11. See [handlers/planning.py](../../src/handlers/planning.py).
 
 ---
 
 ## Sprint Summary
 
-**Total Story Points**: 21
-**Total Task Points**: 21
-**Estimated Velocity**: 21 points (based on story points)
+**Total Story Points**: 13 (FR-026 only)
+**Total Task Points**: 13
+**Estimated Velocity**: 13 points
 
 **Sprint Burndown Plan**:
-- Week 1: Story 1 (Semantic Search/Q&A) - 13 points
-- Week 2: Story 2 (Weekly Planning) - 8 points
+- Week 1–2: Story 1 (Semantic Search/Q&A) - 13 points
 
 **Sprint Review Notes**:
 - [To be filled at sprint review]

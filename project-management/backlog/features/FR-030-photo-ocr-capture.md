@@ -1,6 +1,6 @@
 # Feature Request: FR-030 - Photo/Screenshot OCR Capture
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟡 Medium
 **Story Points**: 5
 **Created**: 2026-03-05

@@ -22,7 +22,7 @@ graph TD
 - **telegram_orchestrator.py**: Main bot logic, handles incoming messages and coordinates components
 - **llm_orchestrator.py**: AI-powered note generation and decision making
 - **joplin_client.py**: REST API client for Joplin operations
-- **state_manager.py**: Conversation state management for clarifications
+- **state_manager.py**: Conversation state management for clarifications — see [State Management](state-management.md) for full technical reference
 - **logging_service.py**: SQLite database logging for debugging
 - **security_utils.py**: Input validation and security checks
 

@@ -54,6 +54,7 @@ project-management/
 - **Templates**: See `docs/templates/` for creating new items
 - **Processes**: See `docs/processes/` for workflow guidance
 - **Documentation**: See `docs/README.md` for detailed reference guide
+- **Documentation Standards**: Use **Mermaid** for charts and graphs — see [documentation-standards.md](docs/processes/documentation-standards.md)
 
 ## Status Values
 

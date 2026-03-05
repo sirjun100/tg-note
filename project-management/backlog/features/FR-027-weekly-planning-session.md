@@ -1,6 +1,6 @@
 # Feature Request: FR-027 - Weekly Planning Session
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟡 Medium
 **Story Points**: 8
 **Created**: 2026-03-05

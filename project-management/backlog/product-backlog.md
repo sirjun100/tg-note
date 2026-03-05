@@ -9,14 +9,14 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-05 (BF-011: greeting shows menu, no LLM)
+**Last Updated**: 2026-03-05 (Sprint 11 complete: FR-025, FR-027, FR-028, FR-030, FR-032)
 
 ## Project Overview
 
 **Project Name**: Intelligent Telegram-Joplin Bot
-**Current Sprint**: Sprint 9 (DB Reorganization) — ~55% Complete
-**Status**: ⏳ In Progress - 71% Complete (147/206 story points)
-**Timeline**: Sprint 10 (Core UX) ✅; Sprint 9 (FR-016) ~55% complete
+**Current Sprint**: Sprint 12 (FR-026 Semantic Search)
+**Status**: ⏳ In Progress - 93% Complete (198/214 story points)
+**Timeline**: Sprint 10 ✅; Sprint 11 ✅; Sprint 9 (FR-016) ~55%; Sprint 12 planned
 **Quality**: Production Ready ✅
 
 ## Executive Summary
@@ -33,11 +33,12 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 - (Sprint 8) Generates weekly productivity reviews with trends
 - (Sprint 9) Reorganizes Joplin with PARA methodology
 - (Sprint 10) Greeting & command help, quick note search (/find, /search), intelligent content routing (note/task/both), monthly report, Joplin 24/7
+- (Sprint 11) Photo OCR, read-later queue (/readlater, /reading), Jungian dream analysis (/dream), habit tracking (/habits), weekly planning (/plan)
 
-**Sprints Completed**: 9 of 12 planned
-**Current Sprint**: Sprint 9 (FR-016 - DB Reorganization, 21 points, Mar 10-31) — ~55% complete
-**Next Sprint**: Sprint 11 (New Modalities)
-**Major Milestones**: Foundation ✅ → Components ✅ → Enhancements ✅ → Google Tasks ✅ → Tag Display ✅ → Reports ✅ → GTD Expert ✅ → Stoic Journal ✅ → Weekly Reports ✅ → Database Org (Sprint 9) → Core UX (Sprint 10) ✅
+**Sprints Completed**: 11 of 12 planned
+**Current Sprint**: Sprint 12 (FR-026 Semantic Search)
+**Next Sprint**: —
+**Major Milestones**: Foundation ✅ → Components ✅ → Enhancements ✅ → Google Tasks ✅ → Tag Display ✅ → Reports ✅ → GTD Expert ✅ → Stoic Journal ✅ → Weekly Reports ✅ → Database Org (Sprint 9 ~55%) → Core UX (Sprint 10) ✅ → New Modalities (Sprint 11) ✅
 
 ## Feature Requests
 
@@ -67,14 +68,14 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [FR-022](features/FR-022-enforce-single-machine-limit.md) | Enforce Single Machine Limit on Fly.io | 🟠 High | 1 | ✅ | Backlog | 2026-03-03 | 2026-03-03 |
 | [FR-023](features/FR-023-intelligent-content-routing.md) | Intelligent Content Routing (Notes vs Tasks) | 🟠 High | 8 | ✅ | Sprint 10 | 2026-03-05 | 2026-03-05 |
 | [FR-024](features/FR-024-greeting-and-command-help.md) | Greeting Response and Command Discovery | 🟡 Medium | 3 | ✅ | Sprint 10 | 2026-03-05 | 2026-03-05 |
-| [FR-025](features/FR-025-jungian-dream-analysis.md) | Jungian Dream Analysis with Image Generation | 🟡 Medium | 8 | ⭕ | Sprint 11 | 2026-03-05 | 2026-03-05 |
+| [FR-025](features/FR-025-jungian-dream-analysis.md) | Jungian Dream Analysis with Image Generation | 🟡 Medium | 8 | ✅ | Sprint 11 | 2026-03-05 | 2026-03-05 |
 | [FR-026](features/FR-026-semantic-search-qa.md) | Semantic Search and Q&A Over Notes | 🟠 High | 13 | ⭕ | Sprint 12 | 2026-03-05 | 2026-03-05 |
-| [FR-027](features/FR-027-weekly-planning-session.md) | Weekly Planning Session | 🟡 Medium | 8 | ⭕ | Sprint 12 | 2026-03-05 | 2026-03-05 |
-| [FR-028](features/FR-028-read-later-queue.md) | Read Later Queue | 🟡 Medium | 5 | ⭕ | Sprint 11 | 2026-03-05 | 2026-03-05 |
+| [FR-027](features/FR-027-weekly-planning-session.md) | Weekly Planning Session | 🟡 Medium | 8 | ✅ | Sprint 12 | 2026-03-05 | 2026-03-05 |
+| [FR-028](features/FR-028-read-later-queue.md) | Read Later Queue | 🟡 Medium | 5 | ✅ | Sprint 11 | 2026-03-05 | 2026-03-05 |
 | [FR-029](features/FR-029-quick-note-search.md) | Quick Note Search | 🟡 Medium | 3 | ✅ | Sprint 10 | 2026-03-05 | 2026-03-05 |
-| [FR-030](features/FR-030-photo-ocr-capture.md) | Photo/Screenshot OCR Capture | 🟡 Medium | 5 | ⭕ | Sprint 11 | 2026-03-05 | 2026-03-05 |
+| [FR-030](features/FR-030-photo-ocr-capture.md) | Photo/Screenshot OCR Capture | 🟡 Medium | 5 | ✅ | Sprint 11 | 2026-03-05 | 2026-03-05 |
 | [FR-031](features/FR-031-monthly-review-report.md) | Monthly Review Report | 🟢 Low | 5 | ✅ | Sprint 10 | 2026-03-05 | 2026-03-05 |
-| [FR-032](features/FR-032-habit-tracking.md) | Habit Check-ins and Tracking | 🟢 Low | 5 | ⭕ | Sprint 11 | 2026-03-05 | 2026-03-05 |
+| [FR-032](features/FR-032-habit-tracking.md) | Habit Check-ins and Tracking | 🟢 Low | 5 | ✅ | Sprint 11 | 2026-03-05 | 2026-03-05 |
 | [FR-033](features/FR-033-flashcard.md) | Flashcard Practice from Notes | 🟠 High | 8 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
 
 ## Bug Fixes
@@ -130,10 +131,10 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | **Sprint 8** | Feb 24-Mar 9 | FR-015 (Weekly Reports) | 13 | ✅ Complete |
 | **Sprint 9** | Mar 10-31 | FR-016 (DB Reorganization) | 21 | ⏳ ~55% Complete |
 | **Sprint 10** | Mar 10-23 | Core UX + Joplin 24/7 (FR-024, FR-029, FR-023, FR-031) | 20 | ✅ Complete |
-| **Sprint 11** | Mar 24-Apr 6 | FR-030, FR-028, FR-025, FR-032 (New Modalities) | 23 | ⭕ Planned |
-| **Sprint 12** | Apr 7-20 | FR-026, FR-027 (Advanced Intelligence) | 21 | ⭕ Planned |
+| **Sprint 11** | Mar 24-Apr 6 | FR-030, FR-028, FR-025, FR-032, FR-027 (New Modalities) | 31 | ✅ Complete |
+| **Sprint 12** | Apr 7-20 | FR-026 (Semantic Search) | 13 | ⭕ Planned |
 
-**Remaining Backlog**: 80 points (FR-016 ~55%, FR-018 ~30%, FR-025–FR-033 not started)
+**Remaining Backlog**: 29 points (FR-016 ~55%, FR-018 ~30%, FR-026, FR-033)
 **Projected Completion**: TBD — CI/CD operational, new features added to backlog
 
 ## Notes
@@ -146,16 +147,16 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 ## Backlog Statistics
 
-**Total Items**: 33 Features + 6 Bugs = 39 items
+**Total Items**: 33 Features + 8 Bugs = 41 items
 
 **Features by Status**:
-- ⭕ Not Started: 7 (FR-025–FR-030, FR-032, FR-033, assigned to Sprints 11–12 / Backlog)
+- ⭕ Not Started: 2 (FR-026, FR-033)
 - ⏳ In Progress: 2 (FR-016, FR-018)
-- ✅ Completed: 24 (FR-001–FR-015, FR-017, FR-019–FR-024, FR-029, FR-031)
+- ✅ Completed: 29 (FR-001–FR-015, FR-017, FR-019–FR-024, FR-025, FR-027–FR-032)
 
 **Bugs by Status**:
-- ⭕ Not Started: 2 (BF-005, BF-009)
-- ✅ Completed: 4 (BF-001, BF-002, BF-003, BF-004)
+- ⭕ Not Started: 1 (BF-005)
+- ✅ Completed: 7 (BF-001–BF-004, BF-009, BF-010, BF-011)
 
 **By Priority (all items)**:
 - 🔴 Critical: 4 (BF-002, BF-003, BF-004 resolved; BF-005 not started)
@@ -164,17 +165,17 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 - 🟢 Low: 2
 
 **Feature Story Points**: 214
-  - Completed: 147 points (FR-001–FR-015, FR-017, FR-019–FR-024, FR-029, FR-031) — 71%
+  - Completed: 198 points (FR-001–FR-015, FR-017, FR-019–FR-025, FR-027–FR-032) — 93%
   - In Progress: 29 points (FR-016 ~55%, FR-018 ~30%)
-  - Not Started: 51 points (FR-025–FR-030, FR-032, FR-033)
+  - Not Started: 21 points (FR-026, FR-033)
 
 **Bug Story Points**: 19
-  - Completed: 11 points (BF-001–BF-004)
-  - Not Started: 8 points (BF-005, BF-009)
+  - Completed: 18 points (BF-001–BF-004, BF-009, BF-010, BF-011)
+  - Not Started: 5 points (BF-005)
 
-**Overall Completion Rate**: 69% features completed (147/214 points)
-**Current**: 69% (147/214 points) ✅
-**Full Completion Target**: TBD — FR-016, FR-018, FR-025–FR-033 remaining
+**Overall Completion Rate**: 93% features completed (198/214 points)
+**Current**: 93% (198/214 points) ✅
+**Full Completion Target**: TBD — FR-016, FR-018, FR-026, FR-033 remaining
 
 ---
 
@@ -194,14 +195,15 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | Sprint 8 | Feb 24-Mar 9 | Weekly Reports (FR-015) | 13 | ✅ | 13 pts |
 | Sprint 9 | Mar 10-31 | Database Reorganization (FR-016) | 21 | ⏳ ~55% | — |
 | [Sprint 10](../sprints/sprint-10-core-ux.md) | Mar 10-23 | Core UX + Joplin 24/7 (FR-024, FR-029, FR-023, FR-031) | 20 | ✅ Complete | 20 pts |
-| [Sprint 11](../sprints/sprint-11-new-modalities.md) | Mar 24-Apr 6 | New Modalities (FR-030, FR-028, FR-025, FR-032) | 23 | ⭕ Planned | — |
-| [Sprint 12](../sprints/sprint-12-advanced-intelligence.md) | Apr 7-20 | Advanced Intelligence (FR-026, FR-027) | 21 | ⭕ Planned | — |
-| **TOTAL** | | | **207 pts** | **147 Complete, 60 Remaining** | **14 avg** |
+| [Sprint 11](../sprints/sprint-11-new-modalities.md) | Mar 24-Apr 6 | New Modalities (FR-030, FR-028, FR-025, FR-032, FR-027) | 31 | ✅ Complete | 31 pts |
+| [Sprint 12](../sprints/sprint-12-advanced-intelligence.md) | Apr 7-20 | Advanced Intelligence (FR-026) | 13 | ⭕ Planned | — |
+| **TOTAL** | | | **214 pts** | **198 Complete, 16 Remaining** | **14 avg** |
 
-**Completion Status**: 71% Complete (147/206 points)
-  - Sprint 10 Complete (Mar 5): FR-023, FR-024, FR-029, FR-031, Joplin 24/7 ✅
+**Completion Status**: 93% Complete (198/214 points)
+  - Sprint 10 Complete: FR-023, FR-024, FR-029, FR-031, Joplin 24/7 ✅
+  - Sprint 11 Complete: FR-025, FR-027, FR-028, FR-030, FR-032 ✅
   - Sprint 9 (Mar 10–31): FR-016 ~55% complete
-  - Backlog: FR-018 ~30%, FR-020 ✅, FR-021 ✅, FR-022 ✅, BF-001–BF-004 all ✅
+  - Backlog: FR-018 ~30%, FR-026, FR-033; BF-005 not started
 
 ## Tips for Maintaining the Backlog
 

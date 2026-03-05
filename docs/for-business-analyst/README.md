@@ -34,6 +34,10 @@ flowchart LR
     E --> R[Review]
 ```
 
+## State Management
+
+- [State Management (Business Overview)](state-management.md) — How the bot remembers conversations, clarification flows, persona sessions, and escape hatches.
+
 ## Key Business KPIs
 
 - Capture success rate (messages processed without manual intervention)

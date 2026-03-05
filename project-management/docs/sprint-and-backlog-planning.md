@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The Telegram-Joplin Bot project is 71% complete (147/206 story points) with core functionality delivered and deployed. Sprint 10 (Core UX) is complete: greeting & command help, quick note search (/find, /search), intelligent content routing (note/task/both), monthly report, and Joplin 24/7. Sprint 9 (DB Reorganization) is ~55% complete. Sprints 11–12 (New Modalities, Advanced Intelligence) are planned.
+The Telegram-Joplin Bot project is 93% complete (198/214 story points). Sprint 10 (Core UX) and Sprint 11 (New Modalities) are complete. Sprint 9 (DB Reorganization) is ~55% complete. Sprint 12 (FR-026 Semantic Search) is planned.
 
 ---
 
