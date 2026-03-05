@@ -252,11 +252,18 @@ class TestStoicMorningEveningWorkflow(unittest.IsolatedAsyncioTestCase):
         orch.joplin_client.get_notes_in_folder = AsyncMock(
             return_value=[{"id": "note_123", "title": "2026-03-04 - Daily Stoic Reflection"}]
         )
-        orch.joplin_client.get_note = AsyncMock(return_value={"body": created_body})
+        orch.joplin_client.get_note = AsyncMock(return_value={
+            "id": "note_123",
+            "title": "2026-03-04 - Daily Stoic Reflection",
+            "body": created_body,
+            "parent_id": "folder_123"
+        })
         orch.joplin_client.update_note = AsyncMock()
         orch.state_manager.update_state = MagicMock()
 
-        result2 = await stoic_module._finish_stoic_session(orch, 999, message2, state2)
+        with patch("src.handlers.stoic.get_current_date_str") as mock_date:
+            mock_date.return_value = "2026-03-04"
+            result2 = await stoic_module._finish_stoic_session(orch, 999, message2, state2)
 
         # This is where the bug might happen
         # Does the update preserve the morning section?

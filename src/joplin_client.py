@@ -111,7 +111,8 @@ class JoplinClient:
         raise JoplinError(f"Failed to create note '{title}'")
 
     async def get_note(self, note_id: str) -> dict[str, Any]:
-        result = await self._request("GET", f"/notes/{note_id}")
+        # Explicitly request body field to ensure it's included in response
+        result = await self._request("GET", f"/notes/{note_id}?fields=id,title,body,parent_id")
         if result is None:
             raise JoplinError(f"Note {note_id} not found")
         return result
