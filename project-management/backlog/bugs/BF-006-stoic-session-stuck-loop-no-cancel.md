@@ -1,10 +1,10 @@
 # Bug Fix: BF-006 - Stoic Journal: Session Gets Stuck in Loop with No Cancel Option
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟠 High
 **Story Points**: 3
 **Created**: 2026-03-04
-**Updated**: 2026-03-04
+**Updated**: 2026-03-06
 **Assigned Sprint**: Backlog
 
 ## Description
@@ -150,3 +150,4 @@ if not answers:
 ## History
 
 - 2026-03-04 - Created (user-reported: unable to cancel stuck stoic session)
+- 2026-03-06 - Verified fixed: `/stoic_cancel` implemented in `src/handlers/stoic.py` (lines 279–306)

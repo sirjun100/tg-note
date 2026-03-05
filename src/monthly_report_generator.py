@@ -152,7 +152,10 @@ class MonthlyReportGenerator:
 
             completed: list[dict[str, Any]] = []
             for tl in task_lists:
-                tasks = self.task_service.get_user_tasks(str(user_id), tl.get("id")) or []
+                # BF-018: show_completed=True — API returns only incomplete by default
+                tasks = self.task_service.get_user_tasks(
+                    str(user_id), tl.get("id"), show_completed=True
+                ) or []
                 for task in tasks:
                     if task.get("status") == "completed":
                         completed_str = task.get("completed")

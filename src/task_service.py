@@ -363,8 +363,13 @@ class TaskService:
             logger.info("Created %d Google Task(s) for user %s", len(created_tasks), user_id)
         return created_tasks
 
-    def get_user_tasks(self, user_id: str, task_list_id: str | None = None) -> list[dict[str, Any]]:
-        """Get user's Google Tasks"""
+    def get_user_tasks(
+        self,
+        user_id: str,
+        task_list_id: str | None = None,
+        show_completed: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Get user's Google Tasks. Set show_completed=True to include completed tasks (BF-018)."""
         token = self.logging_service.load_google_token(user_id)
         if not token:
             return []
@@ -374,7 +379,7 @@ class TaskService:
         try:
             if not task_list_id:
                 task_list_id = self.tasks_client.get_default_task_list()
-            result = self.tasks_client.get_tasks(task_list_id)
+            result = self.tasks_client.get_tasks(task_list_id, show_completed=show_completed)
             if self.tasks_client.token and self.tasks_client.token != token:
                 self.logging_service.save_google_token(user_id, self.tasks_client.token)
             return result

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
-from src.security_utils import check_whitelist, format_error_message
+from src.security_utils import check_whitelist, format_error_message, split_message_for_telegram
 from src.timezone_utils import get_user_timezone_aware_now
 
 if TYPE_CHECKING:
@@ -158,10 +158,12 @@ async def handle_dream_message(
 
         # BF-014/BF-016: LLM analysis contains Markdown chars (*, _, etc.) that break
         # Telegram's parser. Always send as plain text (no parse_mode) to avoid parse errors.
+        # BF-019: Split long messages — Telegram limit is 4096 chars.
         msg = f"📖 Jungian Analysis\n\n{analysis}\n\n---\n\n"
         msg += "Would you like to explore how this dream connects to your current life? (yes/no)"
         msg += DREAM_DISCLAIMER
-        await message.reply_text(msg)
+        for chunk in split_message_for_telegram(msg):
+            await message.reply_text(chunk)
         logger.info("Dream: user=%d analysis sent, awaiting yes/no", user_id)
         return
 

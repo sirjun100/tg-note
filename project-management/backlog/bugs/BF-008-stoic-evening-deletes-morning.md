@@ -1,10 +1,10 @@
 # Bug Report: BF-008 - Stoic Journal: Evening Reflection Deletes Morning Reflection
 
-**Status**: 🔴 Open
+**Status**: ✅ Completed
 **Priority**: 🔴 Critical
 **Story Points**: 5
 **Created**: 2026-03-04
-**Updated**: 2026-03-04
+**Updated**: 2026-03-06
 **Assigned Sprint**: Backlog
 **Impact**: Data Loss
 
@@ -170,3 +170,4 @@ This is blocking users who want to do complete daily reflections (morning + even
 
 - 2026-03-04 - Reported by user: "stoic evening deleted my morning stoic"
 - 2026-03-04 - Created as BF-008 - Critical data loss issue
+- 2026-03-06 - Verified fixed: `_check_section_exists()` + `/stoic_replace` / `/stoic_append` prompt when section exists (fixed in BF-005)

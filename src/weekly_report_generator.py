@@ -115,7 +115,10 @@ class WeeklyReportGenerator:
             return [], []
 
         try:
-            notes = await self.joplin_client.get_all_notes()
+            # BF-018: Request timestamp fields explicitly (Joplin may omit when not specified)
+            notes = await self.joplin_client.get_all_notes(
+                fields="id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time"
+            )
             if not isinstance(notes, list):
                 return [], []
 
@@ -125,18 +128,20 @@ class WeeklyReportGenerator:
             created: list[dict[str, Any]] = []
             modified: list[dict[str, Any]] = []
 
-            start_ts = start.timestamp() * 1000
-            end_ts = end.timestamp() * 1000
+            start_ts = int(start.timestamp() * 1000)
+            end_ts = int(end.timestamp() * 1000)
 
             for note in notes:
                 note["folder_name"] = folder_map.get(note.get("parent_id", ""), "Unknown")
 
-                created_ts = note.get("created_time", note.get("user_created_time", 0))
-                updated_ts = note.get("updated_time", note.get("user_updated_time", 0))
+                created_ts = note.get("created_time") or note.get("user_created_time", 0)
+                updated_ts = note.get("updated_time") or note.get("user_updated_time", 0)
+                created_ts = int(created_ts) if created_ts else 0
+                updated_ts = int(updated_ts) if updated_ts else 0
 
-                if start_ts <= created_ts <= end_ts:
+                if created_ts and start_ts <= created_ts <= end_ts:
                     created.append(note)
-                elif start_ts <= updated_ts <= end_ts:
+                elif updated_ts and start_ts <= updated_ts <= end_ts and created_ts < start_ts:
                     modified.append(note)
 
             return created, modified
@@ -162,10 +167,25 @@ class WeeklyReportGenerator:
             now = datetime.now()
 
             for tl in task_lists:
-                tasks = self.task_service.get_user_tasks(str(user_id), tl.get("id")) or []
+                # BF-018: show_completed=True — API returns only incomplete by default
+                tasks = self.task_service.get_user_tasks(
+                    str(user_id), tl.get("id"), show_completed=True
+                ) or []
                 for task in tasks:
                     if task.get("status") == "completed":
-                        completed.append(task)
+                        # Only count tasks completed within the week (BF-018)
+                        completed_str = task.get("completed")
+                        if completed_str:
+                            try:
+                                completed_dt = datetime.fromisoformat(
+                                    completed_str.replace("Z", "+00:00")
+                                )
+                                if start.timestamp() <= completed_dt.timestamp() <= end.timestamp():
+                                    completed.append(task)
+                            except (ValueError, TypeError):
+                                pass
+                        else:
+                            completed.append(task)  # No date, include anyway
                     else:
                         due_str = task.get("due")
                         if due_str:

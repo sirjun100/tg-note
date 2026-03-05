@@ -1,6 +1,6 @@
 ---
 template_version: 1.1.0
-last_updated: 2026-03-05
+last_updated: 2026-03-06
 compatible_with: [feature-request, bug-fix, sprint-planning]
 requires: [markdown-support]
 ---
@@ -9,13 +9,13 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-05 (Sprint 11 complete: FR-025, FR-027, FR-028, FR-030, FR-032)
+**Last Updated**: 2026-03-06 (BF-018: Weekly report 0 notes/tasks fixed; BF-019: Dream message split)
 
 ## Project Overview
 
 **Project Name**: Intelligent Telegram-Joplin Bot
 **Current Sprint**: Sprint 12 (FR-026 Semantic Search)
-**Status**: ⏳ In Progress - 93% Complete (198/214 story points)
+**Status**: ⏳ In Progress - 87% Complete (198/227 story points)
 **Timeline**: Sprint 10 ✅; Sprint 11 ✅; Sprint 9 (FR-016) ~55%; Sprint 12 planned
 **Quality**: Production Ready ✅
 
@@ -77,6 +77,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [FR-031](features/FR-031-monthly-review-report.md) | Monthly Review Report | 🟢 Low | 5 | ✅ | Sprint 10 | 2026-03-05 | 2026-03-05 |
 | [FR-032](features/FR-032-habit-tracking.md) | Habit Check-ins and Tracking | 🟢 Low | 5 | ✅ | Sprint 11 | 2026-03-05 | 2026-03-05 |
 | [FR-033](features/FR-033-flashcard.md) | Flashcard Practice from Notes | 🟠 High | 8 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
+| [FR-034](features/FR-034-joplin-google-tasks-project-sync.md) | Joplin Projects ↔ Google Tasks Sync (Project = Task, Tasks = Subtasks) | 🟠 High | 13 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
 
 ## Bug Fixes
 
@@ -87,6 +88,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-003](bugs/BF-003-scheduler-not-working.md) | Scheduler Not Working — App Down | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
 | [BF-004](bugs/BF-004-flyctl-deploy-no-access-token.md) | Fly.io Deploy Fails: No Access Token Available | 🔴 Critical | 1 | ✅ | Backlog | 2026-03-03 | 2026-03-03 |
 | [BF-005](bugs/BF-005-stoic-journal-timezone-and-data-loss.md) | Stoic Journal: Timezone Mismatch & Data Loss on Update | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-03 | 2026-03-05 |
+| [BF-006](bugs/BF-006-stoic-session-stuck-loop-no-cancel.md) | Stoic Session Stuck in Loop with No Cancel | 🟠 High | 3 | ✅ | Backlog | 2026-03-04 | 2026-03-05 |
+| [BF-007](bugs/BF-007-url-screenshot-no-content-validation.md) | URL Screenshots: No Validation That Content Matches URL | 🟠 High | 5 | ⭕ | Backlog | 2026-03-04 | 2026-03-05 |
+| [BF-008](bugs/BF-008-stoic-evening-deletes-morning.md) | Stoic Evening Deletes Morning Reflection | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-04 | 2026-03-05 |
 | [BF-009](bugs/BF-009-stoic-questions-template-mismatch.md) | Stoic Journal: Questions Do Not Match Template | 🟠 High | 3 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-010](bugs/BF-010-greeting-parse-entities-error.md) | Greeting Response: "Something Went Wrong" (Parse Entities) | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-011](bugs/BF-011-content-decision-validation-error.md) | ContentDecision Validation + Greeting Shows Menu | 🟠 High | 1 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
@@ -96,6 +100,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-015](bugs/BF-015-mypy-type-errors.md) | Mypy Type Errors (60 errors in 23 files) | 🟡 Medium | 5 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-016](bugs/BF-016-dream-parse-error-user-report.md) | /dream Parse Error: User Receives Nothing | 🟠 High | 2 | ✅ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-017](bugs/BF-017-dream-command-crash.md) | /dream Command Crashes Agent on Invocation | 🟠 High | 1 | ⏳ | Backlog | 2026-03-05 | 2026-03-05 |
+| [BF-018](bugs/BF-018-weekly-report-incorrect-numbers.md) | Weekly Report Shows Incorrect Numbers (0 Notes/Tasks) | 🟠 High | 3 | ✅ | Backlog | 2026-03-05 | 2026-03-06 |
+| [BF-019](bugs/BF-019-dream-message-too-long.md) | Dream Analysis: "Message is too long" Error | 🟠 High | 2 | ✅ | Backlog | 2026-03-06 | 2026-03-06 |
 
 ---
 
@@ -138,9 +144,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | **Sprint 9** | Mar 10-31 | FR-016 (DB Reorganization) | 21 | ⏳ ~55% Complete |
 | **Sprint 10** | Mar 10-23 | Core UX + Joplin 24/7 (FR-024, FR-029, FR-023, FR-031) | 20 | ✅ Complete |
 | **Sprint 11** | Mar 24-Apr 6 | FR-030, FR-028, FR-025, FR-032, FR-027 (New Modalities) | 31 | ✅ Complete |
-| **Sprint 12** | Apr 7-20 | FR-026 (Semantic Search) | 13 | ⭕ Planned |
+| **Sprint 12** | Apr 7-20 | FR-026 (Semantic Search), FR-027 (Weekly Planning) | 21 | ⏳ FR-027 ✅, FR-026 ⭕ |
 
-**Remaining Backlog**: 29 points (FR-016 ~55%, FR-018 ~30%, FR-026, FR-033)
+**Remaining Backlog**: 47 points (FR-016 ~55%, FR-018 ~30%, FR-026, FR-033, FR-034; BF-007)
 **Projected Completion**: TBD — CI/CD operational, new features added to backlog
 
 ## Notes
@@ -153,35 +159,37 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 ## Backlog Statistics
 
-**Total Items**: 33 Features + 13 Bugs = 46 items
+**Total Items**: 34 Features + 18 Bugs = 52 items
 
 **Features by Status**:
-- ⭕ Not Started: 2 (FR-026, FR-033)
+- ⭕ Not Started: 3 (FR-026, FR-033, FR-034)
 - ⏳ In Progress: 2 (FR-016, FR-018)
 - ✅ Completed: 29 (FR-001–FR-015, FR-017, FR-019–FR-024, FR-025, FR-027–FR-032)
 
 **Bugs by Status**:
 - ⏳ In Progress: 1 (BF-017)
-- ✅ Completed: 13 (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014, BF-015, BF-016)
+- ⭕ Not Started: 1 (BF-007)
+- ✅ Completed: 16 (BF-001–BF-006, BF-008–BF-016, BF-018, BF-019)
 
 **By Priority (all items)**:
-- 🔴 Critical: 4 (BF-002, BF-003, BF-004, BF-005 resolved)
+- 🔴 Critical: 5 (BF-002, BF-003, BF-004, BF-005, BF-008 resolved)
 - 🟠 High: 13
 - 🟡 Medium: 14
 - 🟢 Low: 3
 
-**Feature Story Points**: 214
-  - Completed: 198 points (FR-001–FR-015, FR-017, FR-019–FR-025, FR-027–FR-032) — 93%
+**Feature Story Points**: 227
+  - Completed: 198 points (FR-001–FR-015, FR-017, FR-019–FR-025, FR-027–FR-032) — 87%
   - In Progress: 29 points (FR-016 ~55%, FR-018 ~30%)
-  - Not Started: 21 points (FR-026, FR-033)
+  - Not Started: 34 points (FR-026, FR-033, FR-034)
 
-**Bug Story Points**: 28
-  - Completed: 27 points (BF-001–BF-005, BF-009, BF-010, BF-011, BF-012, BF-013, BF-014, BF-015, BF-016)
+**Bug Story Points**: 46
+  - Completed: 41 points (BF-001–BF-006, BF-008–BF-016, BF-018, BF-019)
   - In Progress: 1 point (BF-017)
+  - Not Started: 5 points (BF-007)
 
-**Overall Completion Rate**: 93% features completed (198/214 points)
-**Current**: 93% (198/214 points) ✅
-**Full Completion Target**: TBD — FR-016, FR-018, FR-026, FR-033 remaining
+**Overall Completion Rate**: 87% features completed (198/227 points)
+**Current**: 87% (198/227 points) ✅
+**Full Completion Target**: TBD — FR-016, FR-018, FR-026, FR-033, FR-034 remaining
 
 ---
 
@@ -203,13 +211,14 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [Sprint 10](../sprints/sprint-10-core-ux.md) | Mar 10-23 | Core UX + Joplin 24/7 (FR-024, FR-029, FR-023, FR-031) | 20 | ✅ Complete | 20 pts |
 | [Sprint 11](../sprints/sprint-11-new-modalities.md) | Mar 24-Apr 6 | New Modalities (FR-030, FR-028, FR-025, FR-032, FR-027) | 31 | ✅ Complete | 31 pts |
 | [Sprint 12](../sprints/sprint-12-advanced-intelligence.md) | Apr 7-20 | Advanced Intelligence (FR-026) | 13 | ⭕ Planned | — |
-| **TOTAL** | | | **214 pts** | **198 Complete, 16 Remaining** | **14 avg** |
+| **TOTAL** | | | **227 pts** | **198 Complete, 29 Remaining** | **14 avg** |
 
-**Completion Status**: 93% Complete (198/214 points)
+**Completion Status**: 87% Complete (198/227 points)
   - Sprint 10 Complete: FR-023, FR-024, FR-029, FR-031, Joplin 24/7 ✅
   - Sprint 11 Complete: FR-025, FR-027, FR-028, FR-030, FR-032 ✅
   - Sprint 9 (Mar 10–31): FR-016 ~55% complete
-  - Backlog: FR-018 ~30%, FR-026, FR-033
+  - Sprint 12: FR-027 ✅, FR-026 ⭕ not started
+  - Backlog: FR-018 ~30%, FR-026, FR-033, FR-034; BF-007, BF-018
 
 ## Tips for Maintaining the Backlog
 

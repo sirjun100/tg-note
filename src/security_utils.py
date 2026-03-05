@@ -9,7 +9,13 @@ from __future__ import annotations
 import logging
 import re
 
-from src.constants import MESSAGE_MAX_LENGTH, NOTE_BODY_MAX_LENGTH, NOTE_TITLE_MAX_LENGTH, SANITIZE_MAX_LENGTH
+from src.constants import (
+    MESSAGE_MAX_LENGTH,
+    NOTE_BODY_MAX_LENGTH,
+    NOTE_TITLE_MAX_LENGTH,
+    SANITIZE_MAX_LENGTH,
+    TELEGRAM_MESSAGE_MAX_LENGTH,
+)
 from src.exceptions import AppError
 from src.settings import get_settings
 
@@ -111,6 +117,35 @@ def validate_note_data(note_data: dict) -> list[str]:
 
 def format_error_message(error: str) -> str:
     return f"❌ {error}"
+
+
+def split_message_for_telegram(
+    text: str, max_len: int = TELEGRAM_MESSAGE_MAX_LENGTH
+) -> list[str]:
+    """
+    Split text into chunks under Telegram's 4096 char limit (BF-019).
+    Prefers breaking at newlines; falls back to spaces; else hard cut.
+    """
+    if not text or len(text) <= max_len:
+        return [text] if text else []
+
+    chunks: list[str] = []
+    rest = text
+    while rest:
+        if len(rest) <= max_len:
+            if rest:
+                chunks.append(rest)
+            break
+        # Find last newline in the first max_len chars
+        segment = rest[:max_len]
+        last_nl = segment.rfind("\n")
+        last_space = segment.rfind(" ")
+        split_at = last_nl if last_nl > 0 else (last_space if last_space > 0 else max_len)
+        chunk = rest[:split_at].rstrip()
+        if chunk:
+            chunks.append(chunk)
+        rest = rest[split_at:].lstrip()
+    return chunks
 
 
 def format_success_message(message: str) -> str:
