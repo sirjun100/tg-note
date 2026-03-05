@@ -109,6 +109,7 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /stoic → Guided morning/evening reflection\n"
         "• /dream → Jungian dream analysis\n"
         "• /habits → Daily habit check-in\n"
+        "• /plan → Weekly planning session\n"
         "• /recipe → Save and organize recipes\n\n"
         "<b>📊 Review</b>\n"
         "• /daily_report → Today's priorities\n"
@@ -531,6 +532,9 @@ def _message(orch: TelegramOrchestrator):
                 elif pending.get("active_persona") == "DREAM_ANALYST":
                     from src.handlers.dream import handle_dream_message
                     await handle_dream_message(orch, user_id, validated, message)
+                elif pending.get("active_persona") == "PLANNING_COACH":
+                    from src.handlers.planning import handle_planning_message
+                    await handle_planning_message(orch, user_id, validated, message)
                 elif pending.get("active_persona") == "SEARCH":
                     await _handle_search_message(orch, user_id, validated, message)
                 else:
