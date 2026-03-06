@@ -76,6 +76,8 @@ class LLMOrchestrator:
         # Persona storage
         self.prompts_dir = Path(__file__).parent / "prompts"
         self._personas: dict[str, str] = {}
+        # FR-038: AI Identity — cached, loaded on first use
+        self._ai_identity: str | None = None
 
     async def process_message(
         self,
@@ -662,9 +664,40 @@ Output nothing else: no preamble, no explanation, only the markdown block. Use t
             logger.warning("Stoic reflection LLM format failed: %s", e)
         return None
 
+    def _load_ai_identity(self) -> str:
+        """Load and cache AI identity. FR-038. Checks data/ai_identity.md first (user-editable), then src/prompts/ai_identity.md."""
+        if self._ai_identity is not None:
+            return self._ai_identity
+        data_dir = Path(__file__).resolve().parent.parent / "data"
+        for path in [data_dir / "ai_identity.md", self.prompts_dir / "ai_identity.md"]:
+            if path.exists():
+                try:
+                    self._ai_identity = path.read_text(encoding="utf-8").strip()
+                    return self._ai_identity
+                except Exception as e:
+                    logger.warning("Failed to load %s: %s", path, e)
+        self._ai_identity = ""
+        return ""
+
+    def reload_ai_identity(self) -> None:
+        """Clear cache so next load reads from disk. FR-038."""
+        self._ai_identity = None
+
     def _build_system_prompt(self, context: dict[str, Any] = None) -> str:
         """Build the system prompt for the LLM"""
         context = context or {}
+
+        # FR-038: Prepend AI identity for default flows (not persona flows)
+        identity_block = ""
+        identity_text = self._load_ai_identity()
+        if identity_text:
+            identity_block = f"## AI Identity\n{identity_text}\n\n---\n\n"
+
+        # FR-038: User profile context when available
+        user_profile_block = ""
+        user_profile = context.get("user_profile", "")
+        if user_profile and isinstance(user_profile, str):
+            user_profile_block = f"## User Profile\n{user_profile}\n\n---\n\n"
 
         # Build folder list, excluding Archive and its children
         folders = context.get('folders', [])
@@ -679,7 +712,7 @@ Output nothing else: no preamble, no explanation, only the markdown block. Use t
         else:
             folder_list = "No folders available.\n"
 
-        prompt = f"""You are an intelligent assistant that helps users create notes in Joplin, a note-taking application.
+        prompt = f"""{identity_block}{user_profile_block}You are an intelligent assistant that helps users create notes in Joplin, a note-taking application.
 
 Your task is to analyze user messages and either:
 1. SUCCESS: Create a complete note with title, body, folder, and tags
@@ -856,6 +889,18 @@ When URL context is provided:
 
     def _build_routing_system_prompt(self, context: dict[str, Any]) -> str:
         """Build system prompt for intelligent content routing (note, task, or both)."""
+        # FR-038: Prepend AI identity for default routing
+        identity_block = ""
+        identity_text = self._load_ai_identity()
+        if identity_text:
+            identity_block = f"## AI Identity\n{identity_text}\n\n---\n\n"
+
+        # FR-038: User profile context when available
+        user_profile_block = ""
+        user_profile = context.get("user_profile", "")
+        if user_profile and isinstance(user_profile, str):
+            user_profile_block = f"## User Profile\n{user_profile}\n\n---\n\n"
+
         folders = context.get("folders", [])
         folder_list = ""
         if folders:
@@ -871,7 +916,7 @@ When URL context is provided:
         existing_tags = context.get("existing_tags", [])
         tags_block = "\n".join(f"- {t}" for t in existing_tags[:20]) if existing_tags else "No existing tags. You can create new tags."
 
-        prompt = f"""You are an intelligent assistant that routes user messages to either Joplin notes, Google Tasks, or both.
+        prompt = f"""{identity_block}{user_profile_block}You are an intelligent assistant that routes user messages to either Joplin notes, Google Tasks, or both.
 
 ## Content Type Classification
 

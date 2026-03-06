@@ -19,6 +19,7 @@ from telegram.constants import ChatAction
 from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.constants import is_action_item
+from src.handlers.profile import get_user_profile_context
 from src.logging_service import Decision, TelegramMessage
 from src.security_utils import (
     check_whitelist,
@@ -118,6 +119,9 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /daily_report → Today's priorities\n"
         "• /weekly_report → Weekly productivity review\n"
         "• /monthly_report → Monthly review with insights\n\n"
+        "<b>👤 Personalization</b>\n"
+        "• /profile → Your about-me (AI uses this for context)\n"
+        "• /identity → AI identity (bot persona)\n\n"
         "💡 Type anything to get started, or use a command above!"
     )
 
@@ -664,7 +668,12 @@ async def _route_plain_message(
     await message.reply_text("🤖 Analyzing...")
 
     folders = await orch.joplin_client.get_folders()
-    ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
+    ctx = {
+        "existing_tags": existing_tags,
+        "folders": folders,
+        "url_context": url_context,
+        "user_profile": get_user_profile_context(),
+    }
 
     routing = await orch.llm_orchestrator.process_message_for_routing(text, ctx)
 
@@ -855,7 +864,12 @@ async def _handle_new_request(
     await _send_typing(message, context)
     await message.reply_text("🤖 Analyzing...")
     folders = await orch.joplin_client.get_folders()
-    ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
+    ctx = {
+        "existing_tags": existing_tags,
+        "folders": folders,
+        "url_context": url_context,
+        "user_profile": get_user_profile_context(),
+    }
     llm_response = await orch.llm_orchestrator.process_message(text, ctx)
 
     await _process_llm_response(
@@ -922,7 +936,12 @@ async def _handle_clarification_reply(
     await _send_typing(message, context)
     await message.reply_text("🤖 Analyzing...")
     folders = await orch.joplin_client.get_folders()
-    ctx = {"existing_tags": existing_tags, "folders": folders, "url_context": url_context}
+    ctx = {
+        "existing_tags": existing_tags,
+        "folders": folders,
+        "url_context": url_context,
+        "user_profile": get_user_profile_context(),
+    }
     llm_response = await orch.llm_orchestrator.process_message(combined, ctx)
     await _process_llm_response(
         orch, user_id, llm_response, message,
