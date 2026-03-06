@@ -37,7 +37,8 @@ def get_llm_orchestrator():
 
 
 class PriorityLevel(Enum):
-    """Priority levels for report items"""
+    """Priority levels for report items. FR-039: URGENT for *** at start of task title."""
+    URGENT = 6
     CRITICAL = 5
     HIGH = 3
     MEDIUM = 1
@@ -369,6 +370,19 @@ Response:"""
             self.logger.error(f"Failed to create Joplin item: {e}")
             return None
 
+    def _detect_star_priority(self, title: str) -> PriorityLevel | None:
+        """FR-039: Detect * / ** / *** or ⭐/★ at start of title. Star wins over due date."""
+        if not title or not isinstance(title, str):
+            return None
+        t = title.strip()
+        if t.startswith("***") or t.startswith("⭐⭐⭐") or t.startswith("★★★"):
+            return PriorityLevel.URGENT
+        if t.startswith("**") or t.startswith("⭐⭐") or t.startswith("★★"):
+            return PriorityLevel.CRITICAL
+        if t.startswith("*") or t.startswith("⭐") or t.startswith("★"):
+            return PriorityLevel.HIGH
+        return None
+
     def create_google_task_item(
         self, task: dict[str, Any]
     ) -> ReportItem | None:
@@ -385,8 +399,13 @@ Response:"""
             days_overdue = self.calculate_overdue_days(due_date)
             is_overdue = days_overdue > 0
 
-            # Google Tasks don't have priority, infer from due date
-            priority_level = PriorityLevel.HIGH if is_overdue else PriorityLevel.MEDIUM
+            # FR-039: Star at start of title wins over due date
+            title = task.get("title", "Untitled Task")
+            star_priority = self._detect_star_priority(title)
+            if star_priority is not None:
+                priority_level = star_priority
+            else:
+                priority_level = PriorityLevel.HIGH if is_overdue else PriorityLevel.MEDIUM
 
             impact = self.calculate_impact(task, ItemSource.GOOGLE_TASKS)
 
@@ -436,7 +455,8 @@ Response:"""
             if item.source == ItemSource.JOPLIN:
                 report.joplin_notes.append(item)
             # Priority items (Google Tasks + any Joplin notes marked as high priority tasks)
-            elif item.priority_level == PriorityLevel.CRITICAL:
+            # FR-039: URGENT treated like CRITICAL (top of report)
+            elif item.priority_level in (PriorityLevel.URGENT, PriorityLevel.CRITICAL):
                 report.critical_items.append(item)
             elif item.priority_level == PriorityLevel.HIGH:
                 report.high_items.append(item)
@@ -1005,8 +1025,9 @@ Response:"""
         return line
 
     def _priority_label(self, level: PriorityLevel) -> str:
-        """Return emoji + label for priority level."""
+        """Return emoji + label for priority level. FR-039: URGENT."""
         labels = {
+            PriorityLevel.URGENT: "🔥 Urgent",
             PriorityLevel.CRITICAL: "🔴 Critical",
             PriorityLevel.HIGH: "🟠 High",
             PriorityLevel.MEDIUM: "🟡 Medium",

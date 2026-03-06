@@ -135,6 +135,8 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
                 "• `/flashcard` — Start session (up to 10 cards)\n"
                 "• `/flashcard N` — Session with up to N cards\n"
                 "• `/flashcard from <title>` — Extract cards from a note\n"
+                "• `/flashcard tag <tag>` — Practice only cards from notes with that tag\n"
+                "• `/flashcard folder <path>` — Practice only cards from notes in that folder\n"
                 "• `/flashcard stats` — Due count, total cards\n"
                 "• `/flashcard help` — This message\n"
                 "• `/flashcard_done` — End session early\n\n"
@@ -143,6 +145,40 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
             )
             return
 
+        # Resolve note_ids for tag or folder filter
+        note_ids: list[str] | None = None
+        filter_hint: str | None = None  # for empty-result messages
+        if args and args[0].lower() == "tag" and len(args) >= 2:
+            tag_name = " ".join(args[1:]).strip()
+            tag_id = await orch.joplin_client.get_tag_id_by_name(tag_name)
+            if not tag_id:
+                await msg.reply_text(
+                    format_error_message(f"Tag '{tag_name}' not found.")
+                )
+                return
+            notes = await orch.joplin_client.get_notes_with_tag(tag_id)
+            note_ids = [n["id"] for n in notes if n.get("id")]
+            filter_hint = f"tag '{tag_name}'"
+            args = []  # consumed
+        elif args and args[0].lower() == "folder" and len(args) >= 2:
+            path_str = " ".join(args[1:]).strip()
+            path_parts = [p.strip() for p in path_str.split("/") if p.strip()]
+            if not path_parts:
+                await msg.reply_text(
+                    format_error_message("Folder path cannot be empty.")
+                )
+                return
+            folder_id = await orch.joplin_client.get_folder_id_by_path(path_parts)
+            if not folder_id:
+                await msg.reply_text(
+                    format_error_message(f"Folder '{path_str}' not found.")
+                )
+                return
+            notes = await orch.joplin_client.get_notes_in_folder(folder_id)
+            note_ids = [n["id"] for n in notes if n.get("id")]
+            filter_hint = f"folder '{path_str}'"
+            args = []  # consumed
+
         # Start session
         state = orch.state_manager.get_state(user.id)
         if state and state.get("active_persona") == FLASHCARD_PERSONA:
@@ -150,7 +186,8 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
             return
 
         try:
-            note_ids = await _get_flashcard_note_ids(orch)
+            if note_ids is None:
+                note_ids = await _get_flashcard_note_ids(orch)
             cards = get_due_cards(user.id, note_ids=note_ids if note_ids else None, limit=limit)
         except Exception as exc:
             logger.exception("get_due_cards failed: %s", exc)
@@ -159,7 +196,12 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
 
         if not cards:
             stats = get_stats(user.id)
-            if stats["total"] == 0:
+            if filter_hint and (not note_ids or len(note_ids) == 0):
+                await msg.reply_text(
+                    f"No notes found with {filter_hint}. "
+                    "Add notes with that tag/folder and extract cards with /flashcard from <note>."
+                )
+            elif stats["total"] == 0:
                 await msg.reply_text(
                     "🧠 No flashcards yet. Tag notes with #flashcard or #practice, "
                     "or use /flashcard from <note title> to extract cards."

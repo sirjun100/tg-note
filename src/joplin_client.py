@@ -220,6 +220,25 @@ class JoplinClient:
             raise JoplinError(f"Failed to create folder '{title}'")
         return result
 
+    async def get_folder_id_by_path(self, path_parts: list[str]) -> str | None:
+        """Return folder id if path exists; else None. Does not create."""
+        current_parent = ""
+        for part in path_parts:
+            folders = await self.get_folders()
+            want_parent = current_parent or ""
+            found = next(
+                (
+                    f
+                    for f in folders
+                    if f.get("title") == part and (f.get("parent_id") or "") == want_parent
+                ),
+                None,
+            )
+            if not found:
+                return None
+            current_parent = found["id"]
+        return current_parent
+
     async def get_or_create_folder_by_path(self, path_parts: list[str]) -> str:
         current_parent = ""
         for part in path_parts:

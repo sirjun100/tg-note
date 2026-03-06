@@ -5,6 +5,7 @@ Includes comprehensive error handling, logging, and conflict detection.
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -103,6 +104,60 @@ class ReorgOrchestrator:
     def get_available_templates(self) -> list[str]:
         """Get list of available PARA templates"""
         return list(self.PARA_TEMPLATES.keys())
+
+    async def create_project(self, project_name: str) -> dict[str, Any]:
+        """
+        Create project under Projects/ with default subfolders and Overview note (FR-044).
+        Returns: {"project_folder_id": str, "overview_note_id": str, "subfolders": list[str]}
+        Raises: ReorgException if project already exists.
+        """
+        normalized = re.sub(r"[^a-zA-Z0-9\s-]", "", project_name).strip()
+        normalized = normalized.lower().replace(" ", "-").replace("--", "-").strip("-")
+        if not normalized:
+            raise ReorgException("Invalid project name")
+
+        folders = await self.joplin_client.get_folders()
+        projects_id = None
+        for f in folders:
+            if (f.get("title") or "").lower() == "projects" and (f.get("parent_id") or "") == "":
+                projects_id = f["id"]
+                break
+        if not projects_id:
+            projects_id = await self.joplin_client.get_or_create_folder_by_path(["Projects"])
+
+        for f in folders:
+            if f.get("parent_id") == projects_id and (f.get("title") or "").lower() == normalized:
+                raise ReorgException(f"Project '{project_name}' already exists")
+
+        project_folder_id = await self.joplin_client.get_or_create_folder_by_path(["Projects", normalized])
+        overview_id = await self.joplin_client.get_or_create_folder_by_path(["Projects", normalized, "Overview"])
+
+        for sub in self.PROJECT_SUBFOLDERS:
+            if sub != "Overview":
+                await self.joplin_client.get_or_create_folder_by_path(["Projects", normalized, sub])
+
+        now = datetime.now().strftime("%Y-%m-%d")
+        body = f"""# {project_name}
+
+**Created**: {now}
+**Status**: Planning
+
+## Goals
+-
+
+## Key Decisions
+-
+
+## Next Steps
+-
+"""
+        note_id = await self.joplin_client.create_note(overview_id, f"{project_name} - Overview", body)
+
+        return {
+            "project_folder_id": project_folder_id,
+            "overview_note_id": note_id,
+            "subfolders": list(self.PROJECT_SUBFOLDERS),
+        }
 
     async def initialize_structure(self, template_name: str) -> bool:
         """Create the top-level folder structure based on template"""
