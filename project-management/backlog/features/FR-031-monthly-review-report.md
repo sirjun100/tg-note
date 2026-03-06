@@ -272,7 +272,7 @@ async def schedule_monthly_report(user_id: int, day_of_month: int = 1):
 | File | Purpose |
 |------|---------|
 | `src/monthly_report_generator.py` | Report generation logic |
-| `src/handlers/monthly_report.py` | Command handlers |
+| `src/handlers/reports.py` | Command handlers (includes `_monthly_report`) |
 | `tests/test_monthly_report.py` | Unit tests |
 
 ### Key Files to Modify

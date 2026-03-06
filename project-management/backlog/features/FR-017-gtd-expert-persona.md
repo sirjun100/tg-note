@@ -69,8 +69,8 @@ The session must follow these logic phases (internal state):
 ## Technical References
 
 - Class: `ConversationState` (for tracking session state)
-- File: `src/bot/handlers/brain_dump_handler.py` (proposed)
-- LLM Prompt: `prompts/gtd_expert_persona.txt` (proposed)
+- File: `src/handlers/braindump.py` (brain dump handlers)
+- LLM Prompt: `src/prompts/gtd_expert.txt`
 
 ## Dependencies
 

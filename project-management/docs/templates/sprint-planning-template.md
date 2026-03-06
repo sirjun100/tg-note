@@ -174,10 +174,10 @@ Each task should reference:
 - **Section**: Specific section in document
 
 **Format examples**:
-- Class: `UserService`
-- Method: `UserService.validateEmail()`
-- File: `src/services/user_service.py`
-- API Endpoint: `POST /api/v1/users`
+- Class: `FlashcardService` (or domain-specific class)
+- Method: `get_due_cards()` (or domain-specific method)
+- File: `src/flashcard_service.py` (or `src/handlers/flashcard.py`)
+- API Endpoint: `POST /api/v1/users` (if applicable)
 - Database: `users` table
 
 ---

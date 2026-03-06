@@ -127,8 +127,8 @@ Examples:
 [Analysis of the root cause. May be filled in after investigation.]
 
 Example:
-- Missing null check in `UserService.validateEmail()` method
-- Email regex pattern doesn't include '+' character: `/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i`
+- Missing null check in validation logic
+- Regex pattern doesn't include expected character class
 
 ## Solution
 
@@ -154,11 +154,11 @@ Examples:
 [Links to specific code locations, classes, or files. Adapt format to your tech stack.]
 
 **Format examples**:
-- Class: `UserService`
-- Method: `UserService.validateEmail()`
-- File: `src/services/user_service.py`
+- Class: `SecurityUtils` (or domain-specific class)
+- Method: `format_error_message()` (or domain-specific method)
+- File: `src/security_utils.py` (or `src/handlers/core.py`)
 - Line: Line 42-45
-- Test: `tests/services/test_user_service.py`
+- Test: `tests/test_greeting_bf010.py` (or domain-specific test)
 
 ## Testing
 

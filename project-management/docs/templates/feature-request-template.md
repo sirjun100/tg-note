@@ -100,11 +100,11 @@ Examples:
 [Links to specific code locations, classes, or technical specifications. Adapt format to your tech stack.]
 
 **Format examples**:
-- Class: `FeatureService`
-- Method: `FeatureService.processRequest()`
-- File: `src/features/feature_service.py`
-- API Endpoint: `POST /api/v1/feature`
-- Database Table: `feature_table`
+- Class: `HabitService` (or domain-specific class)
+- Method: `add_habit()` (or domain-specific method)
+- File: `src/habit_service.py` (or `src/handlers/habits.py`)
+- API Endpoint: `POST /api/v1/feature` (if applicable)
+- Database Table: `habits` (or domain-specific table)
 
 ## Dependencies
 
