@@ -6,6 +6,7 @@ from src.handlers.ask import register_ask_handlers
 from src.handlers.braindump import register_braindump_handlers
 from src.handlers.core import register_core_handlers
 from src.handlers.dream import register_dream_handlers
+from src.handlers.flashcard import register_flashcard_handlers
 from src.handlers.google_tasks import register_google_tasks_handlers
 from src.handlers.habits import register_habit_handlers
 from src.handlers.photo import register_photo_handlers
@@ -20,6 +21,7 @@ __all__ = [
     "register_ask_handlers",
     "register_core_handlers",
     "register_dream_handlers",
+    "register_flashcard_handlers",
     "register_google_tasks_handlers",
     "register_habit_handlers",
     "register_planning_handlers",

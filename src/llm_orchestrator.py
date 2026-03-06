@@ -532,6 +532,46 @@ class LLMOrchestrator:
         logger.warning(f"No augmented content generated for '{note_title}'")
         return ""
 
+    async def extract_flashcards_from_note(
+        self, note_title: str, note_content: str
+    ) -> list[dict[str, str]]:
+        """
+        Extract flashcard Q&A pairs from a note using LLM.
+        Returns list of {"question": str, "answer": str}.
+        """
+        system_prompt = self._get_persona_prompt("flashcard_extractor")
+        user_message = f"Note Title: {note_title}\n\nNote Content:\n{note_content[:3000]}"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+
+        logger.info("🧠 Extracting flashcards from note: %s", note_title)
+
+        response = await self.provider.generate_response(
+            messages=messages,
+            temperature=0.2,
+            max_tokens=800,
+        )
+
+        content = response.get("content", "").strip()
+        try:
+            json_start = content.find("[")
+            json_end = content.rfind("]") + 1
+            if json_start != -1 and json_end > json_start:
+                pairs = json.loads(content[json_start:json_end])
+                if isinstance(pairs, list):
+                    return [
+                        {"question": str(p.get("question", "")), "answer": str(p.get("answer", ""))}
+                        for p in pairs
+                        if p.get("question") and p.get("answer")
+                    ]
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.warning("Failed to parse flashcard extraction: %s", e)
+
+        return []
+
     async def format_stoic_reflection(
         self, mode: str, qa_pairs: list[dict[str, str]]
     ) -> str | None:

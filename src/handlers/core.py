@@ -110,6 +110,7 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /stoic → Guided morning/evening reflection\n"
         "• /dream → Jungian dream analysis\n"
         "• /habits → Daily habit check-in\n"
+        "• /flashcard → Spaced repetition practice from notes\n"
         "• /plan → Weekly planning session\n"
         "• /recipe → Save and organize recipes\n\n"
         "<b>📊 Review</b>\n"
@@ -404,6 +405,7 @@ def _helpme(orch: TelegramOrchestrator):
             "/stoic [morning|evening] - Guided reflection; /stoic_done to save\n"
             "/dream - Jungian dream analysis; /dream_done, /dream_cancel\n"
             "/habits - Daily habit check-in; /habits add|remove|list|stats\n"
+            "/flashcard - Spaced repetition; /flashcard from <note>; /flashcard_done\n"
             "/plan - Weekly planning session; /plan_done, /plan_cancel\n\n"
             "🏗️ **Joplin Database Organization**\n"
             "/reorg_status - Check notes, folders, and organization health\n"
@@ -559,6 +561,22 @@ def _message(orch: TelegramOrchestrator):
                 elif pending.get("active_persona") == "PLANNING_COACH":
                     from src.handlers.planning import handle_planning_message
                     await handle_planning_message(orch, user_id, validated, message)
+                elif pending.get("active_persona") == "FLASHCARD":
+                    if validated.strip().lower() in ("done", "stop"):
+                        from src.flashcard_service import update_session
+                        session_id = pending.get("session_id")
+                        if session_id:
+                            update_session(
+                                session_id,
+                                pending.get("cards_shown", 0),
+                                pending.get("cards_correct", 0),
+                            )
+                        orch.state_manager.clear_state(user_id)
+                        await message.reply_text("✅ Session ended. Use /flashcard to practice again!")
+                    else:
+                        await message.reply_text(
+                            "Use the buttons to rate the card, or /flashcard_done to end the session."
+                        )
                 elif pending.get("active_persona") == "SEARCH":
                     await _handle_search_message(orch, user_id, validated, message)
                 else:

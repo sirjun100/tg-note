@@ -168,6 +168,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
         register_braindump_handlers,
         register_core_handlers,
         register_dream_handlers,
+        register_flashcard_handlers,
         register_google_tasks_handlers,
         register_habit_handlers,
         register_photo_handlers,
@@ -190,6 +191,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
     register_photo_handlers(application, orchestrator)
     register_reading_handlers(application, orchestrator)
     register_habit_handlers(application, orchestrator)
+    register_flashcard_handlers(application, orchestrator)
     register_planning_handlers(application, orchestrator)
     register_core_handlers(application, orchestrator)
 
