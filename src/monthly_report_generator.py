@@ -211,7 +211,8 @@ class MonthlyReportGenerator:
                 tasks = self.task_service.get_user_tasks(
                     str(user_id), tl.get("id"), show_completed=False
                 ) or []
-                total += len(tasks)
+                # Only count incomplete tasks (never include completed as unprocessed)
+                total += sum(1 for t in tasks if t.get("status") != "completed")
             return total
         except Exception as exc:
             logger.error("Failed to get pending tasks count: %s", exc)

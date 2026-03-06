@@ -699,12 +699,11 @@ Response:"""
                 try:
                     # get_user_tasks is synchronous
                     tasks = self.task_service.get_user_tasks(
-                        str(user_id), task_list.get("id")
+                        str(user_id), task_list.get("id"), show_completed=False
                     )
                     if tasks:
-                        # Add task list ID for reference and filter for incomplete tasks
+                        # Only include incomplete tasks (never count completed as pending/unprocessed)
                         for task in tasks:
-                            # Only include incomplete tasks (status != 'completed')
                             if task.get("status") != "completed":
                                 task["tasklist_id"] = task_list.get("id")
                                 all_tasks.append(task)

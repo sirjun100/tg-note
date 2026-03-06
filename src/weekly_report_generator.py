@@ -188,6 +188,7 @@ class WeeklyReportGenerator:
                         else:
                             completed.append(task)  # No date, include anyway
                     else:
+                        # Only incomplete tasks go to pending/overdue (never count completed)
                         due_str = task.get("due")
                         if due_str:
                             try:
