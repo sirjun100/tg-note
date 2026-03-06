@@ -159,7 +159,7 @@ class NoteIndex:
                 )
             )
         scored.sort(key=lambda x: x[1], reverse=True)
-        results = []
+        results: list[dict[str, Any]] = []
         seen_notes: set[str] = set()
         for item, score in scored[: top_k * 2]:  # Allow more chunks, dedupe by note
             if item["note_id"] in seen_notes and len(results) >= top_k:
