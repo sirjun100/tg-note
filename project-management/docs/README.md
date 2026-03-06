@@ -27,7 +27,7 @@ Quality gate for completed work. Includes Documentation-Code Consistency Review 
 
 Process documentation explaining workflows:
 
-- **pre-commit-checklist.md** - **Run lint and tests before every commit**
+- **pre-commit-checklist.md** - **Run lint, mypy, and tests before every commit**
 - **release-notes-process.md** - How to create and update RELEASE_NOTES.md
 - **backlog-management-process.md** - How to manage the backlog
 - **product-backlog-structure.md** - Backlog structure and conventions
@@ -42,7 +42,7 @@ Process documentation explaining workflows:
 ## Quick Reference
 
 ### Before Every Commit
-Run **lint and tests** before committing. See [Pre-Commit Checklist](processes/pre-commit-checklist.md).
+Run **lint, mypy, and tests** before committing. See [Pre-Commit Checklist](processes/pre-commit-checklist.md).
 
 ### Creating a Feature Request
 

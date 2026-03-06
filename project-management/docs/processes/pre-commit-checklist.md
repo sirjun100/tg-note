@@ -1,10 +1,10 @@
 # Pre-Commit Checklist
 
-**Purpose**: Ensure CI passes before pushing. The [GitHub Actions workflow](https://github.com/martinfou/telegram-joplin/actions) runs on every push to `main` and will fail if lint or tests fail.
+**Purpose**: Ensure CI passes before pushing. The [GitHub Actions workflow](https://github.com/martinfou/telegram-joplin/actions) runs on every push to `main` and will fail if lint, mypy, or tests fail.
 
 ## ⚠️ Run Before Every Commit
 
-> **Do not commit until lint and tests pass.** Run these checks *before* `git commit`, not after.
+> **Do not commit until lint, mypy, and tests pass.** Run these checks *before* `git commit`, not after.
 
 ### Step 1: Lint (run first)
 
@@ -14,16 +14,22 @@ ruff check src/ config.py main.py
 
 If using venv: `.venv/bin/ruff check src/ config.py main.py`
 
-### Step 2: Tests
+### Step 2: Type check (mypy)
+
+```bash
+mypy src/ --ignore-missing-imports --no-strict-optional --explicit-package-bases
+```
+
+### Step 3: Tests
 
 ```bash
 pytest tests/ -v --ignore=tests/e2e
 ```
 
-### One-liner (lint then tests)
+### One-liner (lint, mypy, then tests)
 
 ```bash
-ruff check src/ config.py main.py && pytest tests/ -v --ignore=tests/e2e
+ruff check src/ config.py main.py && mypy src/ --ignore-missing-imports --no-strict-optional --explicit-package-bases && pytest tests/ -v --ignore=tests/e2e
 ```
 
 ## Auto-Fix Lint Issues
@@ -45,9 +51,10 @@ Then re-run `ruff check` to confirm no remaining errors.
 ## Rule
 
 > **1. Run `ruff check` — fix any lint errors.**  
-> **2. Run `pytest` — fix any failing tests.**  
-> **3. Then commit.**  
-> Do not skip step 1 or 2.
+> **2. Run `mypy` — fix any type errors.**  
+> **3. Run `pytest` — fix any failing tests.**  
+> **4. Then commit.**  
+> Do not skip steps 1–3.
 
 ## Before Pushing to Main (optional)
 

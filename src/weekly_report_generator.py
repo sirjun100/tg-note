@@ -436,62 +436,83 @@ class WeeklyReportGenerator:
         lines.append(wrap_pre(metrics_table))
         lines.append("")
 
-        # Breakdown by folder
+        # Breakdown by folder (table)
         if c.items_by_folder:
-            lines.append("📂 BY FOLDER")
-            for folder, count in sorted(
-                c.items_by_folder.items(), key=lambda x: x[1], reverse=True
-            ):
-                lines.append(f"  • {folder}: {count}")
+            folder_rows = [
+                (folder, str(count))
+                for folder, count in sorted(
+                    c.items_by_folder.items(), key=lambda x: x[1], reverse=True
+                )[:10]
+            ]
+            folder_table = build_table(["Folder", "Count"], folder_rows, col_widths=[24, 6])
+            lines.append("📂 By Folder")
+            lines.append(wrap_pre(folder_table))
             lines.append("")
 
-        # Breakdown by day
+        # Breakdown by day (table with bar)
         if c.items_by_day:
-            lines.append("📅 BY DAY")
             day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            day_rows = []
+            max_count = max(c.items_by_day.values()) if c.items_by_day else 1
             for day in day_order:
                 count = c.items_by_day.get(day, 0)
-                bar = "█" * count + "░" * max(0, 5 - count)
-                if count:
-                    lines.append(f"  {day[:3]}: {bar} {count}")
+                bar_len = min(5, max(1, int(5 * count / max_count)) if max_count else 0)
+                bar = "█" * bar_len + "░" * (5 - bar_len)
+                day_rows.append((day[:3], str(count), bar))
+            day_table = build_table(["Day", "Count", "Bar"], day_rows, col_widths=[4, 5, 5])
+            lines.append("📅 By Day")
+            lines.append(wrap_pre(day_table))
             if c.most_productive_day:
-                lines.append(f"  🔥 Most productive: {c.most_productive_day}")
+                lines.append(f"🔥 Most productive: {escape_for_html(c.most_productive_day)}")
             lines.append("")
 
-        # Completed notes
+        # Completed notes (table)
         if report.completed_note_titles:
-            lines.append(f"✨ NOTES CREATED ({c.notes_created})")
-            for title in report.completed_note_titles[:8]:
-                lines.append(f"  • {escape_for_html(title)}")
+            note_rows = [
+                (str(i), title)
+                for i, title in enumerate(report.completed_note_titles[:8], 1)
+            ]
             if c.notes_created > 8:
-                lines.append(f"  ... and {c.notes_created - 8} more")
+                note_rows.append(("...", f"+{c.notes_created - 8} more"))
+            notes_table = build_table(["#", "Title"], note_rows, col_widths=[4, 40])
+            lines.append(f"✨ Notes Created ({c.notes_created})")
+            lines.append(wrap_pre(notes_table))
             lines.append("")
 
-        # Overdue tasks
+        # Overdue tasks (table)
         if report.overdue_task_titles:
-            lines.append(f"🔴 OVERDUE TASKS ({c.tasks_overdue})")
-            for title in report.overdue_task_titles[:5]:
-                lines.append(f"  • {escape_for_html(title)}")
+            overdue_rows = [
+                (str(i), title)
+                for i, title in enumerate(report.overdue_task_titles[:5], 1)
+            ]
+            overdue_table = build_table(["#", "Task"], overdue_rows, col_widths=[4, 40])
+            lines.append(f"🔴 Overdue Tasks ({c.tasks_overdue})")
+            lines.append(wrap_pre(overdue_table))
             lines.append("")
 
-        # Pending tasks
+        # Pending tasks (table)
         if report.pending_task_titles:
-            lines.append(f"⏳ PENDING TASKS ({c.tasks_pending})")
-            for title in report.pending_task_titles[:5]:
-                lines.append(f"  • {escape_for_html(title)}")
+            pending_rows = [
+                (str(i), title)
+                for i, title in enumerate(report.pending_task_titles[:5], 1)
+            ]
             if c.tasks_pending > 5:
-                lines.append(f"  ... and {c.tasks_pending - 5} more")
+                pending_rows.append(("...", f"+{c.tasks_pending - 5} more"))
+            pending_table = build_table(["#", "Task"], pending_rows, col_widths=[4, 40])
+            lines.append(f"⏳ Pending Tasks ({c.tasks_pending})")
+            lines.append(wrap_pre(pending_table))
             lines.append("")
 
-        # Recommendations
+        # Recommendations (table)
         if report.recommendations:
-            lines.append("🎯 RECOMMENDATIONS")
-            for i, rec in enumerate(report.recommendations, 1):
-                lines.append(f"  {i}. {rec}")
+            rec_rows = [(str(i), rec) for i, rec in enumerate(report.recommendations, 1)]
+            rec_table = build_table(["#", "Recommendation"], rec_rows, col_widths=[4, 42])
+            lines.append("🎯 Recommendations")
+            lines.append(wrap_pre(rec_table))
             lines.append("")
 
         # Footer
-        lines.append("—" * 40)
+        lines.append("—" * 25)
         lines.append("🔗 /weekly_report — regenerate")
         lines.append("⚙️ /show_report_config — settings")
 

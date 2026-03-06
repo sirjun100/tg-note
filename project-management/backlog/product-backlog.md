@@ -105,6 +105,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-017](bugs/BF-017-dream-command-crash.md) | /dream Command Crashes Agent on Invocation | 🟠 High | 1 | ⏳ | Backlog | 2026-03-05 | 2026-03-05 |
 | [BF-018](bugs/BF-018-weekly-report-incorrect-numbers.md) | Weekly Report Shows Incorrect Numbers (0 Notes/Tasks) | 🟠 High | 3 | ✅ | Backlog | 2026-03-05 | 2026-03-06 |
 | [BF-019](bugs/BF-019-dream-message-too-long.md) | Dream Analysis: "Message is too long" Error | 🟠 High | 2 | ✅ | Backlog | 2026-03-06 | 2026-03-06 |
+| [BF-020](bugs/BF-020-daily-report-column-overlap.md) | Daily Report: Column Overlap, SOURCE Column Not Required | 🟡 Medium | 1 | ✅ | Backlog | 2026-03-06 | 2026-03-06 |
+| [BF-021](bugs/BF-021-weekly-report-ugly-formatting.md) | Weekly Report: Ugly Formatting, Needs Pretty Tables | 🟡 Medium | 2 | ✅ | Backlog | 2026-03-06 | 2026-03-06 |
 
 ---
 

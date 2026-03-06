@@ -901,14 +901,13 @@ Response:"""
             table_rows = []
             for item in priority_items[:15]:  # Limit rows
                 priority_label = self._priority_label(item.priority_level)
-                source_label = self._source_label(item)
-                table_rows.append((priority_label, item.title, source_label))
+                table_rows.append((priority_label, item.title))
             if len(priority_items) > 15:
-                table_rows.append(("...", f"+{len(priority_items) - 15} more", ""))
+                table_rows.append(("...", f"+{len(priority_items) - 15} more"))
             table_str = build_table(
-                ["PRIORITY", "ITEM", "SOURCE"],
+                ["PRIORITY", "ITEM"],
                 table_rows,
-                col_widths=[14, 32, 10],
+                col_widths=[12, 42],
             )
             lines.append(wrap_pre(table_str))
             lines.append("")

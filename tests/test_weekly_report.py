@@ -123,12 +123,12 @@ class TestFormatWeeklyReport:
         assert "WEEKLY REVIEW" in msg
         assert "PRODUCTIVITY SCORE" in msg
         assert "By the Numbers" in msg or "BY THE NUMBERS" in msg
-        assert "BY FOLDER" in msg
-        assert "BY DAY" in msg
-        assert "NOTES CREATED" in msg
-        assert "OVERDUE TASKS" in msg
-        assert "PENDING TASKS" in msg
-        assert "RECOMMENDATIONS" in msg
+        assert "By Folder" in msg or "BY FOLDER" in msg
+        assert "By Day" in msg or "BY DAY" in msg
+        assert "Notes Created" in msg or "NOTES CREATED" in msg
+        assert "Overdue Tasks" in msg or "OVERDUE TASKS" in msg
+        assert "Pending Tasks" in msg or "PENDING TASKS" in msg
+        assert "Recommendations" in msg or "RECOMMENDATIONS" in msg
         assert "Wednesday" in msg
 
     def test_format_with_previous_week_shows_trend(self):
@@ -325,9 +325,9 @@ class TestGenerateWeeklyReport:
         assert "By the Numbers" in msg or "BY THE NUMBERS" in msg
         assert "Notes created" in msg and "2" in msg
         assert "Tasks completed" in msg and "1" in msg
-        assert "OVERDUE TASKS" in msg or "Overdue" in msg
+        assert "Overdue Tasks" in msg or "OVERDUE TASKS" in msg or "Overdue" in msg
         assert "Project Plan" in msg or "Meeting Notes" in msg
-        assert "RECOMMENDATIONS" in msg
+        assert "Recommendations" in msg or "RECOMMENDATIONS" in msg
         assert report.current.velocity == 3  # 2 notes + 1 completed task
         assert report.current.completion_rate > 0
 
