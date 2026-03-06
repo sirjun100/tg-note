@@ -6,6 +6,7 @@ Guided reflection with questions from template; create or append to today's note
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -157,9 +158,72 @@ def _format_section(mode: str, answers: list[dict[str, str]], user_id: int, orch
     return _format_evening_content(answers, user_id, orch)
 
 
+def _extract_morning_priorities(note_body: str) -> list[str]:
+    """Extract the 3 morning priorities from a note body. Returns [p1, p2, p3] or [] if not found."""
+    import re
+
+    # Find the morning section (until evening or end)
+    match = re.search(r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)", note_body, re.DOTALL)
+    if not match:
+        return []
+
+    section = match.group(0)
+    priorities: list[str | None] = [None, None, None]
+
+    # Look for lines like "  1. X" or "1. X" (with optional leading whitespace)
+    for m in re.finditer(r"^\s*([123])\.\s+(.+)$", section, re.MULTILINE):
+        num = int(m.group(1))
+        text = (m.group(2) or "").strip()
+        # Skip placeholder "-" or empty
+        if text and text != "-":
+            priorities[num - 1] = text
+
+    return [p for p in priorities if p is not None]
+
+
 def _empty_morning_placeholder() -> str:
     """Placeholder when no morning content yet."""
     return "### 🌞 Morning\n\n- **Professional Objective:**\n  -\n\n- **Personal Objective:**\n  -\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -\n\n- **Top 3 Priorities:**\n  1. -\n  2. -\n  3. -"
+
+
+def _get_tomorrow_rfc3339(user_id: int, orch: TelegramOrchestrator) -> str:
+    """Get tomorrow's date at midnight in user's timezone as RFC3339 for Google Tasks."""
+    now = get_user_timezone_aware_now(user_id, orch.logging_service)
+    tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return tomorrow.isoformat()
+
+
+def _get_tomorrow_answer(answers: list[dict[str, str]]) -> str | None:
+    """Extract the 'one thing tomorrow' answer from evening answers (index 7). Returns None if empty."""
+    if len(answers) < 8:
+        return None
+    text = (answers[7].get("a") or "").strip()
+    return text if text and text != "-" else None
+
+
+async def _create_tomorrow_task_from_stoic(
+    orch: TelegramOrchestrator, user_id: int, mode: str, answers: list[dict[str, str]], message: Message
+) -> bool:
+    """If evening mode and user answered the 'tomorrow' question, create a Google Task for tomorrow."""
+    if mode != "evening":
+        return False
+    tomorrow_text = _get_tomorrow_answer(answers)
+    if not tomorrow_text or not orch.task_service:
+        return False
+    try:
+        due = _get_tomorrow_rfc3339(user_id, orch)
+        created = orch.task_service.create_task_with_metadata(
+            title=tomorrow_text,
+            user_id=str(user_id),
+            notes="From Stoic Journal evening reflection",
+            due_date=due,
+        )
+        if created:
+            await message.reply_text("📋 Task created for tomorrow in Google Tasks.")
+            return True
+    except Exception as exc:
+        logger.debug("Could not create Stoic tomorrow task: %s", exc)
+    return False
 
 
 def _empty_evening_placeholder() -> str:
@@ -408,6 +472,28 @@ def _stoic(orch: TelegramOrchestrator):
             await update.message.reply_text("No questions configured for this mode.")
             return
 
+        first_question = questions[0]
+        if mode == "evening":
+            # Include the 3 morning priorities in the first question so the user can reflect on them
+            try:
+                date_str = get_current_date_str(user_id, orch.logging_service)
+                title = f"{date_str} - Daily Stoic Reflection"
+                folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
+                notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
+                existing = next((n for n in notes_in_folder if n.get("title") == title), None)
+                if existing:
+                    full_note = await orch.joplin_client.get_note(existing["id"])
+                    body = full_note.get("body") or ""
+                    priorities = _extract_morning_priorities(body)
+                    if priorities:
+                        priorities_text = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(priorities))
+                        first_question = (
+                            f"Your 3 morning priorities today were:\n{priorities_text}\n\n"
+                            f"{first_question}"
+                        )
+            except Exception as exc:
+                logger.debug("Could not fetch morning priorities for evening: %s", exc)
+
         session_start = get_user_timezone_aware_now(user_id, orch.logging_service)
         new_state: dict[str, Any] = {
             "active_persona": "STOIC_JOURNAL",
@@ -422,7 +508,7 @@ def _stoic(orch: TelegramOrchestrator):
         orch.state_manager.update_state(user_id, new_state)
         logger.info("User %s started Stoic journal (%s), %d questions", user_id, mode, len(questions))
         await update.message.reply_text(
-            f"📓 *Stoic Journal — {mode.capitalize()}*\n\n{questions[0]}",
+            f"📓 *Stoic Journal — {mode.capitalize()}*\n\n{first_question}",
             parse_mode="Markdown",
         )
 
@@ -616,6 +702,7 @@ async def _finish_stoic_session(
             await message.reply_text("🔄 Syncing so it appears on your devices...")
         except Exception as exc:
             logger.debug("Could not schedule Joplin sync after Stoic save: %s", exc)
+        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
     else:
         await message.reply_text("📄 Creating new note...")
@@ -640,6 +727,7 @@ async def _finish_stoic_session(
             await message.reply_text("🔄 Syncing so it appears on your devices...")
         except Exception as exc:
             logger.debug("Could not schedule Joplin sync after Stoic save: %s", exc)
+        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
 
 

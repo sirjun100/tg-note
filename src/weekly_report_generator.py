@@ -377,15 +377,15 @@ class WeeklyReportGenerator:
     # ------------------------------------------------------------------
 
     def format_weekly_report(self, report: WeeklyReportData) -> str:
-        """Format the weekly report as a Telegram message (FR-037: monospace tables)."""
-        from src.report_formatter import build_table, escape_for_html, wrap_pre
+        """Format the weekly report as plain text (Design A). Explicit Task vs Note labels."""
+        from src.report_formatter import escape_for_html
 
         c = report.current
         p = report.previous
         lines: list[str] = []
 
         date_range = f"{c.week_start.strftime('%b %d')} – {c.week_end.strftime('%b %d, %Y')}"
-        lines.append(f"📊 WEEKLY REVIEW — {date_range}")
+        lines.append(f"📊 Weekly Review — {date_range}")
         lines.append("")
 
         # Productivity score
@@ -407,108 +407,80 @@ class WeeklyReportGenerator:
                 trend = f" (⬇️ {delta}% vs last week)"
             else:
                 trend = " (➡️ same as last week)"
-        lines.append(f"✅ PRODUCTIVITY SCORE: {score}% [{grade}]{trend}")
+        lines.append(f"✅ Score: {score}% [{grade}]{trend}")
         lines.append("")
 
-        # Key numbers table (FR-037)
+        # Metrics — explicit Notes vs Tasks
         def _delta(cur: int, prev_val: int) -> str:
             if not p:
-                return "-"
+                return ""
             d = cur - prev_val
             if d > 0:
-                return f"+{d}"
+                return f" (+{d})"
             if d < 0:
-                return str(d)
-            return "➡️"
+                return f" ({d})"
+            return ""
 
-        metrics_rows = [
-            ("Notes created", str(c.notes_created), _delta(c.notes_created, p.notes_created) if p else "-"),
-            ("Notes modified", str(c.notes_modified), _delta(c.notes_modified, p.notes_modified) if p else "-"),
-            ("Tasks completed", str(c.tasks_completed), _delta(c.tasks_completed, p.tasks_completed) if p else "-"),
-            ("Tasks pending", str(c.tasks_pending), _delta(c.tasks_pending, p.tasks_pending) if p else "-"),
-            ("Velocity", f"{c.velocity} items", _delta(c.velocity, p.velocity) if p else "-"),
-            ("Messages sent", str(c.messages_sent), "-"),
-        ]
+        lines.append("📈 Metrics")
+        lines.append(f"  Notes created: {c.notes_created}{_delta(c.notes_created, p.notes_created) if p else ''}")
+        lines.append(f"  Notes modified: {c.notes_modified}{_delta(c.notes_modified, p.notes_modified) if p else ''}")
+        lines.append(f"  Tasks completed: {c.tasks_completed}{_delta(c.tasks_completed, p.tasks_completed) if p else ''}")
+        lines.append(f"  Tasks pending: {c.tasks_pending}{_delta(c.tasks_pending, p.tasks_pending) if p else ''}")
         if c.tasks_overdue:
-            metrics_rows.insert(4, ("⚠️ Overdue", str(c.tasks_overdue), "-"))
-        metrics_table = build_table(["Metric", "This", "vs Last"], metrics_rows, col_widths=[18, 12, 10])
-        lines.append("📈 By the Numbers")
-        lines.append(wrap_pre(metrics_table))
+            lines.append(f"  Tasks overdue: {c.tasks_overdue}")
+        lines.append(f"  Velocity: {c.velocity} items{_delta(c.velocity, p.velocity) if p else ''}")
         lines.append("")
 
-        # Breakdown by folder (table)
+        # Notes by folder (where)
         if c.items_by_folder:
-            folder_rows = [
-                (folder, str(count))
-                for folder, count in sorted(
-                    c.items_by_folder.items(), key=lambda x: x[1], reverse=True
-                )[:10]
-            ]
-            folder_table = build_table(["Folder", "Count"], folder_rows, col_widths=[24, 6])
-            lines.append("📂 By Folder")
-            lines.append(wrap_pre(folder_table))
+            lines.append("📂 Notes by folder")
+            for folder, count in sorted(
+                c.items_by_folder.items(), key=lambda x: x[1], reverse=True
+            )[:10]:
+                lines.append(f"  • {folder}: {count} notes")
             lines.append("")
 
-        # Breakdown by day (table with bar)
+        # By day
         if c.items_by_day:
+            lines.append("📅 By day")
             day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-            day_rows = []
-            max_count = max(c.items_by_day.values()) if c.items_by_day else 1
-            for day in day_order:
-                count = c.items_by_day.get(day, 0)
-                bar_len = min(5, max(1, int(5 * count / max_count)) if max_count else 0)
-                bar = "█" * bar_len + "░" * (5 - bar_len)
-                day_rows.append((day[:3], str(count), bar))
-            day_table = build_table(["Day", "Count", "Bar"], day_rows, col_widths=[4, 5, 5])
-            lines.append("📅 By Day")
-            lines.append(wrap_pre(day_table))
+            day_parts = [f"{d[:3]}: {c.items_by_day.get(d, 0)}" for d in day_order if c.items_by_day.get(d, 0)]
+            if day_parts:
+                lines.append(f"  {' | '.join(day_parts)}")
             if c.most_productive_day:
-                lines.append(f"🔥 Most productive: {escape_for_html(c.most_productive_day)}")
+                lines.append(f"  Best day: {escape_for_html(c.most_productive_day)}")
             lines.append("")
 
-        # Completed notes (table)
+        # Notes created (explicit)
         if report.completed_note_titles:
-            note_rows = [
-                (str(i), title)
-                for i, title in enumerate(report.completed_note_titles[:8], 1)
-            ]
+            lines.append(f"✨ Notes created ({c.notes_created})")
+            for title in report.completed_note_titles[:8]:
+                lines.append(f"  • {escape_for_html(title)}")
             if c.notes_created > 8:
-                note_rows.append(("...", f"+{c.notes_created - 8} more"))
-            notes_table = build_table(["#", "Title"], note_rows, col_widths=[4, 40])
-            lines.append(f"✨ Notes Created ({c.notes_created})")
-            lines.append(wrap_pre(notes_table))
+                lines.append(f"  ... +{c.notes_created - 8} more notes")
             lines.append("")
 
-        # Overdue tasks (table)
+        # Tasks overdue (explicit)
         if report.overdue_task_titles:
-            overdue_rows = [
-                (str(i), title)
-                for i, title in enumerate(report.overdue_task_titles[:5], 1)
-            ]
-            overdue_table = build_table(["#", "Task"], overdue_rows, col_widths=[4, 40])
-            lines.append(f"🔴 Overdue Tasks ({c.tasks_overdue})")
-            lines.append(wrap_pre(overdue_table))
+            lines.append(f"🔴 Tasks overdue ({c.tasks_overdue})")
+            for title in report.overdue_task_titles[:5]:
+                lines.append(f"  • {escape_for_html(title)}")
             lines.append("")
 
-        # Pending tasks (table)
+        # Tasks pending (explicit)
         if report.pending_task_titles:
-            pending_rows = [
-                (str(i), title)
-                for i, title in enumerate(report.pending_task_titles[:5], 1)
-            ]
+            lines.append(f"⏳ Tasks pending ({c.tasks_pending})")
+            for title in report.pending_task_titles[:5]:
+                lines.append(f"  • {escape_for_html(title)}")
             if c.tasks_pending > 5:
-                pending_rows.append(("...", f"+{c.tasks_pending - 5} more"))
-            pending_table = build_table(["#", "Task"], pending_rows, col_widths=[4, 40])
-            lines.append(f"⏳ Pending Tasks ({c.tasks_pending})")
-            lines.append(wrap_pre(pending_table))
+                lines.append(f"  ... +{c.tasks_pending - 5} more tasks")
             lines.append("")
 
-        # Recommendations (table)
+        # Recommendations
         if report.recommendations:
-            rec_rows = [(str(i), rec) for i, rec in enumerate(report.recommendations, 1)]
-            rec_table = build_table(["#", "Recommendation"], rec_rows, col_widths=[4, 42])
             lines.append("🎯 Recommendations")
-            lines.append(wrap_pre(rec_table))
+            for i, rec in enumerate(report.recommendations, 1):
+                lines.append(f"  {i}. {rec}")
             lines.append("")
 
         # Footer

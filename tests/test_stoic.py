@@ -44,6 +44,75 @@ class TestLoadStoicTemplate(unittest.TestCase):
         self.assertIn("{{DATE}}", body_tpl)
 
 
+class TestExtractMorningPriorities(unittest.TestCase):
+    """Test _extract_morning_priorities parses morning section correctly."""
+
+    def test_extracts_three_priorities(self):
+        """Extracts 1, 2, 3 from morning section."""
+        body = """### 🌞 Morning (08:00)
+
+- **Professional Objective:**
+  Finish report
+
+- **Top 3 Priorities:**
+  1. Complete quarterly review
+  2. Block time for deep work
+  3. One difficult conversation
+
+### 🌙 Evening"""
+        got = stoic_module._extract_morning_priorities(body)
+        self.assertEqual(got, ["Complete quarterly review", "Block time for deep work", "One difficult conversation"])
+
+    def test_returns_empty_when_no_morning(self):
+        """Returns [] when no morning section."""
+        body = "### 🌙 Evening\n\nSome content"
+        got = stoic_module._extract_morning_priorities(body)
+        self.assertEqual(got, [])
+
+    def test_skips_placeholder_dash(self):
+        """Skips priorities that are just '-' placeholder."""
+        body = """### 🌞 Morning (08:00)
+
+- **Top 3 Priorities:**
+  1. Real priority
+  2. -
+  3. Another real one
+
+### 🌙 Evening"""
+        got = stoic_module._extract_morning_priorities(body)
+        self.assertEqual(got, ["Real priority", "Another real one"])
+
+
+class TestGetTomorrowAnswer(unittest.TestCase):
+    """Test _get_tomorrow_answer extracts the 8th evening answer."""
+
+    def test_returns_tomorrow_answer_when_present(self):
+        """Returns the 8th answer when it has content."""
+        answers = [
+            {"q": "q0", "a": "a0"},
+            {"q": "q1", "a": "a1"},
+            {"q": "q2", "a": "a2"},
+            {"q": "q3", "a": "a3"},
+            {"q": "q4", "a": "a4"},
+            {"q": "q5", "a": "a5"},
+            {"q": "q6", "a": "a6"},
+            {"q": "tomorrow?", "a": "Begin the proposal draft"},
+        ]
+        self.assertEqual(stoic_module._get_tomorrow_answer(answers), "Begin the proposal draft")
+
+    def test_returns_none_when_fewer_than_8_answers(self):
+        """Returns None when fewer than 8 answers."""
+        answers = [{"q": "q", "a": "a"}] * 7
+        self.assertIsNone(stoic_module._get_tomorrow_answer(answers))
+
+    def test_returns_none_when_empty_or_placeholder(self):
+        """Returns None when answer is empty or '-'."""
+        answers = [{"q": "q", "a": "a"}] * 7 + [{"q": "tomorrow?", "a": ""}]
+        self.assertIsNone(stoic_module._get_tomorrow_answer(answers))
+        answers[-1]["a"] = "-"
+        self.assertIsNone(stoic_module._get_tomorrow_answer(answers))
+
+
 class TestFormatSection(unittest.TestCase):
     """Test _format_section and _format_morning_content / _format_evening_content."""
 
