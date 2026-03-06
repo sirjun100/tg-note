@@ -76,6 +76,8 @@ class MonthlyReportData:
     least_productive_day: str
     peak_hours: list[int]
     insights: list[str]
+    in_tasks_pending: int = 0  # Unprocessed tasks ("in")
+    in_notes_count: int = 0  # Unprocessed notes in Inbox ("in")
 
 
 def _month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
@@ -172,6 +174,48 @@ class MonthlyReportGenerator:
         except Exception as exc:
             logger.error("Failed to get tasks for monthly report: %s", exc)
             return []
+
+    async def _get_inbox_notes_count(self) -> int:
+        """Count notes in Inbox folder(s) — unprocessed items (\"in\")."""
+        if not self.joplin_client:
+            return 0
+        try:
+            folders = await self.joplin_client.get_folders()
+            inbox_ids: set[str] = set()
+            for f in folders:
+                title = (f.get("title") or "").strip().lower()
+                if (
+                    title in ("inbox", "brain dump", "capture", "00-inbox", "00 inbox")
+                    or "inbox" in title
+                    or ("brain" in title and "dump" in title)
+                ):
+                    inbox_ids.add(f.get("id", ""))
+            if not inbox_ids:
+                return 0
+            notes = await self.joplin_client.get_all_notes(fields="id,parent_id")
+            return sum(1 for n in notes if n.get("parent_id") in inbox_ids)
+        except Exception as exc:
+            logger.error("Failed to get inbox notes count: %s", exc)
+            return 0
+
+    async def _get_pending_tasks_count(self, user_id: int) -> int:
+        """Count pending (unprocessed) Google Tasks."""
+        if not self.task_service:
+            return 0
+        try:
+            task_lists = self.task_service.get_available_task_lists(str(user_id))
+            if not task_lists:
+                return 0
+            total = 0
+            for tl in task_lists:
+                tasks = self.task_service.get_user_tasks(
+                    str(user_id), tl.get("id"), show_completed=False
+                ) or []
+                total += len(tasks)
+            return total
+        except Exception as exc:
+            logger.error("Failed to get pending tasks count: %s", exc)
+            return 0
 
     def _get_decisions_in_range(
         self, user_id: int, start: datetime, end: datetime
@@ -465,6 +509,8 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
         top_tags = self._analyze_tags(created, user_id, start, end)
         most_day, least_day, peak_hours = self._analyze_patterns(created, completed)
         insights = await self._generate_insights(metrics, weekly_data, projects)
+        in_tasks_pending = await self._get_pending_tasks_count(user_id)
+        in_notes_count = await self._get_inbox_notes_count()
 
         return MonthlyReportData(
             year=year,
@@ -477,6 +523,8 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
             least_productive_day=least_day,
             peak_hours=peak_hours,
             insights=insights,
+            in_tasks_pending=in_tasks_pending,
+            in_notes_count=in_notes_count,
         )
 
     def format_report(self, report: MonthlyReportData) -> str:
@@ -496,6 +544,16 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
         lines.append(f"  Tasks completed: {m.tasks_completed} ({m.tasks_change_pct:+.0f}% vs last month)")
         lines.append(f"  Completion rate: {m.completion_rate:.0f}% ({m.completion_change_pct:+.0f}%)")
         lines.append("")
+
+        # In (unprocessed): pending tasks + inbox notes
+        in_parts = []
+        if report.in_tasks_pending > 0:
+            in_parts.append(f"{report.in_tasks_pending} tasks")
+        if report.in_notes_count > 0:
+            in_parts.append(f"{report.in_notes_count} notes")
+        if in_parts:
+            lines.append(f"📥 In (unprocessed): {' • '.join(in_parts)}")
+            lines.append("")
 
         # Weekly trend — Notes + Tasks per week
         if report.weekly_data:

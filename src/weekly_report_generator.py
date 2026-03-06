@@ -40,6 +40,7 @@ class WeeklyMetrics:
     tasks_completed: int = 0
     tasks_pending: int = 0
     tasks_overdue: int = 0
+    inbox_notes_count: int = 0  # Unprocessed notes in Inbox ("in")
 
     messages_sent: int = 0
     decisions_made: int = 0
@@ -203,6 +204,29 @@ class WeeklyReportGenerator:
             logger.error("Failed to collect Google Tasks metrics: %s", exc)
             return [], [], []
 
+    async def _collect_inbox_notes_count(self) -> int:
+        """Count notes in Inbox folder(s) — unprocessed items (\"in\")."""
+        if not self.joplin_client:
+            return 0
+        try:
+            folders = await self.joplin_client.get_folders()
+            inbox_ids: set[str] = set()
+            for f in folders:
+                title = (f.get("title") or "").strip().lower()
+                if (
+                    title in ("inbox", "brain dump", "capture", "00-inbox", "00 inbox")
+                    or "inbox" in title
+                    or ("brain" in title and "dump" in title)
+                ):
+                    inbox_ids.add(f.get("id", ""))
+            if not inbox_ids:
+                return 0
+            notes = await self.joplin_client.get_all_notes(fields="id,parent_id")
+            return sum(1 for n in notes if n.get("parent_id") in inbox_ids)
+        except Exception as exc:
+            logger.error("Failed to collect inbox notes count: %s", exc)
+            return 0
+
     def _collect_db_metrics(
         self, user_id: int, start: datetime, end: datetime
     ) -> tuple[int, int]:
@@ -242,6 +266,7 @@ class WeeklyReportGenerator:
         completed_tasks, pending_tasks, overdue_tasks = (
             await self._collect_google_tasks_metrics(user_id, start, end)
         )
+        inbox_notes_count = await self._collect_inbox_notes_count()
         messages, decisions = self._collect_db_metrics(user_id, start, end)
 
         total_attempted = len(created_notes) + len(completed_tasks) + len(pending_tasks) + len(overdue_tasks)
@@ -287,6 +312,7 @@ class WeeklyReportGenerator:
             tasks_completed=len(completed_tasks),
             tasks_pending=len(pending_tasks),
             tasks_overdue=len(overdue_tasks),
+            inbox_notes_count=inbox_notes_count,
             messages_sent=messages,
             decisions_made=decisions,
             completion_rate=(total_done / total_attempted * 100) if total_attempted else 0.0,
@@ -430,6 +456,16 @@ class WeeklyReportGenerator:
             lines.append(f"  Tasks overdue: {c.tasks_overdue}")
         lines.append(f"  Velocity: {c.velocity} items{_delta(c.velocity, p.velocity) if p else ''}")
         lines.append("")
+
+        # In (unprocessed): pending tasks + inbox notes
+        in_parts = []
+        if c.tasks_pending > 0:
+            in_parts.append(f"{c.tasks_pending} tasks")
+        if c.inbox_notes_count > 0:
+            in_parts.append(f"{c.inbox_notes_count} notes")
+        if in_parts:
+            lines.append(f"📥 In (unprocessed): {' • '.join(in_parts)}")
+            lines.append("")
 
         # Notes by folder (where)
         if c.items_by_folder:

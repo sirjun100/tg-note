@@ -54,6 +54,7 @@ class ServiceContainer:
         self.report_generator = ReportGenerator(
             joplin_client=self.joplin,
             task_service=self.task_service,
+            logging_service=self.logging_service,
         )
 
         self.scheduler = get_scheduler_service()

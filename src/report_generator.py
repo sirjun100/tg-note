@@ -4,20 +4,28 @@ Report Generator for Daily Priority Reports
 Generates unified daily priority reports aggregating:
 - Joplin notes (with priority tags: #urgent, #critical, #important, #high)
 - Google Tasks (incomplete/needsAction status)
+- Notes created today, tasks completed today
 - Pending clarifications from conversation state
 - Completion tracking since last report
 
 FR-037: Uses monospace tables with parse_mode="HTML" for Telegram.
 """
 
+from __future__ import annotations
+
+import asyncio
 import contextlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.report_formatter import escape_for_html
+from src.timezone_utils import get_user_timezone_aware_now
+
+if TYPE_CHECKING:
+    from src.logging_service import LoggingService
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +123,9 @@ class ReportData:
     joplin_notes: list[ReportItem] = field(default_factory=list)  # Separate section for all Joplin notes
     pending_clarification: list[str] = field(default_factory=list)
     completed_items: list[str] = field(default_factory=list)
+    notes_created_today: list[tuple[str, str]] = field(default_factory=list)  # (title, folder)
+    tasks_completed_today: list[str] = field(default_factory=list)
+    inbox_notes_count: int = 0  # Unprocessed notes in Inbox folder ("in")
     joplin_count: int = 0
     google_tasks_count: int = 0
     clarification_count: int = 0
@@ -162,17 +173,24 @@ class ReportGenerator:
     # Include notes if they have priority tags OR modified in last N days
     RECENT_DAYS_THRESHOLD = 7  # Show notes modified in last 7 days
 
-    def __init__(self, joplin_client=None, task_service=None):
+    def __init__(
+        self,
+        joplin_client=None,
+        task_service=None,
+        logging_service: LoggingService | None = None,
+    ):
         """
         Initialize report generator
 
         Args:
             joplin_client: JoplinClient instance for fetching notes
             task_service: TaskService instance for fetching Google Tasks
+            logging_service: LoggingService for user timezone (report config)
         """
         self.logger = logger
         self.joplin_client = joplin_client
         self.task_service = task_service
+        self.logging_service = logging_service
 
     def extract_priority_from_tags(self, tags: list[str]) -> PriorityLevel:
         """Extract priority level from tag list"""
@@ -703,6 +721,126 @@ Response:"""
             self.logger.error(f"Failed to fetch Google Tasks: {e}")
             return []
 
+    async def fetch_notes_created_today(
+        self, user_id: int
+    ) -> list[tuple[str, str]]:
+        """
+        Fetch Joplin notes created today (user timezone).
+
+        Returns:
+            List of (title, folder) tuples.
+        """
+        if not self.joplin_client:
+            return []
+
+        try:
+            now = get_user_timezone_aware_now(user_id, self.logging_service)
+            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_of_day = start_of_day.replace(
+                hour=23, minute=59, second=59, microsecond=999_999
+            )
+            start_ts = int(start_of_day.timestamp() * 1000)
+            end_ts = int(end_of_day.timestamp() * 1000)
+
+            notes = await self.joplin_client.get_all_notes(
+                fields="id,title,parent_id,created_time,user_created_time"
+            )
+            folders = await self.joplin_client.get_folders()
+            folder_map = {f.get("id"): f.get("title", "Unknown") for f in folders}
+
+            result: list[tuple[str, str]] = []
+            for note in notes:
+                created_ts = note.get("created_time") or note.get("user_created_time", 0)
+                if start_ts <= created_ts <= end_ts:
+                    folder = folder_map.get(note.get("parent_id", ""), "Unknown")
+                    result.append((note.get("title", "Untitled"), folder))
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to fetch notes created today: {e}")
+            return []
+
+    async def fetch_inbox_notes_count(self, user_id: int) -> int:
+        """
+        Count notes in Inbox folder(s) — unprocessed items ("in").
+
+        Matches folders: inbox, brain dump, capture (case-insensitive).
+        """
+        if not self.joplin_client:
+            return 0
+
+        try:
+            folders = await self.joplin_client.get_folders()
+            inbox_ids: set[str] = set()
+            for f in folders:
+                title = (f.get("title") or "").strip().lower()
+                if (
+                    title in ("inbox", "brain dump", "capture", "00-inbox", "00 inbox")
+                    or "inbox" in title
+                    or ("brain" in title and "dump" in title)
+                ):
+                    inbox_ids.add(f.get("id", ""))
+
+            if not inbox_ids:
+                return 0
+
+            notes = await self.joplin_client.get_all_notes(
+                fields="id,parent_id"
+            )
+            return sum(
+                1 for n in notes
+                if n.get("parent_id") in inbox_ids
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to fetch inbox notes count: {e}")
+            return 0
+
+    async def fetch_tasks_completed_today(self, user_id: int) -> list[str]:
+        """
+        Fetch Google Tasks completed today (user timezone).
+
+        Returns:
+            List of task titles.
+        """
+        if not self.task_service:
+            return []
+
+        try:
+            now = get_user_timezone_aware_now(user_id, self.logging_service)
+            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_of_day = start_of_day.replace(
+                hour=23, minute=59, second=59, microsecond=999_999
+            )
+
+            task_lists = self.task_service.get_available_task_lists(str(user_id))
+            if not task_lists:
+                return []
+
+            start_ts = start_of_day.timestamp()
+            end_ts = end_of_day.timestamp()
+            result: list[str] = []
+            for task_list in task_lists:
+                tasks = self.task_service.get_user_tasks(
+                    str(user_id), task_list.get("id"), show_completed=True
+                ) or []
+                for task in tasks:
+                    if task.get("status") != "completed":
+                        continue
+                    completed_str = task.get("completed")
+                    if not completed_str:
+                        continue
+                    try:
+                        completed_dt = datetime.fromisoformat(
+                            completed_str.replace("Z", "+00:00")
+                        )
+                        if start_ts <= completed_dt.timestamp() <= end_ts:
+                            result.append(task.get("title", "Untitled Task"))
+                    except (ValueError, TypeError):
+                        pass
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to fetch tasks completed today: {e}")
+            return []
+
     async def aggregate_report_items(
         self,
         user_id: int,
@@ -775,9 +913,20 @@ Response:"""
         self.logger.info(f"Generating async report for user {user_id}")
 
         try:
-            # Fetch from both sources concurrently
-            joplin_notes = await self.fetch_joplin_notes_for_report(user_id, min_priority)
-            google_tasks = await self.fetch_google_tasks_for_report(user_id)
+            # Fetch from all sources concurrently
+            (
+                joplin_notes,
+                google_tasks,
+                notes_created_today,
+                tasks_completed_today,
+                inbox_notes_count,
+            ) = await asyncio.gather(
+                self.fetch_joplin_notes_for_report(user_id, min_priority),
+                self.fetch_google_tasks_for_report(user_id),
+                self.fetch_notes_created_today(user_id),
+                self.fetch_tasks_completed_today(user_id),
+                self.fetch_inbox_notes_count(user_id),
+            )
 
             # Aggregate items
             items = await self.aggregate_report_items(
@@ -788,6 +937,9 @@ Response:"""
             report = self.categorize_items(items)
             report.user_id = user_id
             report.report_date = datetime.now()
+            report.notes_created_today = notes_created_today
+            report.tasks_completed_today = tasks_completed_today
+            report.inbox_notes_count = inbox_notes_count
 
             # Add pending clarifications
             if pending_clarifications:
@@ -863,6 +1015,23 @@ Response:"""
         }
         return labels.get(level, "🟡 Medium")
 
+    def _format_due_for_display(self, item: ReportItem) -> str:
+        """Format due date for display. Returns empty string if no due date."""
+        if not item.due_date:
+            return ""
+        due = item.due_date.date()
+        today = datetime.now().date()
+        delta = (due - today).days
+        if delta < 0:
+            return f"Overdue {abs(delta)}d"
+        if delta == 0:
+            return "Due today"
+        if delta == 1:
+            return "Due tomorrow"
+        if delta <= 7:
+            return f"Due in {delta}d"
+        return f"Due {due.strftime('%b %d')}"
+
     def _source_label(self, item: ReportItem) -> str:
         """Return source label for table."""
         return "📝 Note" if item.source == ItemSource.JOPLIN else "✅ Task"
@@ -874,7 +1043,14 @@ Response:"""
         Format report data as plain text (Design A).
         Always specifies Task vs Note. Notes show folder (where).
         """
-        if not report.total_items and not report.completed_items and not report.pending_clarification:
+        has_content = (
+            report.total_items
+            or report.completed_items
+            or report.pending_clarification
+            or report.notes_created_today
+            or report.tasks_completed_today
+        )
+        if not has_content:
             return "📊 Daily Priority Report\n\nNo items to report today. Great job staying on top of things! 🎉"
 
         lines: list[str] = []
@@ -888,18 +1064,44 @@ Response:"""
             summary_parts.append(f"{report.google_tasks_count} Tasks")
         if report.joplin_count > 0:
             summary_parts.append(f"{report.joplin_count} Notes")
+        if report.notes_created_today:
+            summary_parts.append(f"{len(report.notes_created_today)} created today")
+        if report.tasks_completed_today:
+            summary_parts.append(f"{len(report.tasks_completed_today)} completed")
         summary = " • ".join(summary_parts) if summary_parts else "No items"
         lines.append(f"{summary}\n")
 
+        # In (unprocessed): pending tasks + inbox notes
+        in_parts = []
+        if report.google_tasks_count > 0:
+            in_parts.append(f"{report.google_tasks_count} tasks")
+        if report.inbox_notes_count > 0:
+            in_parts.append(f"{report.inbox_notes_count} notes")
+        if in_parts:
+            lines.append(f"📥 In (unprocessed): {' • '.join(in_parts)}\n")
+
+        # Notes created today (with folder)
+        if report.notes_created_today:
+            lines.append("📝 Notes created today")
+            for title, folder in report.notes_created_today[:15]:
+                lines.append(f"• [{folder}] {escape_for_html(title)}")
+            if len(report.notes_created_today) > 15:
+                lines.append(f"• ... +{len(report.notes_created_today) - 15} more")
+            lines.append("")
+
         # Priority Tasks (Tasks = Google Tasks, pending)
+        # No inferred priority label — Google Tasks have no real priority; show due date instead
         priority_items = (
             report.critical_items + report.high_items + report.medium_items + report.low_items
         )
         if priority_items:
             lines.append("🎯 Tasks (pending)")
             for item in priority_items[:15]:
-                priority_label = self._priority_label(item.priority_level)
-                lines.append(f"• {priority_label} {escape_for_html(item.title)}")
+                due_str = self._format_due_for_display(item)
+                if due_str:
+                    lines.append(f"• {escape_for_html(item.title)} — {due_str}")
+                else:
+                    lines.append(f"• {escape_for_html(item.title)}")
             if len(priority_items) > 15:
                 lines.append(f"• ... +{len(priority_items) - 15} more tasks")
             lines.append("")
@@ -926,13 +1128,16 @@ Response:"""
                 lines.append(f"• {escape_for_html(item_title)}")
             lines.append("")
 
-        # Completed (Tasks + Notes completed today)
-        if report.completed_items:
-            lines.append(f"✨ Completed Today ({len(report.completed_items)} items)")
-            for item_title in report.completed_items[:5]:
+        # Completed (tasks from API + any from conversation state)
+        all_completed = list(
+            dict.fromkeys(report.tasks_completed_today + report.completed_items)
+        )
+        if all_completed:
+            lines.append(f"✨ Completed Today ({len(all_completed)} items)")
+            for item_title in all_completed[:10]:
                 lines.append(f"• {escape_for_html(item_title)}")
-            if len(report.completed_items) > 5:
-                lines.append(f"  ... and {len(report.completed_items) - 5} more")
+            if len(all_completed) > 10:
+                lines.append(f"  ... and {len(all_completed) - 10} more")
             lines.append("")
 
         # Footer
