@@ -165,7 +165,6 @@ class WeeklyReportGenerator:
             completed: list[dict[str, Any]] = []
             pending: list[dict[str, Any]] = []
             overdue: list[dict[str, Any]] = []
-            now = datetime.now()
 
             for tl in task_lists:
                 # BF-018: show_completed=True — API returns only incomplete by default
@@ -189,11 +188,12 @@ class WeeklyReportGenerator:
                             completed.append(task)  # No date, include anyway
                     else:
                         # Only incomplete tasks go to pending/overdue (never count completed)
+                        # Overdue = due date has passed (same logic as daily report: compare dates)
                         due_str = task.get("due")
                         if due_str:
                             try:
                                 due = datetime.fromisoformat(due_str.replace("Z", "+00:00"))
-                                if due.replace(tzinfo=None) < now:
+                                if datetime.now().date() > due.date():
                                     overdue.append(task)
                                     continue
                             except (ValueError, TypeError):

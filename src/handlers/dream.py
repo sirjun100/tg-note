@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import logging
+import re
 from io import BytesIO
 from typing import TYPE_CHECKING, Any
 
@@ -35,6 +37,37 @@ DREAM_DISCLAIMER = (
     "It is not a substitute for professional psychological support. "
     "If your dreams are causing distress, please consult a qualified therapist.*"
 )
+
+
+def _strip_dream_title_from_analysis(analysis_text: str) -> str:
+    """Remove the Dream Title line from analysis so it's not duplicated in the note body."""
+    return re.sub(
+        r"\n*\*\*Dream Title:\*\*[^\n]*(?:\n|$)",
+        "\n",
+        analysis_text,
+        flags=re.IGNORECASE,
+    ).strip()
+
+
+def _extract_dream_title(analysis_text: str, dream_text: str) -> str:
+    """Extract short clever title from analysis, or derive from dream text."""
+    # Look for **Dream Title:** or Dream Title: followed by the title
+    match = re.search(
+        r"\*\*Dream Title:\*\*\s*(.+?)(?:\n|$)",
+        analysis_text,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        match = re.search(r"Dream Title:\s*(.+?)(?:\n|$)", analysis_text, re.IGNORECASE)
+    if match:
+        title = match.group(1).strip()
+        # Remove markdown, limit length
+        title = re.sub(r"\*+", "", title).strip()
+        if len(title) <= 60:
+            return title
+    # Fallback: first ~40 chars of dream, cleaned
+    first_line = dream_text.split("\n")[0].strip()[:50]
+    return first_line + "…" if len(first_line) >= 50 else first_line or "Dream"
 
 
 def _extract_symbols_from_analysis(analysis_text: str) -> list[str]:
@@ -64,25 +97,15 @@ def _build_dream_note_body(
     user_id: int,
     orch: TelegramOrchestrator,
 ) -> str:
-    """Build dream journal note body. resource_id is from create_resource for the symbolic image."""
-    now = get_user_timezone_aware_now(user_id, orch.logging_service)
-    date_str = now.strftime("%Y-%m-%d")
-
-    lines = [
-        f"# Dream Analysis - {date_str}",
-        "",
-        "## The Dream",
-        dream_text,
-        "",
-    ]
+    """Build dream journal note body. Image goes right after title (at top)."""
+    lines: list[str] = []
+    # Image first, right after the note title
     if resource_id:
         lines.extend([
-            "## Symbolic Image",
-            "",
             "![Dream symbolic image](:/" + resource_id + ")",
             "",
         ])
-    lines.extend(["## Jungian Analysis", "", analysis, ""])
+    lines.extend(["## The Dream", "", dream_text, "", "## Jungian Analysis", "", analysis, ""])
     if associations:
         lines.extend(["## Life Associations", "", associations, ""])
     lines.extend(["---", "*Analysis generated with Jungian AI Assistant*"])
@@ -119,26 +142,55 @@ async def handle_dream_message(
         orch.state_manager.update_state(user_id, state)
         logger.info("Dream: user=%d starting analysis (dream len=%d)", user_id, len(text.strip()))
 
-        await message.reply_text("🔮 Analyzing your dream and creating a symbolic image...")
+        status_msg = await message.reply_text(
+            "🔮 Analyzing your dream... This may take 30–60 seconds. "
+            "I'm identifying symbols, archetypes, and themes."
+        )
         from src.dream_image import generate_dream_image
+
+        async def _send_progress_updates() -> None:
+            """Send typing indicator and status edits while LLM runs."""
+            updates = [
+                (15, "📖 Identifying symbols and themes..."),
+                (30, "🔍 Exploring archetypes and meanings..."),
+                (45, "🎨 Almost done, preparing your analysis..."),
+            ]
+            for delay, text in updates:
+                await asyncio.sleep(delay)
+                try:
+                    await message.chat.send_action("typing")
+                    await status_msg.edit_text(text)
+                except Exception:
+                    pass
 
         analysis_prompt = (
             f"Analyze this dream from a Jungian perspective. "
             f"Provide: Key Symbols, Archetypes Present, Shadow Elements, Overall Theme.\n\n"
-            f"Dream:\n{text.strip()}"
+            f"Dream:\n{text.strip()}\n\n"
+            f"At the very end of your response, add exactly one line:\n"
+            f"**Dream Title:** [a short, clever 3-7 word phrase that captures the dream's essence]"
         )
         analysis_response = None
+        progress_task = asyncio.create_task(_send_progress_updates())
         try:
             analysis_response = await orch.llm_orchestrator.process_message(
                 analysis_prompt,
                 persona="jungian_analyst",
             )
         except Exception as exc:
+            progress_task.cancel()
             logger.error("Dream analysis LLM failed: %s", exc)
             state["phase"] = "dream_description"
             orch.state_manager.update_state(user_id, state)
             await message.reply_text(format_error_message("Analysis failed. Please try again."))
             return
+        finally:
+            progress_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await progress_task
+
+        with contextlib.suppress(Exception):
+            await status_msg.edit_text("📖 Preparing your analysis...")
 
         analysis = ""
         if analysis_response and analysis_response.question:
@@ -188,6 +240,7 @@ async def handle_dream_message(
         msg += DREAM_DISCLAIMER
         for chunk in split_message_for_telegram(msg):
             await message.reply_text(chunk)
+        await message.reply_text("🎨 Creating your symbolic image... (will arrive shortly)")
         logger.info("Dream: user=%d analysis sent, image generating in background", user_id)
         return
 
@@ -263,10 +316,12 @@ async def _save_dream_to_joplin(orch: TelegramOrchestrator, user_id: int, state:
 
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     date_str = now.strftime("%Y-%m-%d")
-    title = f"Dream Analysis - {date_str}"
+    dream_title = _extract_dream_title(interpretation, dream_text)
+    interpretation_clean = _strip_dream_title_from_analysis(interpretation)
+    title = f"{date_str} - {dream_title}"
 
     body = _build_dream_note_body(
-        dream_text, interpretation, associations, resource_id, user_id, orch
+        dream_text, interpretation_clean, associations, resource_id, user_id, orch
     )
 
     folder_id = await orch.joplin_client.get_or_create_folder_by_path(DREAM_JOURNAL_PATH)
@@ -348,6 +403,7 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
 
         try:
             logger.info("Dream done: user=%d saving to Joplin", user.id)
+            await msg.reply_text("📝 Saving to your Dream Journal...")
             ok = await _save_dream_to_joplin(orch, user.id, state)
             orch.state_manager.clear_state(user.id)
             if ok:
