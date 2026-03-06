@@ -8,7 +8,7 @@ Uses parse_mode="HTML" with <pre> blocks for alignment.
 from __future__ import annotations
 
 import html
-from typing import Sequence
+from collections.abc import Sequence
 
 MAX_TITLE_LEN = 40
 
