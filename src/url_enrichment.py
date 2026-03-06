@@ -269,7 +269,10 @@ def _is_challenge_page(html_text: str, title: str) -> bool:
 
 
 def _is_error_page(html_text: str, title: str, url: str) -> tuple[bool, str]:
-    """Detect 200 OK responses that show error content instead of actual page content."""
+    """Detect 200 OK responses that show error content instead of actual page content.
+
+    BF-007: Covers geo-blocked videos, paywalls, 404/403/500, and multilingual error messages.
+    """
     if not html_text:
         return False, ""
 
@@ -277,22 +280,38 @@ def _is_error_page(html_text: str, title: str, url: str) -> tuple[bool, str]:
     title_lower = (title or "").lower()
     url_lower = url.lower()
 
-    # Check for specific error patterns
+    # Check for specific error patterns (incl. multilingual: German, French, Spanish)
     error_patterns = [
-        (["not found", "404"], "Page not found (404)"),
+        (["not found", "404", "page not found", "does not exist"], "Page not found (404)"),
         (["403 forbidden", "access denied"], "Access forbidden (403)"),
         (["500 error", "internal server error"], "Server error (500)"),
-        (["not available", "unavailable"], "Content not available"),
-        (["geo-restricted", "geo-blocked"], "Geo-blocked"),
+        (
+            [
+                "not available",
+                "unavailable",
+                "not accessible",
+                "cannot access",
+                "nicht verfügbar",  # German: not available
+                "non disponible",  # French
+                "no disponible",  # Spanish
+                "video not available",
+                "this video is not available",
+                "this content is not available",
+            ],
+            "Content not available",
+        ),
+        (["geo-restricted", "geo-blocked", "blocked", "restricted"], "Geo-blocked or restricted"),
         (["sign in required", "login required"], "Login required"),
-        (["paywall", "subscription required"], "Subscription/paywall"),
-        (["video not available"], "Video not available"),
-        (["page not found"], "Page not found"),
+        (
+            ["paywall", "subscription required", "subscribe", "premium only", "members only"],
+            "Subscription/paywall",
+        ),
+        (["error occurred", "error loading", "something went wrong"], "Error page"),
     ]
 
     for keywords, reason in error_patterns:
         for kw in keywords:
-            if kw in text_lower or kw in title_lower:
+            if kw and (kw in text_lower or kw in title_lower):
                 return True, reason
 
     # Check for YouTube error domain

@@ -377,7 +377,9 @@ class WeeklyReportGenerator:
     # ------------------------------------------------------------------
 
     def format_weekly_report(self, report: WeeklyReportData) -> str:
-        """Format the weekly report as a Telegram message."""
+        """Format the weekly report as a Telegram message (FR-037: monospace tables)."""
+        from src.report_formatter import build_table, escape_for_html, wrap_pre
+
         c = report.current
         p = report.previous
         lines: list[str] = []
@@ -408,20 +410,30 @@ class WeeklyReportGenerator:
         lines.append(f"✅ PRODUCTIVITY SCORE: {score}% [{grade}]{trend}")
         lines.append("")
 
-        # Key numbers
-        lines.append("📈 BY THE NUMBERS")
-        lines.append(f"  Notes created: {c.notes_created}")
-        lines.append(f"  Notes modified: {c.notes_modified}")
-        lines.append(f"  Tasks completed: {c.tasks_completed}")
-        lines.append(f"  Tasks pending: {c.tasks_pending}")
+        # Key numbers table (FR-037)
+        def _delta(cur: int, prev_val: int) -> str:
+            if not p:
+                return "-"
+            d = cur - prev_val
+            if d > 0:
+                return f"+{d}"
+            if d < 0:
+                return str(d)
+            return "➡️"
+
+        metrics_rows = [
+            ("Notes created", str(c.notes_created), _delta(c.notes_created, p.notes_created) if p else "-"),
+            ("Notes modified", str(c.notes_modified), _delta(c.notes_modified, p.notes_modified) if p else "-"),
+            ("Tasks completed", str(c.tasks_completed), _delta(c.tasks_completed, p.tasks_completed) if p else "-"),
+            ("Tasks pending", str(c.tasks_pending), _delta(c.tasks_pending, p.tasks_pending) if p else "-"),
+            ("Velocity", f"{c.velocity} items", _delta(c.velocity, p.velocity) if p else "-"),
+            ("Messages sent", str(c.messages_sent), "-"),
+        ]
         if c.tasks_overdue:
-            lines.append(f"  ⚠️ Tasks overdue: {c.tasks_overdue}")
-        lines.append(f"  Velocity: {c.velocity} items")
-        if p:
-            v_delta = c.velocity - p.velocity
-            symbol = "⬆️" if v_delta > 0 else ("⬇️" if v_delta < 0 else "➡️")
-            lines.append(f"  vs last week: {symbol} {abs(v_delta)} items")
-        lines.append(f"  Messages sent: {c.messages_sent}")
+            metrics_rows.insert(4, ("⚠️ Overdue", str(c.tasks_overdue), "-"))
+        metrics_table = build_table(["Metric", "This", "vs Last"], metrics_rows, col_widths=[18, 12, 10])
+        lines.append("📈 By the Numbers")
+        lines.append(wrap_pre(metrics_table))
         lines.append("")
 
         # Breakdown by folder
@@ -450,7 +462,7 @@ class WeeklyReportGenerator:
         if report.completed_note_titles:
             lines.append(f"✨ NOTES CREATED ({c.notes_created})")
             for title in report.completed_note_titles[:8]:
-                lines.append(f"  • {title}")
+                lines.append(f"  • {escape_for_html(title)}")
             if c.notes_created > 8:
                 lines.append(f"  ... and {c.notes_created - 8} more")
             lines.append("")
@@ -459,14 +471,14 @@ class WeeklyReportGenerator:
         if report.overdue_task_titles:
             lines.append(f"🔴 OVERDUE TASKS ({c.tasks_overdue})")
             for title in report.overdue_task_titles[:5]:
-                lines.append(f"  • {title}")
+                lines.append(f"  • {escape_for_html(title)}")
             lines.append("")
 
         # Pending tasks
         if report.pending_task_titles:
             lines.append(f"⏳ PENDING TASKS ({c.tasks_pending})")
             for title in report.pending_task_titles[:5]:
-                lines.append(f"  • {title}")
+                lines.append(f"  • {escape_for_html(title)}")
             if c.tasks_pending > 5:
                 lines.append(f"  ... and {c.tasks_pending - 5} more")
             lines.append("")

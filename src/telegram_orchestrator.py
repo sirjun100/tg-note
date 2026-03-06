@@ -26,6 +26,7 @@ from src.enrichment_service import EnrichmentService
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
 from src.logging_service import LoggingService
+from src.note_index import NoteIndex
 from src.reorg_orchestrator import ReorgOrchestrator
 from src.report_generator import ReportGenerator
 from src.scheduler_service import get_scheduler_service
@@ -84,6 +85,7 @@ class TelegramOrchestrator:
             joplin_client=self.joplin_client,
             llm_orchestrator=self.llm_orchestrator,
         )
+        self.note_index = NoteIndex()
         logger.info("All services initialized")
 
 
@@ -161,6 +163,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
     application: Application = builder.build()
 
     from src.handlers import (
+        register_ask_handlers,
         register_braindump_handlers,
         register_core_handlers,
         register_dream_handlers,
@@ -176,6 +179,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
     )
 
     register_google_tasks_handlers(application, orchestrator)
+    register_ask_handlers(application, orchestrator)
     register_report_handlers(application, orchestrator)
     register_braindump_handlers(application, orchestrator)
     register_stoic_handlers(application, orchestrator)

@@ -48,3 +48,11 @@ Then re-run `ruff check` to confirm no remaining errors.
 > **2. Run `pytest` — fix any failing tests.**  
 > **3. Then commit.**  
 > Do not skip step 1 or 2.
+
+## Before Pushing to Main (optional)
+
+If this push includes completed backlog items (BF-XXX, FR-XXX):
+
+- [ ] Run `python scripts/generate_release_notes_draft.py`
+- [ ] Add or update section in [RELEASE_NOTES.md](../../../RELEASE_NOTES.md)
+- See [release-notes-process.md](release-notes-process.md) for full process

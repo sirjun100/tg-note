@@ -1,6 +1,6 @@
 # Feature Request: FR-026 - Semantic Search and Q&A Over Notes
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟠 High
 **Story Points**: 13
 **Created**: 2026-03-05

@@ -173,12 +173,11 @@ async def handle_dream_message(
             orch.state_manager.update_state(user_id, state)
             await message.reply_text(
                 "Let's connect this dream to your waking life.\n\n"
-                "🔮 **Reflection Questions:**\n\n"
+                "🔮 Reflection Questions:\n\n"
                 "1. What current situation in your life feels similar to something in the dream?\n"
                 "2. Which symbol or archetype resonates most with you right now?\n"
                 "3. Is there something you're avoiding or seeking that the dream might point to?\n\n"
-                "Take your time. Share what resonates. When you're done, type /dream_done to save.",
-                parse_mode="Markdown",
+                "Take your time. Share what resonates. When you're done, type /dream_done to save."
             )
         elif text_lower in ("no", "n"):
             state["phase"] = "ready_to_save"
@@ -258,8 +257,10 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             await msg.reply_text(format_error_message("Could not start dream session. Please try again."))
             return
 
+        # BF-017: Use plain text for welcome — Markdown parse_mode can cause BadRequest
+        # (similar to BF-010, BF-014). Plain text avoids parse errors entirely.
         welcome = (
-            "🌙 **Welcome to Dream Analysis**\n\n"
+            "🌙 Welcome to Dream Analysis\n\n"
             "Take a moment to recall your dream...\n\n"
             "When you're ready, describe everything you remember:\n"
             "• What happened?\n"
@@ -269,27 +270,8 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             "Take your time. The more detail, the richer the analysis.\n\n"
             "Type /dream_cancel to cancel anytime."
         )
-        try:
-            await msg.reply_text(welcome, parse_mode="Markdown")
-            logger.info("Dream session started for user %d", user.id)
-        except Exception as exc:
-            logger.error("Dream command: welcome message failed for user %d: %s", user.id, exc, exc_info=True)
-            try:
-                await msg.reply_text(
-                    "🌙 Welcome to Dream Analysis\n\n"
-                    "Take a moment to recall your dream...\n\n"
-                    "When you're ready, describe everything you remember:\n"
-                    "• What happened?\n"
-                    "• Who was there?\n"
-                    "• What did you see, hear, feel?\n"
-                    "• Any symbols, colors, or unusual elements?\n\n"
-                    "Take your time. The more detail, the richer the analysis.\n\n"
-                    "Type /dream_cancel to cancel anytime."
-                )
-                logger.info("Dream session started (plain fallback) for user %d", user.id)
-            except Exception as fallback_exc:
-                logger.error("Dream command: plain fallback also failed for user %d: %s", user.id, fallback_exc, exc_info=True)
-                raise exc from fallback_exc
+        await msg.reply_text(welcome)
+        logger.info("Dream session started for user %d", user.id)
 
     async def dream_done_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info("Dream done command received")

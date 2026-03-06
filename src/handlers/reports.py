@@ -70,7 +70,7 @@ def _daily_report(orch: TelegramOrchestrator):
 
             include = report.total_items > 0 or bool(pending)
             message = orch.report_generator.format_report_message(report, include_details=include)
-            await update.message.reply_text(message)
+            await update.message.reply_text(message, parse_mode="HTML")
 
             orch.logging_service.log_system_event(
                 level="INFO",
@@ -125,7 +125,7 @@ async def send_scheduled_report(orch: TelegramOrchestrator, user_id: int) -> Non
         from config import TELEGRAM_BOT_TOKEN
 
         bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        sent = await bot.send_message(chat_id=user_id, text=message)
+        sent = await bot.send_message(chat_id=user_id, text=message, parse_mode="HTML")
 
         orch.logging_service.log_daily_report(
             user_id=user_id,
@@ -173,7 +173,7 @@ def _weekly_report(orch: TelegramOrchestrator):
             )
             report = await generator.generate_weekly_report(user.id, ref_date)
             message = generator.format_weekly_report(report)
-            await update.message.reply_text(message)
+            await update.message.reply_text(message, parse_mode="HTML")
 
             orch.logging_service.log_system_event(
                 level="INFO",
@@ -241,7 +241,7 @@ def _monthly_report(orch: TelegramOrchestrator):
             )
             report = await generator.generate(user.id, year, month)
             message = generator.format_report(report)
-            await update.message.reply_text(message)
+            await update.message.reply_text(message, parse_mode="HTML")
 
             orch.logging_service.log_system_event(
                 level="INFO",
@@ -280,7 +280,7 @@ async def send_scheduled_weekly_report(orch: TelegramOrchestrator, user_id: int)
         from config import TELEGRAM_BOT_TOKEN
 
         bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        sent = await bot.send_message(chat_id=user_id, text=message)
+        sent = await bot.send_message(chat_id=user_id, text=message, parse_mode="HTML")
 
         orch.logging_service.log_system_event(
             level="INFO",

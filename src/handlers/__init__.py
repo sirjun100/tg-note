@@ -2,6 +2,7 @@
 Handler modules — each registers its own command/message handlers.
 """
 
+from src.handlers.ask import register_ask_handlers
 from src.handlers.braindump import register_braindump_handlers
 from src.handlers.core import register_core_handlers
 from src.handlers.dream import register_dream_handlers
@@ -16,6 +17,7 @@ from src.handlers.search import register_search_handlers
 from src.handlers.stoic import register_stoic_handlers
 
 __all__ = [
+    "register_ask_handlers",
     "register_core_handlers",
     "register_dream_handlers",
     "register_google_tasks_handlers",

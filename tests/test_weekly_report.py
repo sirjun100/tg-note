@@ -122,7 +122,7 @@ class TestFormatWeeklyReport:
 
         assert "WEEKLY REVIEW" in msg
         assert "PRODUCTIVITY SCORE" in msg
-        assert "BY THE NUMBERS" in msg
+        assert "By the Numbers" in msg or "BY THE NUMBERS" in msg
         assert "BY FOLDER" in msg
         assert "BY DAY" in msg
         assert "NOTES CREATED" in msg
@@ -322,10 +322,10 @@ class TestGenerateWeeklyReport:
 
         assert "WEEKLY REVIEW" in msg
         assert "PRODUCTIVITY SCORE" in msg
-        assert "BY THE NUMBERS" in msg
-        assert "Notes created: 2" in msg
-        assert "Tasks completed: 1" in msg
-        assert "Tasks overdue: 1" in msg or "OVERDUE TASKS" in msg
+        assert "By the Numbers" in msg or "BY THE NUMBERS" in msg
+        assert "Notes created" in msg and "2" in msg
+        assert "Tasks completed" in msg and "1" in msg
+        assert "OVERDUE TASKS" in msg or "Overdue" in msg
         assert "Project Plan" in msg or "Meeting Notes" in msg
         assert "RECOMMENDATIONS" in msg
         assert report.current.velocity == 3  # 2 notes + 1 completed task

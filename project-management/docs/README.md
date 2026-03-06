@@ -19,14 +19,20 @@ Template files for creating backlog items:
 3. Save to the appropriate directory (`backlog/features/` or `backlog/bugs/`)
 4. Add entry to `backlog/product-backlog.md`
 
+### Definition of Done (`definition-of-done.md`)
+
+Quality gate for completed work. Includes Documentation-Code Consistency Review requirement. See [Definition of Done](definition-of-done.md).
+
 ### Processes (`processes/`)
 
 Process documentation explaining workflows:
 
 - **pre-commit-checklist.md** - **Run lint and tests before every commit**
+- **release-notes-process.md** - How to create and update RELEASE_NOTES.md
 - **backlog-management-process.md** - How to manage the backlog
 - **product-backlog-structure.md** - Backlog structure and conventions
 - **documentation-standards.md** - Use Mermaid for charts and graphs
+- **documentation-code-consistency-problems.md** - Taxonomy of 16 doc/code problem categories (for FR-036)
 
 **Usage:**
 - Reference when learning the process
@@ -55,6 +61,10 @@ cp docs/templates/bug-fix-template.md backlog/bugs/BF-001-bug-description.md
 ```
 
 ### Planning a Sprint
+
+1. **Before planning**: Run Documentation-Code Consistency Review: `./scripts/doc-code-review.sh`
+2. Review report at `project-management/reports/doc-code-consistency-latest.md`
+3. Create sprint document:
 
 ```bash
 cp docs/templates/sprint-planning-template.md sprints/sprint-01-sprint-name.md

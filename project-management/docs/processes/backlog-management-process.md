@@ -7,6 +7,7 @@ This document defines the process for managing the product backlog, including ho
 **Reference**: 
 - Product Backlog Structure: [product-backlog-structure.md](product-backlog-structure.md)
 - Sprint Planning Template: [../templates/sprint-planning-template.md](../templates/sprint-planning-template.md)
+- Release Notes: [release-notes-process.md](release-notes-process.md)
 
 ## Backlog Lifecycle
 
@@ -97,6 +98,7 @@ This document defines the process for managing the product backlog, including ho
 4. Add completion notes
 5. Update "Updated" date
 6. Update sprint planning document (mark story as complete)
+7. Add entry to [RELEASE_NOTES.md](../../../RELEASE_NOTES.md) (see [release-notes-process.md](release-notes-process.md))
 
 **Example**:
 ```markdown
@@ -175,6 +177,12 @@ For each backlog item:
 
 ### Sprint Planning Process
 
+0. **Documentation-Code Consistency Review** (required before planning):
+   - Run `./scripts/doc-code-review.sh` (or `python scripts/doc_code_review.py --trigger "Pre-sprint planning"`)
+   - Review report at `project-management/reports/doc-code-consistency-latest.md`
+   - Resolve or triage high-priority contradictions before selecting sprint items
+   - See [Definition of Done](../definition-of-done.md) and [FR-036](../../backlog/features/FR-036-documentation-code-consistency-review.md)
+
 1. **Select Items from Backlog**:
    - Review prioritized backlog items
    - Select items for sprint based on:
@@ -196,6 +204,7 @@ For each backlog item:
 
 ### Sprint Planning Checklist
 
+- [ ] Documentation-Code Consistency Review completed; report generated (see [Definition of Done](../definition-of-done.md))
 - [ ] Backlog items selected for sprint
 - [ ] Items added to sprint planning document
 - [ ] Items broken down into tasks

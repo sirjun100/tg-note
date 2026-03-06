@@ -11,6 +11,8 @@ This template provides the structure for sprint planning documents. Adapt this t
 
 ## Usage
 
+0. **Before planning**: Run Documentation-Code Consistency Review (`./scripts/doc-code-review.sh`). See [Definition of Done](../definition-of-done.md).
+
 1. Copy this template for each sprint
 2. Fill in sprint header information
 3. Add user stories from the product backlog
@@ -110,9 +112,11 @@ This template provides the structure for sprint planning documents. Adapt this t
 - Day [N]: [X] points completed
 
 **Sprint Review Notes**:
+- [ ] Documentation-Code Consistency Review run this sprint (or since last sprint); no unresolved high-priority contradictions
 - [Notes from sprint review meeting]
 - [Completed features demonstrated]
 - [Feedback received]
+- [ ] [RELEASE_NOTES.md](../../../RELEASE_NOTES.md) updated (see [release-notes-process.md](../processes/release-notes-process.md))
 
 **Sprint Retrospective Notes**:
 - **What went well?**

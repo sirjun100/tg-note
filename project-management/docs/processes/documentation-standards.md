@@ -67,10 +67,36 @@ graph LR
 - **Architecture diagrams**: System components, data flow
 - **Class/ER diagrams**: Data models (when helpful)
 
+### Mermaid: Avoiding Lexical Errors
+
+Node labels with special characters can cause **"Lexical error: Unrecognized text"** in Mermaid. To avoid this:
+
+1. **Wrap labels in double quotes** when they contain:
+   - Forward slash `/` (e.g. commands like `/braindump`)
+   - Equals `=`, colons `:`, parentheses `()`, brackets `[]`
+   - Other symbols that may be parsed as syntax
+
+2. **Correct**:
+   ```mermaid
+   flowchart TD
+       A["User: /braindump quick"]
+       B["Parse: mode=quick"]
+   ```
+
+3. **Incorrect** (causes lexical error):
+   ```mermaid
+   flowchart TD
+       A[/braindump quick]
+       B[Parse: mode=quick]
+   ```
+
+4. **Validate before committing**: Paste diagrams into [Mermaid Live Editor](https://mermaid.live/) to verify they render.
+
 ### Reference
 
 - [Mermaid documentation](https://mermaid.js.org/)
-- [Mermaid live editor](https://mermaid.live/) for quick diagrams
+- [Mermaid flowchart syntax — special characters](https://mermaid.js.org/syntax/flowchart.html)
+- [Mermaid live editor](https://mermaid.live/) for quick diagrams and validation
 
 ---
 

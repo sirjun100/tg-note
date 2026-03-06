@@ -1,11 +1,11 @@
 # Bug Fix: BF-007 - URL Screenshots: No Validation That Content Matches the URL
 
-**Status**: ⭕ Not Started
+**Status**: ⏳ In Progress
 **Priority**: 🟠 High
 **Story Points**: 5
 **Created**: 2026-03-04
-**Updated**: 2026-03-04
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-06
+**Assigned Sprint**: Sprint 13
 
 ## Description
 

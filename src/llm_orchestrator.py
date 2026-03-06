@@ -425,6 +425,24 @@ class LLMOrchestrator:
             task=None,
         )
 
+    async def generate_text_for_qa(
+        self, system_prompt: str, user_message: str, max_tokens: int = 1500
+    ) -> str:
+        """
+        Generate raw text response for Q&A (FR-026). No function calling.
+        Returns the assistant's text content.
+        """
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+        response = await self.provider.generate_response(
+            messages=messages,
+            temperature=0.3,
+            max_tokens=max_tokens,
+        )
+        return (response.get("content") or "").strip()
+
     async def classify_note(self, note_title: str, note_content: str, folder_list: str) -> dict[str, Any]:
         """Classify a note into PARA structure using LLM"""
         system_prompt = self._get_persona_prompt("para_classifier")

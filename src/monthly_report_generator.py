@@ -480,52 +480,63 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
         )
 
     def format_report(self, report: MonthlyReportData) -> str:
-        """Format the monthly report as a Telegram message."""
+        """Format the monthly report as a Telegram message (FR-037: monospace tables)."""
+        from src.report_formatter import build_table, escape_for_html, wrap_pre
+
         m = report.metrics
         month_name = datetime(report.year, report.month, 1).strftime("%B %Y")
 
-        lines = [
-            f"# 📊 Monthly Review — {month_name}",
-            "",
-            "## Overview",
-            "| Metric | This Month | Change |",
-            "|--------|------------|--------|",
-            f"| Notes Created | {m.notes_created} | {m.notes_change_pct:+.0f}% |",
-            f"| Tasks Completed | {m.tasks_completed} | {m.tasks_change_pct:+.0f}% |",
-            f"| Completion Rate | {m.completion_rate:.0f}% | {m.completion_change_pct:+.0f}% |",
-            "",
+        lines: list[str] = []
+        lines.append(f"📊 Monthly Review — {month_name}")
+        lines.append("")
+
+        # Overview table
+        overview_rows = [
+            ("Notes Created", str(m.notes_created), f"{m.notes_change_pct:+.0f}%"),
+            ("Tasks Completed", str(m.tasks_completed), f"{m.tasks_change_pct:+.0f}%"),
+            ("Completion Rate", f"{m.completion_rate:.0f}%", f"{m.completion_change_pct:+.0f}%"),
         ]
+        overview_table = build_table(["Metric", "This Month", "Change"], overview_rows, col_widths=[18, 12, 10])
+        lines.append("Overview")
+        lines.append(wrap_pre(overview_table))
+        lines.append("")
 
         if report.weekly_data:
-            lines.append("## 📈 Weekly Trends")
+            lines.append("📈 Weekly Trends")
+            trend_rows = []
             for w in report.weekly_data:
-                bar = "█" * min(10, w.total // 3) + "░" * (10 - min(10, w.total // 3))
-                lines.append(f"Week {w.week_number}: {bar} {w.total} items")
+                bar = "█" * min(10, max(0, w.total // 3)) + "░" * (10 - min(10, max(0, w.total // 3)))
+                trend_rows.append((f"Week {w.week_number}", bar, f"{w.total} items"))
+            if trend_rows:
+                trend_table = build_table(["Week", "Activity", "Total"], trend_rows, col_widths=[10, 12, 10])
+                lines.append(wrap_pre(trend_table))
             lines.append("")
 
         if report.project_activity:
-            lines.append("## 🎯 Project Activity")
-            for p in report.project_activity[:5]:
-                lines.append(f"• {p.project_name}: {p.notes_count} notes, {p.tasks_count} tasks ({p.status})")
+            lines.append("🎯 Project Activity")
+            proj_rows = [(p.project_name, f"{p.notes_count} notes", f"{p.tasks_count} tasks") for p in report.project_activity[:5]]
+            proj_table = build_table(["Project", "Notes", "Tasks"], proj_rows, col_widths=[20, 12, 10])
+            lines.append(wrap_pre(proj_table))
             lines.append("")
 
         if report.top_tags:
-            lines.append("## 🏷️ Top Tags")
-            for tag, count in report.top_tags[:5]:
-                lines.append(f"• #{tag} ({count})")
+            lines.append("🏷️ Top Tags")
+            tag_rows = [(f"#{tag}", str(count)) for tag, count in report.top_tags[:5]]
+            tag_table = build_table(["Tag", "Count"], tag_rows, col_widths=[20, 8])
+            lines.append(wrap_pre(tag_table))
             lines.append("")
 
-        lines.append("## ⏰ Productivity Patterns")
-        lines.append(f"• Most productive day: {report.most_productive_day}")
-        lines.append(f"• Least productive day: {report.least_productive_day}")
+        lines.append("⏰ Productivity Patterns")
+        lines.append(f"• Most productive: {escape_for_html(report.most_productive_day or '-')}")
+        lines.append(f"• Least productive: {escape_for_html(report.least_productive_day or '-')}")
         if report.peak_hours:
             lines.append(f"• Peak hours: {', '.join(str(h) for h in report.peak_hours)}")
         lines.append("")
 
         if report.insights:
-            lines.append("## 💡 AI Insights")
+            lines.append("💡 AI Insights")
             for i, insight in enumerate(report.insights, 1):
-                lines.append(f"{i}. {insight}")
+                lines.append(f"{i}. {escape_for_html(insight)}")
             lines.append("")
 
         lines.append(f"—_Generated on {datetime.now().strftime('%Y-%m-%d')}_")
