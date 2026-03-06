@@ -7,6 +7,8 @@ Sprint 11 Story 3 - FR-025.
 
 from __future__ import annotations
 
+import asyncio
+import base64
 import logging
 from io import BytesIO
 from typing import TYPE_CHECKING, Any
@@ -14,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
+from src.handlers.core import _schedule_joplin_sync
 from src.security_utils import check_whitelist, format_error_message, split_message_for_telegram
 from src.timezone_utils import get_user_timezone_aware_now
 
@@ -21,6 +24,9 @@ if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
 
 logger = logging.getLogger(__name__)
+
+# Pending image generation tasks (user_id -> Task). Not persisted in state.
+_pending_dream_image_tasks: dict[int, asyncio.Task] = {}
 
 DREAM_JOURNAL_PATH = ["Areas", "📓 Journaling", "Dream Journal"]
 DREAM_TAGS = ["dream-journal", "jungian"]
@@ -54,11 +60,11 @@ def _build_dream_note_body(
     dream_text: str,
     analysis: str,
     associations: str,
-    image_data_url: str | None,
+    resource_id: str | None,
     user_id: int,
     orch: TelegramOrchestrator,
 ) -> str:
-    """Build dream journal note body."""
+    """Build dream journal note body. resource_id is from create_resource for the symbolic image."""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     date_str = now.strftime("%Y-%m-%d")
 
@@ -69,8 +75,13 @@ def _build_dream_note_body(
         dream_text,
         "",
     ]
-    if image_data_url:
-        lines.extend(["## Symbolic Image", "", "(Image attached)", ""])
+    if resource_id:
+        lines.extend([
+            "## Symbolic Image",
+            "",
+            "![Dream symbolic image](:/" + resource_id + ")",
+            "",
+        ])
     lines.extend(["## Jungian Analysis", "", analysis, ""])
     if associations:
         lines.extend(["## Life Associations", "", associations, ""])
@@ -108,7 +119,7 @@ async def handle_dream_message(
         orch.state_manager.update_state(user_id, state)
         logger.info("Dream: user=%d starting analysis (dream len=%d)", user_id, len(text.strip()))
 
-        await message.reply_text("🎨 Creating a symbolic image of your dream...")
+        await message.reply_text("🔮 Analyzing your dream and creating a symbolic image...")
         from src.dream_image import generate_dream_image
 
         analysis_prompt = (
@@ -140,22 +151,35 @@ async def handle_dream_message(
         state["interpretation"] = analysis
         symbols = _extract_symbols_from_analysis(analysis)
         symbols = symbols or ["dream", "symbol", "unconscious"]
-        image_url = await generate_dream_image(text.strip(), symbols)
 
-        if image_url:
-            try:
-                import base64
-                data = image_url.split(",", 1)[1] if "," in image_url else ""
-                if data:
-                    image_bytes = base64.b64decode(data)
-                    await message.reply_photo(photo=BytesIO(image_bytes))
-            except Exception as exc:
-                logger.warning("Failed to send dream image: %s", exc)
-
-        state["dream_image_url"] = image_url
+        # Run image generation in background so user gets analysis immediately
+        state["dream_image_url"] = None
         state["phase"] = "association_prompt"
         orch.state_manager.update_state(user_id, state)
 
+        async def _generate_and_send_image() -> None:
+            try:
+                image_url = await generate_dream_image(text.strip(), symbols)
+                state["dream_image_url"] = image_url
+                orch.state_manager.update_state(user_id, state)
+                if image_url:
+                    try:
+                        data = image_url.split(",", 1)[1] if "," in image_url else ""
+                        if data:
+                            image_bytes = base64.b64decode(data)
+                            await message.reply_photo(photo=BytesIO(image_bytes))
+                    except Exception as exc:
+                        logger.warning("Failed to send dream image: %s", exc)
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                logger.warning("Dream image generation failed: %s", exc)
+            finally:
+                _pending_dream_image_tasks.pop(user_id, None)
+
+        _pending_dream_image_tasks[user_id] = asyncio.create_task(_generate_and_send_image())
+
+        # Send analysis immediately without waiting for image
         # BF-014/BF-016: LLM analysis contains Markdown chars (*, _, etc.) that break
         # Telegram's parser. Always send as plain text (no parse_mode) to avoid parse errors.
         # BF-019: Split long messages — Telegram limit is 4096 chars.
@@ -164,7 +188,7 @@ async def handle_dream_message(
         msg += DREAM_DISCLAIMER
         for chunk in split_message_for_telegram(msg):
             await message.reply_text(chunk)
-        logger.info("Dream: user=%d analysis sent, awaiting yes/no", user_id)
+        logger.info("Dream: user=%d analysis sent, image generating in background", user_id)
         return
 
     if phase == "association_prompt":
@@ -202,6 +226,16 @@ async def handle_dream_message(
 
 async def _save_dream_to_joplin(orch: TelegramOrchestrator, user_id: int, state: dict) -> bool:
     """Save dream analysis to Joplin. Returns True on success."""
+    # If image is still generating, wait up to 15s for it
+    task = _pending_dream_image_tasks.get(user_id)
+    if task and not task.done():
+        try:
+            await asyncio.wait_for(asyncio.shield(task), timeout=15.0)
+            state = orch.state_manager.get_state(user_id) or state
+        except TimeoutError:
+            logger.debug("Dream image still generating at save time; saving without image")
+    _pending_dream_image_tasks.pop(user_id, None)
+
     dream_text = state.get("dream_text", "")
     interpretation = state.get("interpretation", "")
     associations = state.get("associations", "").strip()
@@ -210,19 +244,37 @@ async def _save_dream_to_joplin(orch: TelegramOrchestrator, user_id: int, state:
     if not dream_text or not interpretation:
         return False
 
+    resource_id: str | None = None
+    if image_url and "," in image_url:
+        try:
+            header, b64_data = image_url.split(",", 1)
+            mime = "image/png"
+            if "image/" in header:
+                mime = header.split(":", 1)[1].split(";", 1)[0].strip()
+            image_bytes = base64.b64decode(b64_data)
+            resource = await orch.joplin_client.create_resource(
+                image_bytes,
+                filename="dream_symbolic.png",
+                mime_type=mime,
+            )
+            resource_id = resource.get("id")
+        except Exception as exc:
+            logger.warning("Failed to create dream image resource: %s", exc)
+
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     date_str = now.strftime("%Y-%m-%d")
     title = f"Dream Analysis - {date_str}"
 
     body = _build_dream_note_body(
-        dream_text, interpretation, associations, image_url, user_id, orch
+        dream_text, interpretation, associations, resource_id, user_id, orch
     )
 
     folder_id = await orch.joplin_client.get_or_create_folder_by_path(DREAM_JOURNAL_PATH)
     note_id = await orch.joplin_client.create_note(
-        folder_id, title, body, image_data_url=image_url
+        folder_id, title, body, image_data_url=None
     )
     await orch.joplin_client.apply_tags(note_id, DREAM_TAGS)
+    _schedule_joplin_sync()
     return True
 
 
@@ -299,7 +351,10 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             ok = await _save_dream_to_joplin(orch, user.id, state)
             orch.state_manager.clear_state(user.id)
             if ok:
-                await msg.reply_text("✅ Dream analysis saved to your Dream Journal.")
+                await msg.reply_text(
+                    "✅ Dream analysis saved to your Dream Journal. "
+                    "Syncing to your other devices…"
+                )
                 logger.info("Dream done: user=%d saved successfully", user.id)
             else:
                 await msg.reply_text(format_error_message("Failed to save. Please try again."))
@@ -320,6 +375,9 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
 
         state = orch.state_manager.get_state(user.id)
         if state and state.get("active_persona") == "DREAM_ANALYST":
+            task = _pending_dream_image_tasks.pop(user.id, None)
+            if task and not task.done():
+                task.cancel()
             orch.state_manager.clear_state(user.id)
             await msg.reply_text("Dream session cancelled. Nothing was saved.")
         else:

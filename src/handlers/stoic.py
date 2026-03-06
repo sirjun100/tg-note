@@ -294,6 +294,8 @@ async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, messag
             _schedule_joplin_sync()
         except Exception as exc:
             logger.debug("Could not schedule Joplin sync: %s", exc)
+        answers = state.get("answers", [])
+        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
     except Exception as exc:
         logger.error("Failed to replace stoic section: %s", exc)
@@ -333,6 +335,9 @@ async def _apply_append_action(orch: TelegramOrchestrator, user_id: int, message
             _schedule_joplin_sync()
         except Exception as exc:
             logger.debug("Could not schedule Joplin sync: %s", exc)
+        mode = state.get("mode", "morning")
+        answers = state.get("answers", [])
+        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
     except Exception as exc:
         logger.error("Failed to append stoic section: %s", exc)

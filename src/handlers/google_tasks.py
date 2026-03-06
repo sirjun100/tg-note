@@ -27,6 +27,7 @@ def register_google_tasks_handlers(application: Any, orch: TelegramOrchestrator)
     application.add_handler(CommandHandler("toggle_privacy", _toggle_privacy(orch)))
     application.add_handler(CommandHandler("google_tasks_status", _tasks_status(orch)))
     application.add_handler(CommandHandler("list_inbox_tasks", _list_inbox_tasks(orch)))
+    application.add_handler(CommandHandler("cleanup_completed_tasks", _cleanup_completed_tasks(orch)))
 
 
 def _authorize(orch: TelegramOrchestrator):
@@ -339,5 +340,51 @@ def _list_inbox_tasks(orch: TelegramOrchestrator):
         except Exception as exc:
             await update.message.reply_text(f"❌ Error listing tasks: {exc}")
             logger.error("Error in list_inbox_tasks: %s", exc)
+
+    return handler
+
+
+def _cleanup_completed_tasks(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            await update.message.reply_text("❌ You're not authorized to use this bot.")
+            return
+
+        if not orch.task_service:
+            await update.message.reply_text("❌ Google Tasks is not configured.")
+            return
+
+        token = orch.logging_service.load_google_token(str(user.id))
+        if not token:
+            await update.message.reply_text(
+                "❌ Google Tasks not authorized\n\nUse /authorize_google_tasks to set up access"
+            )
+            return
+
+        days = 30
+        if context.args:
+            try:
+                days = int(context.args[0])
+                if days < 1 or days > 365:
+                    raise ValueError("Days must be 1–365")
+            except ValueError:
+                await update.message.reply_text(
+                    "Usage: /cleanup_completed_tasks [days]\n"
+                    "Deletes completed tasks older than N days (default: 30).\n"
+                    "Example: /cleanup_completed_tasks 30"
+                )
+                return
+
+        await update.message.chat.send_action("typing")
+        deleted, errors = orch.task_service.delete_completed_tasks_older_than(
+            str(user.id), days=days
+        )
+        if errors > 0:
+            msg = f"🧹 Cleaned up {deleted} completed task(s) older than {days} days.\n⚠️ {errors} deletion(s) failed."
+        else:
+            msg = f"🧹 Cleaned up {deleted} completed task(s) older than {days} days."
+        await update.message.reply_text(msg)
+        logger.info("User %d cleaned up %d completed tasks (errors: %d)", user.id, deleted, errors)
 
     return handler

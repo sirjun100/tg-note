@@ -7,6 +7,7 @@ Integrates with the logging service to track task-note relationships.
 
 import logging
 import re
+from datetime import datetime, timedelta
 from typing import Any
 
 from src.google_tasks_client import GoogleTasksClient
@@ -409,6 +410,63 @@ class TaskService:
             error_msg = f"Error getting task lists for user {user_id}: {e}"
             print(f"❌ {error_msg}")
             return []
+
+    def delete_completed_tasks_older_than(
+        self, user_id: str, days: int = 30
+    ) -> tuple[int, int]:
+        """
+        Delete completed tasks older than N days from all task lists.
+
+        Returns:
+            (deleted_count, error_count)
+        """
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return 0, 0
+        self.tasks_client.set_token(token)
+
+        task_lists = self.get_available_task_lists(user_id)
+        if not task_lists:
+            return 0, 0
+
+        cutoff = datetime.now() - timedelta(days=days)
+        deleted = 0
+        errors = 0
+
+        for tl in task_lists:
+            task_list_id = tl.get("id")
+            if not task_list_id:
+                continue
+            try:
+                tasks = self.tasks_client.get_all_tasks(
+                    task_list_id, show_completed=True
+                )
+            except Exception as e:
+                logger.warning("Failed to fetch tasks from list %s: %s", task_list_id, e)
+                continue
+
+            for task in tasks:
+                if task.get("status") != "completed":
+                    continue
+                completed_str = task.get("completed")
+                if not completed_str:
+                    continue
+                try:
+                    completed_dt = datetime.fromisoformat(
+                        completed_str.replace("Z", "+00:00")
+                    )
+                    if completed_dt.timestamp() < cutoff.timestamp():
+                        if self.tasks_client.delete_task(task.get("id"), task_list_id):
+                            deleted += 1
+                        else:
+                            errors += 1
+                except (ValueError, TypeError):
+                    pass
+
+        if self.tasks_client.token and self.tasks_client.token != token:
+            self.logging_service.save_google_token(user_id, self.tasks_client.token)
+
+        return deleted, errors
 
     def set_preferred_task_list(self, user_id: int, task_list_id: str,
                                task_list_name: str) -> bool:

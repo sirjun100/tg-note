@@ -299,6 +299,36 @@ class GoogleTasksClient:
                 logger.debug(f"Failed to get tasks: {e}")
                 return []
 
+    def get_all_tasks(
+        self, task_list_id: str, show_completed: bool = False
+    ) -> list[dict[str, Any]]:
+        """Get all tasks from a task list, handling pagination."""
+        all_tasks: list[dict[str, Any]] = []
+        page_token: str | None = None
+        while True:
+            params: dict[str, Any] = {
+                "maxResults": 100,
+                "showCompleted": show_completed,
+            }
+            if page_token:
+                params["pageToken"] = page_token
+            if not self.session:
+                raise ValueError("Not authenticated")
+            try:
+                url = f"{self.BASE_URL}/lists/{task_list_id}/tasks"
+                response = self.session.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                items = data.get("items", [])
+                all_tasks.extend(items)
+                page_token = data.get("nextPageToken")
+                if not page_token:
+                    break
+            except Exception as e:
+                logger.debug("Failed to fetch tasks page: %s", e)
+                break
+        return all_tasks
+
 
 # Example usage and testing
 if __name__ == "__main__":

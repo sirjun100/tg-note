@@ -22,6 +22,16 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def _cleanup_completed_tasks_before_report(orch: TelegramOrchestrator, user_id: int) -> None:
+    """Delete completed tasks older than 30 days before generating report (fresh data)."""
+    if orch.task_service:
+        try:
+            orch.task_service.delete_completed_tasks_older_than(str(user_id), days=30)
+        except Exception as exc:
+            logger.debug("Cleanup before report failed (non-fatal): %s", exc)
+
+
 _DEFAULT_CONFIG = {
     "enabled": True,
     "delivery_time": "08:00",
@@ -56,6 +66,7 @@ def _daily_report(orch: TelegramOrchestrator):
 
         try:
             await update.message.chat.send_action("typing")
+            _cleanup_completed_tasks_before_report(orch, user.id)
             logger.info("Generating on-demand daily report for user %d", user.id)
 
             state = orch.state_manager.get_state(user.id)
@@ -95,6 +106,7 @@ async def send_scheduled_report(orch: TelegramOrchestrator, user_id: int) -> Non
     """Callback invoked by the scheduler at the configured time."""
     try:
         logger.info("Sending scheduled report to user %d", user_id)
+        _cleanup_completed_tasks_before_report(orch, user_id)
 
         cfg = orch.logging_service.get_report_configuration(user_id)
         if not cfg or not cfg.get("enabled", True):
@@ -158,6 +170,7 @@ def _weekly_report(orch: TelegramOrchestrator):
 
         try:
             await update.message.chat.send_action("typing")
+            _cleanup_completed_tasks_before_report(orch, user.id)
             logger.info("Generating on-demand weekly report for user %d", user.id)
 
             ref_date: datetime | None = None
@@ -202,6 +215,7 @@ def _monthly_report(orch: TelegramOrchestrator):
 
         try:
             await update.message.chat.send_action("typing")
+            _cleanup_completed_tasks_before_report(orch, user.id)
 
             now = get_user_timezone_aware_now(user.id, orch.logging_service)
             year, month = now.year, now.month
@@ -266,6 +280,7 @@ async def send_scheduled_weekly_report(orch: TelegramOrchestrator, user_id: int)
     """Callback invoked by the scheduler for weekly reports."""
     try:
         logger.info("Sending scheduled weekly report to user %d", user_id)
+        _cleanup_completed_tasks_before_report(orch, user_id)
 
         generator = WeeklyReportGenerator(
             joplin_client=orch.joplin_client,

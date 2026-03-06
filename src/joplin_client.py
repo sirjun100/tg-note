@@ -89,6 +89,44 @@ class JoplinClient:
         except (httpx.ConnectError, httpx.TimeoutException):
             return False
 
+    # -- resources --
+
+    async def create_resource(
+        self, data: bytes, filename: str, mime_type: str = "image/png"
+    ) -> dict[str, Any]:
+        """
+        Upload a resource (e.g. image) via multipart/form-data.
+
+        Returns the created resource dict with at least 'id'. Use the id in note
+        body as ![alt](:/resource_id) to embed the image.
+        """
+        client = await self._get_client()
+        url = self._url("/resources")
+        files = {"data": (filename, data, mime_type)}
+        form_data = {"props": json.dumps({"title": filename})}
+        try:
+            resp = await client.post(
+                url,
+                data=form_data,
+                files=files,
+                timeout=60.0,
+            )
+        except httpx.ConnectError as exc:
+            raise JoplinConnectionError(f"Cannot connect to {self.base_url}") from exc
+        except httpx.TimeoutException as exc:
+            raise JoplinConnectionError(f"Timeout connecting to {self.base_url}") from exc
+
+        if resp.status_code == 403:
+            raise JoplinAuthError()
+        if resp.status_code >= 400:
+            raise JoplinError(f"Joplin returned {resp.status_code}: {resp.text[:200]}")
+
+        result = resp.json() if resp.content else None
+        if result and "id" in result:
+            logger.info("Created resource '%s' (%s)", filename, result["id"])
+            return result
+        raise JoplinError(f"Failed to create resource '{filename}'")
+
     # -- notes --
 
     async def create_note(
