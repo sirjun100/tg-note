@@ -3,7 +3,7 @@
 **Sprint Goal**: Fix the /dream command crash (BF-017) and deliver flashcard practice from Joplin notes (FR-033), turning the Second Brain into a memory-building practice gym.
 
 **Duration**: 2026-05-05 - 2026-05-18 (2 weeks)
-**Status**: ⏳ Planned
+**Status**: ✅ Completed
 **Team Velocity**: 9 points (BF-017 + FR-033)
 **Sprint Planning Date**: 2026-03-06
 **Sprint Review Date**: 2026-05-18

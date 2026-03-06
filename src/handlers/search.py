@@ -4,6 +4,7 @@ Search handlers: /find and /search for quick note lookup.
 
 from __future__ import annotations
 
+import html
 import logging
 import re
 from typing import TYPE_CHECKING, Any
@@ -39,6 +40,38 @@ def _extract_snippet(body: str, query: str, context_chars: int = CONTEXT_CHARS) 
     return snippet
 
 
+def _search_html_to_plain(html_text: str) -> str:
+    """Strip HTML tags for plain-text fallback (BF-022)."""
+    out = re.sub(r"</?b>", "", html_text)
+    out = re.sub(r"</?i>", "", out)
+    return out.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+
+
+async def _send_search_results_safe(message: Any, msg_html: str) -> None:
+    """Send search results with HTML; fall back to plain text on parse/send error (BF-022)."""
+    plain = _search_html_to_plain(msg_html)
+    try:
+        await message.reply_text(msg_html, parse_mode="HTML")
+    except Exception as exc:
+        exc_str = str(exc).lower()
+        exc_type = type(exc).__name__
+        is_parse_error = (
+            "parse" in exc_str
+            or "entities" in exc_str
+            or "badrequest" in exc_type.lower()
+        )
+        logger.warning(
+            "Search results send failed (%s), falling back to plain text: %s",
+            "parse" if is_parse_error else "other",
+            exc,
+        )
+        try:
+            await message.reply_text(plain)
+        except Exception as fallback_exc:
+            logger.error("Search results plain fallback also failed: %s", fallback_exc)
+            raise exc from fallback_exc
+
+
 def register_search_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("find", _find(orch)))
     application.add_handler(CommandHandler("search", _find(orch)))
@@ -59,10 +92,10 @@ def _find(orch: TelegramOrchestrator):
 
         if not query:
             await update.message.reply_text(
-                "🔍 **Search Notes**\n\n"
-                "Usage: `/find <query>` or `/search <query>`\n"
-                "Example: `/find meeting notes`",
-                parse_mode="Markdown",
+                "🔍 <b>Search Notes</b>\n\n"
+                "Usage: /find &lt;query&gt; or /search &lt;query&gt;\n"
+                "Example: /find meeting notes",
+                parse_mode="HTML",
             )
             return
 
@@ -79,10 +112,17 @@ def _find(orch: TelegramOrchestrator):
             )
             return
 
-        folders = await orch.joplin_client.get_folders()
-        folder_by_id = {f.get("id"): f.get("title") or "Unknown" for f in folders}
+        # BF-022: get_folders can fail (timeout, Joplin down); use empty map on error
+        try:
+            folders = await orch.joplin_client.get_folders()
+            folder_by_id = {f.get("id"): f.get("title") or "Unknown" for f in folders}
+        except Exception as exc:
+            logger.warning("get_folders failed for search, using Unknown for folders: %s", exc)
+            folder_by_id = {}
 
-        lines = [f"🔍 **Search results for '{query}'** ({len(results)} found)\n"]
+        # BF-022: Use HTML + escape to avoid Markdown parse errors from user content
+        q_esc = html.escape(query)
+        lines = [f"🔍 <b>Search results for '{q_esc}'</b> ({len(results)} found)\n"]
 
         for i, note in enumerate(results, 1):
             title = note.get("title") or "(Untitled)"
@@ -92,14 +132,18 @@ def _find(orch: TelegramOrchestrator):
             snippet = _extract_snippet(body, query)
             if snippet:
                 snippet = re.sub(r"\s+", " ", snippet).strip()
-            lines.append(f"{i}️⃣ **{title}**")
-            lines.append(f"   📁 {folder_name}")
+            title_esc = html.escape(title)
+            folder_esc = html.escape(folder_name)
+            lines.append(f"{i}️⃣ <b>{title_esc}</b>")
+            lines.append(f"   📁 {folder_esc}")
             if snippet:
-                lines.append(f"   _{snippet}_")
+                snippet_esc = html.escape(snippet)
+                lines.append(f"   <i>{snippet_esc}</i>")
             lines.append("")
 
         lines.append("Reply with the number to view full note, or search again.")
-        await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+        msg_html = "\n".join(lines)
+        await _send_search_results_safe(update.message, msg_html)
 
         orch.state_manager.update_state(
             user.id,

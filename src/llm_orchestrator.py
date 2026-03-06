@@ -913,6 +913,8 @@ Return a ContentDecision with:
 - task: (when content_type is "task" or "both") {{ title, due_date (ISO YYYY-MM-DD if extractable), notes }}
 
 For task.due_date: extract from "tomorrow", "by Friday", "next week", "March 15" etc. Use ISO format. Omit if no date mentioned.
+
+For task: Star at **beginning** of task text means priority — * or ⭐ = important (HIGH), ** = critical (CRITICAL), *** = urgent (URGENT). Include the star in the task title when user intends priority.
 """
 
         url_ctx = context.get("url_context")

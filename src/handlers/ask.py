@@ -1,22 +1,55 @@
 """
 Semantic Q&A handlers: /ask, /reindex, /search_status (FR-026).
+BF-023: HTML escape + safe send + split long messages.
 """
 
 from __future__ import annotations
 
+import html
 import logging
+import re
 from typing import TYPE_CHECKING, Any
 
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
 from src.qa_service import ask_question
-from src.security_utils import check_whitelist, format_error_message
+from src.security_utils import check_whitelist, format_error_message, split_message_for_telegram
 
 if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
 
 logger = logging.getLogger(__name__)
+
+
+def _ask_html_to_plain(html_text: str) -> str:
+    """Strip HTML for plain-text fallback (BF-023)."""
+    out = re.sub(r"</?b>", "", html_text)
+    out = re.sub(r"</?i>", "", out)
+    return out.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+
+
+async def _send_ask_response_safe(message: Any, msg_html: str) -> None:
+    """Send /ask response with HTML; fallback to plain; split if > 4096 chars (BF-023)."""
+    plain = _ask_html_to_plain(msg_html)
+    if len(msg_html) > 4096:
+        for chunk in split_message_for_telegram(plain):
+            await message.reply_text(chunk)
+        return
+    try:
+        await message.reply_text(msg_html, parse_mode="HTML")
+    except Exception as exc:
+        exc_str = str(exc).lower()
+        is_parse = (
+            "parse" in exc_str
+            or "entities" in exc_str
+            or "badrequest" in type(exc).__name__.lower()
+        )
+        if is_parse:
+            for chunk in split_message_for_telegram(plain):
+                await message.reply_text(chunk)
+            return
+        raise
 
 
 def register_ask_handlers(application: Any, orch: TelegramOrchestrator) -> None:
@@ -58,13 +91,15 @@ def _ask(orch: TelegramOrchestrator):
             answer = result["answer"]
             sources = result["sources"]
 
-            lines = [f"🔍 **{question}**\n", answer]
+            # BF-023: HTML + escape to avoid Markdown parse errors from LLM/Joplin content
+            q_esc = html.escape(question)
+            lines = [f"🔍 <b>{q_esc}</b>\n", html.escape(answer)]
             if sources:
-                lines.append("\n📚 **Sources:**")
+                lines.append("\n📚 <b>Sources:</b>")
                 for s in sources[:5]:
-                    lines.append(f"• \"{s['title']}\"")
+                    lines.append(f"• \"{html.escape(s['title'])}\"")
             response = "\n".join(lines)
-            await msg.reply_text(response, parse_mode="Markdown")
+            await _send_ask_response_safe(msg, response)
             logger.info("Ask '%s' answered for user %d", question[:50], user.id)
         except RuntimeError as exc:
             await msg.reply_text(format_error_message(str(exc)))

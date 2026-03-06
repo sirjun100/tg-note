@@ -1,6 +1,6 @@
 # Feature Request: FR-033 - Flashcard Practice from Notes
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟠 High
 **Story Points**: 8
 **Created**: 2026-03-05

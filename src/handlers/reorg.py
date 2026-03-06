@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def register_reorg_handlers(application: Any, orch: TelegramOrchestrator) -> None:
+    application.add_handler(CommandHandler("project_new", _project_new(orch)))
+    application.add_handler(CommandHandler("pn", _project_new(orch)))
     application.add_handler(CommandHandler("reorg_status", _status(orch)))
     application.add_handler(CommandHandler("reorg_init", _init(orch)))
     application.add_handler(CommandHandler("reorg_preview", _preview(orch)))
@@ -30,6 +32,44 @@ def register_reorg_handlers(application: Any, orch: TelegramOrchestrator) -> Non
     application.add_handler(CommandHandler("enrich_notes", _enrich(orch)))
     application.add_handler(CommandHandler("reorg_audit_tags", _audit_tags(orch)))
     application.add_handler(CommandHandler("reorg_help", _help(orch)))
+
+
+def _project_new(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not update.message:
+            return
+
+        name = " ".join(context.args).strip() if context.args else ""
+        if not name:
+            await update.message.reply_text(
+                "📁 <b>Create Project</b>\n\n"
+                "Usage: /project_new &lt;name&gt; or /pn &lt;name&gt;\n"
+                "Example: /project_new Website Redesign",
+                parse_mode="HTML",
+            )
+            return
+
+        try:
+            result = await orch.reorg_orchestrator.create_project(name)
+            subs = ", ".join(result["subfolders"])
+            await update.message.reply_text(
+                f"✅ Created project '{name}' with folders: {subs}",
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            err = str(e)
+            if "already exists" in err.lower():
+                await update.message.reply_text(
+                    f"ℹ️ {err}\n\nUse /find to search for notes in it."
+                )
+            else:
+                await update.message.reply_text(f"❌ Error: {err}")
+                logger.error("project_new failed: %s", e, exc_info=True)
+
+    return handler
 
 
 def _status(orch: TelegramOrchestrator):
