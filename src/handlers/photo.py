@@ -270,6 +270,9 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
         )
 
         if result and "error" not in result:
+            from src.handlers.core import _schedule_joplin_sync
+
+            _schedule_joplin_sync()
             folder_id = result.get("folder_id", "")
             folder_name = ""
             if folder_id:
@@ -279,11 +282,10 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
                 except Exception:
                     pass
             img_type = (ocr_result.get("type") or "image").replace("_", " ").title()
-            await status_msg.edit_text(
-                format_success_message(
-                    f"Saved: {title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} captured"
-                )
-            )
+            success_text = f"Saved: {title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} captured"
+            if resource_id:
+                success_text += "\n\nIf the image doesn't show, run /sync then sync in Joplin."
+            await status_msg.edit_text(format_success_message(success_text))
         elif result and result.get("error") == "folder_not_found":
             await status_msg.edit_text(
                 format_error_message(
@@ -394,6 +396,9 @@ async def handle_photo_message(
     )
 
     if result and "error" not in result:
+        from src.handlers.core import _schedule_joplin_sync
+
+        _schedule_joplin_sync()
         folder_id = result.get("folder_id", "")
         folder_name = ""
         if folder_id:
@@ -403,11 +408,10 @@ async def handle_photo_message(
             except Exception:
                 pass
         img_type = (ocr_result.get("type") or "image").replace("_", " ").title()
-        await status_msg.edit_text(
-            format_success_message(
-                f"Saved: {title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} captured"
-            )
-        )
+        success_text = f"Saved: {title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} captured"
+        if resource_id:
+            success_text += "\n\nIf the image doesn't show, run /sync then sync in Joplin."
+        await status_msg.edit_text(format_success_message(success_text))
     elif result and result.get("error") == "folder_not_found":
         await status_msg.edit_text(
             format_error_message(

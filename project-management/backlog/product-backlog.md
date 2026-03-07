@@ -122,6 +122,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [BF-021](bugs/BF-021-weekly-report-ugly-formatting.md) | Weekly Report: Ugly Formatting, Needs Pretty Tables | 🟡 Medium | 2 | ✅ | Backlog | 2026-03-06 | 2026-03-06 |
 | [BF-022](bugs/BF-022-find-command-flyio-error.md) | /find Command Error in Fly.io Logs | 🟠 High | 2 | ✅ | Sprint 15 | 2026-03-06 | 2026-03-06 |
 | [BF-023](bugs/BF-023-ask-command-crash.md) | /ask Command Crashes on Certain Prompts | 🟠 High | 2 | ✅ | Sprint 15 | 2026-03-06 | 2026-03-06 |
+| [BF-024](bugs/BF-024-photo-image-not-displaying.md) | Photo OCR: Image Not Displaying in Joplin Note | 🟠 High | 2 | ✅ | Backlog | 2026-03-07 | 2026-03-07 |
 
 ---
 
