@@ -131,6 +131,7 @@ class ReportData:
     google_tasks_count: int = 0
     clarification_count: int = 0
     completed_count: int = 0
+    stalled_projects: list[str] = field(default_factory=list)  # FR-034: projects with no next actions
 
     @property
     def total_items(self) -> int:
@@ -979,6 +980,15 @@ Response:"""
                 1 for item in report.all_items if item.source == ItemSource.GOOGLE_TASKS
             )
 
+            # FR-034: Stalled projects (no incomplete subtasks)
+            if self.task_service:
+                try:
+                    report.stalled_projects = await asyncio.to_thread(
+                        self.task_service.get_stalled_project_titles, str(user_id)
+                    )
+                except Exception as e:
+                    self.logger.debug("Failed to fetch stalled projects: %s", e)
+
             self.logger.info(
                 f"Report generated: {report.total_items} items "
                 f"({report.joplin_count} Joplin, {report.google_tasks_count} Tasks)"
@@ -1069,6 +1079,7 @@ Response:"""
             or report.pending_clarification
             or report.notes_created_today
             or report.tasks_completed_today
+            or report.stalled_projects
         )
         if not has_content:
             return "📊 Daily Priority Report\n\nNo items to report today. Great job staying on top of things! 🎉"
@@ -1139,6 +1150,13 @@ Response:"""
                 lines.append(f"• {priority_emoji} [{folder}] {escape_for_html(note.title)}")
             if len(report.joplin_notes) > 15:
                 lines.append(f"• ... +{len(report.joplin_notes) - 15} more notes")
+            lines.append("")
+
+        # FR-034: Stalled projects (no next actions)
+        if report.stalled_projects:
+            lines.append("⚠️ Projects with no next actions")
+            for title in report.stalled_projects:
+                lines.append(f"• {escape_for_html(title)}")
             lines.append("")
 
         # Pending clarifications

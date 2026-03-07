@@ -12,8 +12,9 @@ Generates monthly reports aggregating:
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -78,6 +79,7 @@ class MonthlyReportData:
     insights: list[str]
     in_tasks_pending: int = 0  # Unprocessed tasks ("in")
     in_notes_count: int = 0  # Unprocessed notes in Inbox ("in")
+    stalled_projects: list[str] = field(default_factory=list)  # FR-034: projects with no next actions
 
 
 def _month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
@@ -513,6 +515,11 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
         in_tasks_pending = await self._get_pending_tasks_count(user_id)
         in_notes_count = await self._get_inbox_notes_count()
 
+        stalled: list[str] = []
+        if self.task_service:
+            with contextlib.suppress(Exception):
+                stalled = self.task_service.get_stalled_project_titles(str(user_id))
+
         return MonthlyReportData(
             year=year,
             month=month,
@@ -526,6 +533,7 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
             insights=insights,
             in_tasks_pending=in_tasks_pending,
             in_notes_count=in_notes_count,
+            stalled_projects=stalled,
         )
 
     def format_report(self, report: MonthlyReportData) -> str:
@@ -554,6 +562,13 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
             in_parts.append(f"{report.in_notes_count} notes")
         if in_parts:
             lines.append(f"📥 In (unprocessed): {' • '.join(in_parts)}")
+            lines.append("")
+
+        # FR-034: Stalled projects
+        if report.stalled_projects:
+            lines.append("⚠️ Projects with no next actions")
+            for title in report.stalled_projects:
+                lines.append(f"  • {escape_for_html(title)}")
             lines.append("")
 
         # Weekly trend — Notes + Tasks per week

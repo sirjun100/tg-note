@@ -446,31 +446,66 @@ class ReorgOrchestrator:
 
     async def _is_folder_under_projects(self, folder_id: str) -> bool:
         """Return True if folder_id is under the Projects root."""
+        result = await self.get_project_folder_for_sync(folder_id)
+        return result is not None
+
+    async def get_project_folders(
+        self, projects_folder_id: str | None = None
+    ) -> list[tuple[str, str]]:
+        """FR-034: Return all direct children of Projects root as (folder_id, folder_title).
+        If projects_folder_id is set (config override), use it as Projects root; else use name-based."""
+        try:
+            folders = await self.joplin_client.get_folders()
+            project_root_id = projects_folder_id
+            if not project_root_id:
+                for f in folders:
+                    title_lower = (f.get("title") or "").strip().lower()
+                    if title_lower in ("01 - projects", "projects", "project"):
+                        project_root_id = f["id"]
+                        break
+            if not project_root_id:
+                return []
+            result: list[tuple[str, str]] = []
+            for f in folders:
+                if (f.get("parent_id") or "") == project_root_id:
+                    result.append((f["id"], f.get("title", "Unknown")))
+            return result
+        except Exception as e:
+            logger.warning("Could not get project folders: %s", e)
+            return []
+
+    async def get_project_folder_for_sync(
+        self, folder_id: str, projects_folder_id: str | None = None
+    ) -> tuple[str, str] | None:
+        """FR-034: If folder_id is under Projects, return (project_folder_id, project_folder_title).
+        If projects_folder_id is set (config override), use it as Projects root; else use name-based."""
         try:
             folders = await self.joplin_client.get_folders()
             folders_by_id = {f["id"]: f for f in folders}
-            project_root_id = None
-            for f in folders:
-                title_lower = (f.get("title") or "").strip().lower()
-                if title_lower in ("01 - projects", "projects"):
-                    project_root_id = f["id"]
-                    break
+            project_root_id = projects_folder_id
             if not project_root_id:
-                return False
+                for f in folders:
+                    title_lower = (f.get("title") or "").strip().lower()
+                    if title_lower in ("01 - projects", "projects", "project"):
+                        project_root_id = f["id"]
+                        break
+            if not project_root_id:
+                return None
             current_id = folder_id
-            visited = set()
+            visited: set[str] = set()
             while current_id and current_id not in visited:
                 visited.add(current_id)
-                if current_id == project_root_id:
-                    return True
                 folder = folders_by_id.get(current_id)
                 if not folder:
-                    return False
-                current_id = folder.get("parent_id") or ""
-            return False
+                    return None
+                parent_id = folder.get("parent_id") or ""
+                if parent_id == project_root_id:
+                    return (current_id, folder.get("title", "Unknown"))
+                current_id = parent_id
+            return None
         except Exception as e:
-            logger.warning("Could not check Projects subtree: %s", e)
-            return False
+            logger.warning("Could not get project folder for sync: %s", e)
+            return None
 
     async def _extract_tags_from_folder_path(self, folder_id: str) -> list[str]:
         """Extract suggested tags from folder hierarchy"""

@@ -272,6 +272,23 @@ class SchedulerService:
         """
         return self.scheduler.get_jobs()
 
+    def schedule_project_cleanup(self, callback) -> bool:
+        """FR-034 Option A: Schedule daily orphaned project cleanup (runs at 03:00 UTC)."""
+        try:
+            trigger = CronTrigger(hour=3, minute=0, timezone=pytz.UTC)
+            self.scheduler.add_job(
+                callback,
+                trigger,
+                id="project_cleanup",
+                name="Orphaned project mappings cleanup",
+                replace_existing=True,
+            )
+            logger.info("Scheduled project cleanup job (daily 03:00 UTC)")
+            return True
+        except Exception as e:
+            logger.error("Failed to schedule project cleanup: %s", e)
+            return False
+
     def get_scheduler_status(self) -> dict[str, Any]:
         """
         Get current scheduler status

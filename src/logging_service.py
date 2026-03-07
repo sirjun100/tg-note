@@ -73,6 +73,22 @@ class LoggingService:
             with open(schema_path, encoding="utf-8") as f:
                 schema = f.read()
             conn.executescript(schema)
+            # FR-034: Migration for existing DBs - add project_sync_enabled if missing
+            try:
+                conn.execute(
+                    "ALTER TABLE google_tasks_config ADD COLUMN project_sync_enabled BOOLEAN DEFAULT 0"
+                )
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+            # FR-034: Migration - add projects_folder_id for configurable Projects parent
+            try:
+                conn.execute(
+                    "ALTER TABLE google_tasks_config ADD COLUMN projects_folder_id TEXT"
+                )
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # Column already exists
             conn.commit()
 
     def _dict_factory(self, cursor, row):
@@ -284,8 +300,9 @@ class LoggingService:
             cursor.execute('''
                 INSERT OR REPLACE INTO google_tasks_config
                 (user_id, enabled, auto_create_tasks, task_list_id, task_list_name,
-                 include_only_tagged, task_creation_tags, privacy_mode, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 include_only_tagged, task_creation_tags, privacy_mode, project_sync_enabled,
+                 projects_folder_id, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
                 config.get('enabled', True),
@@ -295,9 +312,20 @@ class LoggingService:
                 config.get('include_only_tagged', False),
                 json.dumps(config.get('task_creation_tags', [])),
                 config.get('privacy_mode', False),
+                config.get('project_sync_enabled', False),
+                config.get('projects_folder_id'),
                 datetime.now()
             ))
             conn.commit()
+
+    def get_user_ids_with_project_sync_enabled(self) -> list[int]:
+        """FR-034: Return user IDs that have project sync enabled (for periodic cleanup)."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT user_id FROM google_tasks_config WHERE project_sync_enabled = 1"
+            )
+            return [row[0] for row in cursor.fetchall()]
 
     def get_google_tasks_config(self, user_id: int) -> dict[str, Any] | None:
         """Get Google Tasks configuration for a user"""
@@ -380,6 +408,68 @@ class LoggingService:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM task_links WHERE id = ?', (task_link_id,))
+            conn.commit()
+
+    # FR-034: Joplin project ↔ Google Tasks parent mapping
+
+    def get_all_project_sync_mappings(self, user_id: int) -> list[dict[str, Any]]:
+        """Get all Joplin project folder → Google parent task mappings for a user."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = self._dict_factory
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM joplin_project_sync WHERE user_id = ?",
+                (user_id,),
+            )
+            return cursor.fetchall()
+
+    def get_project_sync_mapping(
+        self, user_id: int, joplin_folder_id: str
+    ) -> dict[str, Any] | None:
+        """Get mapping for a Joplin project folder to Google parent task."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = self._dict_factory
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM joplin_project_sync WHERE user_id = ? AND joplin_folder_id = ?",
+                (user_id, joplin_folder_id),
+            )
+            return cursor.fetchone()
+
+    def save_project_sync_mapping(
+        self,
+        user_id: int,
+        joplin_folder_id: str,
+        joplin_folder_title: str,
+        google_task_id: str,
+        google_task_list_id: str,
+    ) -> None:
+        """Save or update mapping from Joplin project folder to Google parent task."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO joplin_project_sync
+                (user_id, joplin_folder_id, joplin_folder_title, google_task_id, google_task_list_id, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, joplin_folder_id) DO UPDATE SET
+                    joplin_folder_title = excluded.joplin_folder_title,
+                    google_task_id = excluded.google_task_id,
+                    google_task_list_id = excluded.google_task_list_id,
+                    updated_at = excluded.updated_at
+                """,
+                (user_id, joplin_folder_id, joplin_folder_title, google_task_id, google_task_list_id, datetime.now()),
+            )
+            conn.commit()
+
+    def delete_project_sync_mapping(self, user_id: int, joplin_folder_id: str) -> None:
+        """Remove mapping when Joplin project folder is deleted."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM joplin_project_sync WHERE user_id = ? AND joplin_folder_id = ?",
+                (user_id, joplin_folder_id),
+            )
             conn.commit()
 
     # Task Sync History Methods

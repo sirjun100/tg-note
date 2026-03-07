@@ -14,9 +14,9 @@ import re
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from telegram import Message, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.constants import ChatAction
-from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.constants import is_action_item
 from src.handlers.profile import get_user_profile_context
@@ -72,6 +72,7 @@ def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, _message(orch))
     )
+    application.add_handler(CallbackQueryHandler(_project_selection_callback(orch), pattern="^project_sel_"))
 
 
 # ---------------------------------------------------------------------------
@@ -584,6 +585,10 @@ def _message(orch: TelegramOrchestrator):
                         )
                 elif pending.get("active_persona") == "SEARCH":
                     await _handle_search_message(orch, user_id, validated, message)
+                elif pending.get("awaiting_project_selection"):
+                    await _handle_project_selection_reply(orch, user_id, validated, message, context)
+                elif pending.get("awaiting_projects_folder"):
+                    await _handle_projects_folder_reply(orch, user_id, validated, message)
                 else:
                     await _handle_clarification_reply(orch, user_id, validated, message, context)
             else:
@@ -743,7 +748,7 @@ async def _route_plain_message(
             question = None
             log_entry = routing.log_entry
 
-        await _process_llm_response(
+        note_result = await _process_llm_response(
             orch,
             user_id,
             _RoutingNoteResponse(),
@@ -754,16 +759,28 @@ async def _route_plain_message(
             context=context,
         )
 
-        # If both: create task with link to note
+        # If both: create task with link to note (FR-034: subtask if in project folder)
         if routing.content_type == "both" and routing.task and orch.task_service:
             note_title = (routing.note or {}).get("title", "Note")
             task = routing.task
             task_notes = f"📝 See Joplin note: {note_title}\n\n{task.notes or ''}".strip()
+            folder_id = (routing.note or {}).get("parent_id")
+            parent_folder_id, parent_folder_title = None, None
+            if folder_id:
+                cfg = orch.logging_service.get_google_tasks_config(user_id)
+                proj_folder_id = (cfg or {}).get("projects_folder_id")
+                proj = await orch.reorg_orchestrator.get_project_folder_for_sync(
+                    folder_id, projects_folder_id=proj_folder_id
+                )
+                if proj:
+                    parent_folder_id, parent_folder_title = proj
             created = orch.task_service.create_task_with_metadata(
                 title=task.title,
                 user_id=str(user_id),
                 notes=task_notes,
                 due_date=task.due_date,
+                parent_folder_id=parent_folder_id,
+                parent_folder_title=parent_folder_title,
             )
             if created:
                 orch.logging_service.log_decision(
@@ -775,6 +792,23 @@ async def _route_plain_message(
                         tags=[],
                     )
                 )
+                # FR-034: Preserve task_link (joplin_note_id ↔ google_task_id)
+                if note_result and note_result.get("note_id") and created:
+                    t = created[0]
+                    task_list_id = (
+                        orch.task_service.get_task_list_id_for_user(str(user_id))
+                        if orch.task_service
+                        else None
+                    )
+                    if task_list_id:
+                        orch.logging_service.create_task_link(
+                            user_id=user_id,
+                            joplin_note_id=note_result["note_id"],
+                            google_task_id=t.get("id", ""),
+                            google_task_list_id=task_list_id,
+                            joplin_note_title=note_title,
+                            google_task_title=task.title,
+                        )
             status_line = _task_sync_status_line(orch, user_id)
             await message.reply_text(
                 format_success_message(f"✅ Also created linked Google Task: '{task.title}'{status_line}")
@@ -804,6 +838,35 @@ async def _handle_new_request(
             )
             return
         try:
+            # FR-034: If project sync enabled and projects exist, ask "Is this for a project?"
+            config = orch.logging_service.get_google_tasks_config(user_id)
+            if config and config.get("project_sync_enabled") and orch.reorg_orchestrator:
+                proj_folder_id = config.get("projects_folder_id")
+                projects = await orch.reorg_orchestrator.get_project_folders(
+                    projects_folder_id=proj_folder_id
+                )
+                if projects:
+                    lines = ["Is this task for a project?"]
+                    for i, (_fid, title) in enumerate(projects[:10], 1):
+                        lines.append(f"{i}. {title}")
+                    lines.append("Reply with the number, or tap a button below.")
+                    keyboard = []
+                    for i, (_fid, title) in enumerate(projects[:8], 1):
+                        keyboard.append([
+                            InlineKeyboardButton(f"{i}. {title[:30]}", callback_data=f"project_sel_{i - 1}")
+                        ])
+                    keyboard.append([InlineKeyboardButton("No (top-level)", callback_data="project_sel_no")])
+                    orch.state_manager.update_state(user_id, {
+                        "awaiting_project_selection": True,
+                        "task_text": text,
+                        "projects": [[fid, t] for fid, t in projects[:10]],
+                    })
+                    await message.reply_text(
+                        "\n".join(lines),
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                    )
+                    return
+
             created = orch.task_service.create_task_directly(text, str(user_id))
             if created:
                 status_line = _task_sync_status_line(orch, user_id)
@@ -876,6 +939,149 @@ async def _handle_new_request(
         orch, user_id, llm_response, message, telegram_message_id,
         url_context=url_context, context=context,
     )
+
+
+async def _handle_project_selection_reply(
+    orch: TelegramOrchestrator,
+    user_id: int,
+    text: str,
+    message: Message,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """FR-034: Handle user reply to 'Is this task for a project?' (number or 'no')."""
+    state = orch.state_manager.get_state(user_id)
+    if not state or not state.get("awaiting_project_selection"):
+        await message.reply_text("❌ No pending task. Use /task <item> to create a task.")
+        return
+
+    task_text = state.get("task_text", "")
+    projects = state.get("projects", [])
+    orch.state_manager.clear_state(user_id)
+
+    if not task_text or not orch.task_service:
+        await message.reply_text(format_error_message("Could not create task."))
+        return
+
+    text_lower = text.strip().lower()
+    if text_lower in ("no", "n", "skip", "top-level", "top level"):
+        created = orch.task_service.create_task_directly(task_text, str(user_id))
+    else:
+        try:
+            idx = int(text.strip())
+            if 1 <= idx <= len(projects):
+                fid, title = projects[idx - 1]
+                created = orch.task_service.create_task_with_metadata(
+                    title=task_text,
+                    user_id=str(user_id),
+                    parent_folder_id=fid,
+                    parent_folder_title=title,
+                )
+            else:
+                created = orch.task_service.create_task_directly(task_text, str(user_id))
+        except ValueError:
+            created = orch.task_service.create_task_directly(task_text, str(user_id))
+
+    if created:
+        status_line = _task_sync_status_line(orch, user_id)
+        await message.reply_text(format_success_message(
+            f"✅ Created Google Task: '{task_text[:80]}{'…' if len(task_text) > 80 else ''}'{status_line}"
+        ))
+    else:
+        has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+        if has_token:
+            await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
+        else:
+            await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks first."))
+
+
+async def _handle_projects_folder_reply(
+    orch: TelegramOrchestrator, user_id: int, text: str, message: Message
+) -> None:
+    """FR-034: Handle reply to set_projects_folder picker (number or 'default')."""
+    state = orch.state_manager.get_state(user_id)
+    if not state or not state.get("awaiting_projects_folder"):
+        await message.reply_text("❌ No pending selection. Use /set_projects_folder to try again.")
+        return
+
+    root_folders = state.get("root_folders", [])
+    orch.state_manager.clear_state(user_id)
+
+    text_lower = text.strip().lower()
+    if text_lower in ("default", "0"):
+        cfg = orch.logging_service.get_google_tasks_config(user_id) or {}
+        cfg["projects_folder_id"] = None
+        orch.logging_service.save_google_tasks_config(user_id, cfg)
+        await message.reply_text("✅ Using default Projects folder (Projects / 01 - projects / project)")
+        return
+
+    try:
+        idx = int(text.strip())
+        if 1 <= idx <= len(root_folders):
+            fid, title = root_folders[idx - 1]
+            cfg = orch.logging_service.get_google_tasks_config(user_id) or {}
+            cfg["projects_folder_id"] = fid
+            orch.logging_service.save_google_tasks_config(user_id, cfg)
+            await message.reply_text(f"✅ Projects root set to: {title}")
+        else:
+            await message.reply_text("❌ Invalid number. Use /set_projects_folder to try again.")
+    except ValueError:
+        await message.reply_text("❌ Reply with a number or 'default'. Use /set_projects_folder to try again.")
+
+
+def _project_selection_callback(orch: TelegramOrchestrator):
+    """FR-034: Handle inline button click for project selection."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        query = update.callback_query
+        if not query or not query.data:
+            return
+        await query.answer()
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        state = orch.state_manager.get_state(user.id)
+        if not state or not state.get("awaiting_project_selection"):
+            await query.edit_message_text("❌ Selection expired. Use /task <item> to create a task.")
+            return
+
+        task_text = state.get("task_text", "")
+        projects = state.get("projects", [])
+        orch.state_manager.clear_state(user.id)
+
+        if not task_text or not orch.task_service:
+            await query.edit_message_text(format_error_message("Could not create task."))
+            return
+
+        data = query.data
+        if data == "project_sel_no":
+            created = orch.task_service.create_task_directly(task_text, str(user.id))
+        else:
+            try:
+                idx = int(data.replace("project_sel_", ""))
+                if 0 <= idx < len(projects):
+                    fid, title = projects[idx]
+                    created = orch.task_service.create_task_with_metadata(
+                        title=task_text,
+                        user_id=str(user.id),
+                        parent_folder_id=fid,
+                        parent_folder_title=title,
+                    )
+                else:
+                    created = orch.task_service.create_task_directly(task_text, str(user.id))
+            except (ValueError, IndexError):
+                created = orch.task_service.create_task_directly(task_text, str(user.id))
+
+        if created:
+            status_line = _task_sync_status_line(orch, user.id)
+            await query.edit_message_text(format_success_message(
+                f"✅ Created Google Task: '{task_text[:80]}{'…' if len(task_text) > 80 else ''}'{status_line}"
+            ))
+        else:
+            has_token = orch.logging_service.load_google_token(str(user.id)) is not None
+            msg = "Failed to create Google Task. Check /google_tasks_status." if has_token else "Failed to create Google Task. Use /authorize_google_tasks first."
+            await query.edit_message_text(format_error_message(msg))
+
+    return handler
 
 
 async def _handle_clarification_reply(
@@ -979,7 +1185,7 @@ async def _process_llm_response(
     clear_state: bool = False,
     url_context: dict[str, Any] | None = None,
     context: ContextTypes.DEFAULT_TYPE | None = None,
-) -> None:
+) -> dict[str, Any] | None:
     if llm_response.status == "SUCCESS" and llm_response.note:
         if context:
             await _send_typing(message, context)
@@ -1000,7 +1206,7 @@ async def _process_llm_response(
                 else:
                     msg += "Please provide a valid folder name."
                 await message.reply_text(msg)
-                return
+                return None
 
             note_id = note_result["note_id"]
             tag_info = note_result.get("tag_info", {})
@@ -1041,8 +1247,10 @@ async def _process_llm_response(
             if tag_info.get("all_tags"):
                 success_msg += f"\nTags: {_format_tag_display(tag_info)}"
             await message.reply_text(format_success_message(success_msg))
+            return note_result
         else:
             await message.reply_text(format_error_message("Failed to create note in Joplin. Please try again."))
+            return None
 
     elif llm_response.status == "NEED_INFO" and llm_response.question:
         state = {
@@ -1055,9 +1263,11 @@ async def _process_llm_response(
             "🧠 Second Brain folders: Inbox, Projects, Areas, Resources, Archive.\n\n"
             f"🤔 {llm_response.question}"
         )
+        return None
     else:
         logger.error("Unexpected LLM response: %s", llm_response)
         await message.reply_text(format_error_message("I had trouble understanding. Please try rephrasing."))
+        return None
 
 
 async def create_note_in_joplin(

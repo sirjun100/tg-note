@@ -227,7 +227,22 @@ async def _finish_session(
 
                 if GOOGLE_TASKS_AVAILABLE and orch.task_service:
                     await message.reply_text("🚀 Extracting action items to Google Tasks...")
-                    created = orch.task_service.create_tasks_from_decision(decision, str(user_id))
+                    parent_folder_id, parent_folder_title = None, None
+                    if decision.folder_chosen:
+                        cfg = orch.logging_service.get_google_tasks_config(user_id)
+                        proj_folder_id = (cfg or {}).get("projects_folder_id")
+                        proj = await orch.reorg_orchestrator.get_project_folder_for_sync(
+                            decision.folder_chosen,
+                            projects_folder_id=proj_folder_id,
+                        )
+                        if proj:
+                            parent_folder_id, parent_folder_title = proj
+                    created = orch.task_service.create_tasks_from_decision(
+                        decision,
+                        str(user_id),
+                        parent_folder_id=parent_folder_id,
+                        parent_folder_title=parent_folder_title,
+                    )
                     if created:
                         try:
                             status = orch.task_service.get_task_sync_status(user_id)

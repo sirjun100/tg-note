@@ -245,6 +245,10 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
 
         try:
             await orchestrator.scheduler.start()
+            # FR-034 Option A: Schedule daily orphaned project cleanup
+            async def _project_cleanup():
+                await _run_project_cleanup(orchestrator)
+            orchestrator.scheduler.schedule_project_cleanup(_project_cleanup)
         except Exception as exc:
             logger.error("Scheduler start failed: %s", exc)
 
@@ -261,6 +265,28 @@ async def _run_webhook(application: Application, orchestrator: TelegramOrchestra
         await application.stop()
 
 
+async def _run_project_cleanup(orchestrator: TelegramOrchestrator) -> None:
+    """FR-034 Option A: Cleanup orphaned project mappings for all users with project sync enabled."""
+    if not orchestrator.task_service or not orchestrator.joplin_client:
+        return
+    try:
+        user_ids = orchestrator.logging_service.get_user_ids_with_project_sync_enabled()
+        if not user_ids:
+            return
+        folders = await orchestrator.joplin_client.get_folders()
+        folder_ids = {f.get("id", "") for f in folders}
+        total = 0
+        for uid in user_ids:
+            removed = orchestrator.task_service.cleanup_orphaned_project_mappings(
+                str(uid), folder_ids
+            )
+            total += removed
+        if total > 0:
+            logger.info("FR-034: Periodic cleanup removed %d orphaned project mapping(s)", total)
+    except Exception as exc:
+        logger.warning("FR-034: Project cleanup failed: %s", exc)
+
+
 def _run_polling(application: Application, orchestrator: TelegramOrchestrator) -> None:
     """Polling mode — used for local development."""
 
@@ -271,6 +297,9 @@ def _run_polling(application: Application, orchestrator: TelegramOrchestrator) -
             logger.warning("Failed to ensure project status tags: %s", exc)
         try:
             await orchestrator.scheduler.start()
+            async def _project_cleanup():
+                await _run_project_cleanup(orchestrator)
+            orchestrator.scheduler.schedule_project_cleanup(_project_cleanup)
         except Exception as exc:
             logger.error("Scheduler start failed: %s", exc)
         await _send_startup_message(app, orchestrator, "POLLING")

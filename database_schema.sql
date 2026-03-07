@@ -98,6 +98,8 @@ CREATE TABLE IF NOT EXISTS google_tasks_config (
     include_only_tagged BOOLEAN DEFAULT FALSE,
     task_creation_tags TEXT,  -- JSON array of tags that trigger task creation
     privacy_mode BOOLEAN DEFAULT FALSE,  -- If true, don't create tasks for sensitive notes
+    project_sync_enabled BOOLEAN DEFAULT FALSE,  -- FR-034: sync Joplin projects as parent tasks
+    projects_folder_id TEXT,  -- FR-034: optional override for Projects root folder
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -133,6 +135,21 @@ CREATE TABLE IF NOT EXISTS task_sync_history (
     FOREIGN KEY (user_id) REFERENCES google_tokens(user_id),
     FOREIGN KEY (task_link_id) REFERENCES task_links(id)
 );
+
+-- FR-034: Joplin project folder ↔ Google Tasks parent task mapping
+CREATE TABLE IF NOT EXISTS joplin_project_sync (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    joplin_folder_id TEXT NOT NULL,
+    joplin_folder_title TEXT NOT NULL,
+    google_task_id TEXT NOT NULL,
+    google_task_list_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, joplin_folder_id)
+);
+CREATE INDEX IF NOT EXISTS idx_joplin_project_sync_user ON joplin_project_sync(user_id);
+CREATE INDEX IF NOT EXISTS idx_joplin_project_sync_folder ON joplin_project_sync(joplin_folder_id);
 
 -- Indexes for task tables
 CREATE INDEX IF NOT EXISTS idx_task_links_user_id ON task_links(user_id);

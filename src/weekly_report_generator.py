@@ -67,6 +67,7 @@ class WeeklyReportData:
     completed_note_titles: list[str] = field(default_factory=list)
     pending_task_titles: list[str] = field(default_factory=list)
     overdue_task_titles: list[str] = field(default_factory=list)
+    stalled_projects: list[str] = field(default_factory=list)  # FR-034: projects with no next actions
 
     recommendations: list[str] = field(default_factory=list)
 
@@ -345,6 +346,11 @@ class WeeklyReportGenerator:
             user_id, current_start, current_end
         )
 
+        stalled: list[str] = []
+        if self.task_service:
+            with contextlib.suppress(Exception):
+                stalled = self.task_service.get_stalled_project_titles(str(user_id))
+
         report = WeeklyReportData(
             user_id=user_id,
             current=current,
@@ -352,6 +358,7 @@ class WeeklyReportGenerator:
             completed_note_titles=[n.get("title", "Untitled") for n in created_notes[:15]],
             pending_task_titles=[t.get("title", "Untitled") for t in pending_tasks[:10]],
             overdue_task_titles=[t.get("title", "Untitled") for t in overdue_tasks[:10]],
+            stalled_projects=stalled,
             recommendations=self._generate_recommendations(current, previous),
         )
 
@@ -466,6 +473,13 @@ class WeeklyReportGenerator:
             in_parts.append(f"{c.inbox_notes_count} notes")
         if in_parts:
             lines.append(f"📥 In (unprocessed): {' • '.join(in_parts)}")
+            lines.append("")
+
+        # FR-034: Stalled projects
+        if report.stalled_projects:
+            lines.append("⚠️ Projects with no next actions")
+            for title in report.stalled_projects:
+                lines.append(f"  • {escape_for_html(title)}")
             lines.append("")
 
         # Notes by folder (where)

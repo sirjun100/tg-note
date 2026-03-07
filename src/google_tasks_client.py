@@ -155,8 +155,15 @@ class GoogleTasksClient:
             return task_lists[0]["id"]
         raise ValueError("No task lists found")
 
-    def create_task(self, title: str, notes: str = "", task_list_id: str | None = None, due_date: str | None = None) -> dict[str, Any] | None:
-        """Create a new task in Google Tasks"""
+    def create_task(
+        self,
+        title: str,
+        notes: str = "",
+        task_list_id: str | None = None,
+        due_date: str | None = None,
+        parent_task_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Create a new task in Google Tasks. FR-034: parent_task_id creates a subtask."""
         if not self.session:
             raise ValueError("Not authenticated")
 
@@ -176,6 +183,8 @@ class GoogleTasksClient:
 
         try:
             url = f"{self.BASE_URL}/lists/{task_list_id}/tasks"
+            if parent_task_id:
+                url += f"?parent={parent_task_id}"
             response = self.session.post(url, json=task_data)
             response.raise_for_status()
             return response.json()

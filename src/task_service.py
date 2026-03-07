@@ -157,6 +157,8 @@ class TaskService:
         user_id: str,
         notes: str = "",
         due_date: str | None = None,
+        parent_folder_id: str | None = None,
+        parent_folder_title: str | None = None,
     ) -> list[dict[str, Any]]:
         """Create a Google Task with optional notes and due date (used by content routing)."""
         logger.info("Task creation with metadata for user %s: %s", user_id, title[:80])
@@ -181,12 +183,19 @@ class TaskService:
                 logger.warning("User %s: Failed to get task list: %s", user_id, e)
                 return []
 
+        parent_task_id: str | None = None
+        if parent_folder_id and parent_folder_title and config.get("project_sync_enabled"):
+            parent_task_id = self.get_or_create_project_parent_task(
+                user_id, parent_folder_id, parent_folder_title, task_list_id
+            )
+
         try:
             task = self.tasks_client.create_task(
                 title=title,
                 notes=notes,
                 task_list_id=task_list_id,
                 due_date=due_date,
+                parent_task_id=parent_task_id,
             )
             if task:
                 logger.info("Created Google Task for user %s: %s (ID: %s)", user_id, title[:50], task.get("id"))
@@ -215,12 +224,132 @@ class TaskService:
         Bypasses action-item extraction — the user explicitly asked to create this task."""
         return self.create_task_with_metadata(title=title, user_id=user_id)
 
-    def create_tasks_from_decision(self, decision: Decision, user_id: str) -> list[dict[str, Any]]:
-        """Create Google Tasks from a decision with enhanced error handling and linking
+    def get_or_create_project_parent_task(
+        self,
+        user_id: str,
+        folder_id: str,
+        folder_title: str,
+        task_list_id: str,
+    ) -> str | None:
+        """FR-034: Get or create Google parent task for a Joplin project folder. Returns google_task_id or None.
+        Rename detection: if folder was renamed, updates the Google Task title."""
+        mapping = self.logging_service.get_project_sync_mapping(int(user_id), folder_id)
+        if mapping:
+            google_task_id = mapping.get("google_task_id")
+            stored_title = mapping.get("joplin_folder_title", "")
+            if google_task_id and stored_title != folder_title:
+                # Rename detection: folder was renamed in Joplin, update Google Task
+                token = self.logging_service.load_google_token(user_id)
+                if token:
+                    self.tasks_client.set_token(token)
+                    try:
+                        updated = self.tasks_client.update_task(
+                            google_task_id, task_list_id, {"title": folder_title}
+                        )
+                        if updated and self.tasks_client.token != token:
+                            self.logging_service.save_google_token(user_id, self.tasks_client.token)
+                        self.logging_service.save_project_sync_mapping(
+                            user_id=int(user_id),
+                            joplin_folder_id=folder_id,
+                            joplin_folder_title=folder_title,
+                            google_task_id=google_task_id,
+                            google_task_list_id=task_list_id,
+                        )
+                        logger.info("FR-034: Updated project parent task title to '%s' (folder renamed)", folder_title)
+                    except Exception as e:
+                        logger.warning("FR-034: Failed to update project task title: %s", e)
+            return google_task_id
+
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return None
+
+        self.tasks_client.set_token(token)
+        try:
+            parent_task = self.tasks_client.create_task(
+                title=folder_title,
+                notes=f"Joplin project: {folder_title}",
+                task_list_id=task_list_id,
+            )
+            if parent_task:
+                google_task_id = parent_task.get("id")
+                self.logging_service.save_project_sync_mapping(
+                    user_id=int(user_id),
+                    joplin_folder_id=folder_id,
+                    joplin_folder_title=folder_title,
+                    google_task_id=google_task_id,
+                    google_task_list_id=task_list_id,
+                )
+                logger.info("FR-034: Created project parent task '%s' for folder %s", folder_title, folder_id)
+                return google_task_id
+        except Exception as e:
+            logger.warning("FR-034: Failed to create project parent task: %s", e)
+        return None
+
+    def cleanup_orphaned_project_mappings(
+        self, user_id: str, existing_folder_ids: set[str]
+    ) -> int:
+        """FR-034: Remove mappings and delete Google tasks for folders no longer in Joplin.
+        Returns number of mappings removed."""
+        mappings = self.logging_service.get_all_project_sync_mappings(int(user_id))
+        removed = 0
+        for m in mappings:
+            folder_id = m.get("joplin_folder_id")
+            if folder_id and folder_id not in existing_folder_ids:
+                google_task_id = m.get("google_task_id")
+                task_list_id = m.get("google_task_list_id")
+                if google_task_id and task_list_id:
+                    token = self.logging_service.load_google_token(user_id)
+                    if token:
+                        self.tasks_client.set_token(token)
+                        try:
+                            self.tasks_client.delete_task(google_task_id, task_list_id)
+                            logger.info(
+                                "FR-034: Deleted orphaned project task %s (folder %s removed)",
+                                google_task_id, folder_id,
+                            )
+                            if self.tasks_client.token != token:
+                                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+                        except Exception as e:
+                            logger.warning("FR-034: Failed to delete orphaned task: %s", e)
+                self.logging_service.delete_project_sync_mapping(int(user_id), folder_id)
+                removed += 1
+        return removed
+
+    def sync_project_parent_tasks(
+        self, user_id: str, project_folders: list[tuple[str, str]]
+    ) -> tuple[int, int]:
+        """FR-034: Create parent tasks for all project folders. Returns (created_count, existing_count)."""
+        task_list_id = self.get_task_list_id_for_user(user_id)
+        if not task_list_id:
+            return 0, 0
+        created, existing = 0, 0
+        for folder_id, folder_title in project_folders:
+            if self.logging_service.get_project_sync_mapping(int(user_id), folder_id):
+                existing += 1
+            elif self.get_or_create_project_parent_task(
+                user_id, folder_id, folder_title, task_list_id
+            ):
+                created += 1
+        return created, existing
+
+    def create_tasks_from_decision(
+        self,
+        decision: Decision,
+        user_id: str,
+        parent_folder_id: str | None = None,
+        parent_folder_title: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Create Google Tasks from a decision with enhanced error handling and linking.
+
+        FR-034: When parent_folder_id and parent_folder_title are provided and project_sync_enabled,
+        creates subtasks under the project's parent task in Google Tasks.
 
         Args:
             decision: The AI decision
             user_id: User identifier for token lookup
+            parent_folder_id: Optional Joplin folder ID (project) for subtask creation
+            parent_folder_title: Optional folder title for parent task creation
 
         Returns:
             List of created task dictionaries
@@ -267,6 +396,20 @@ class TaskService:
             # Set token on client
             self.tasks_client.set_token(token)
 
+            # FR-034: Resolve parent task for project sync
+            parent_task_id: str | None = None
+            if parent_folder_id and parent_folder_title and config.get("project_sync_enabled"):
+                task_list_id_for_parent = config.get("task_list_id")
+                if not task_list_id_for_parent:
+                    try:
+                        task_list_id_for_parent = self.tasks_client.get_default_task_list()
+                    except Exception:
+                        task_list_id_for_parent = None
+                if task_list_id_for_parent:
+                    parent_task_id = self.get_or_create_project_parent_task(
+                        user_id, parent_folder_id, parent_folder_title, task_list_id_for_parent
+                    )
+
             # Get or use configured task list
             task_list_id = config.get('task_list_id')
             if not task_list_id:
@@ -296,12 +439,13 @@ class TaskService:
 
             for task_data in potential_tasks:
                 try:
-                    # Create the task
+                    # Create the task (subtask if parent_task_id set, FR-034)
                     task = self.tasks_client.create_task(
                         title=task_data["title"],
                         notes=task_data["notes"],
                         task_list_id=task_list_id,
-                        due_date=task_data.get("due_date")
+                        due_date=task_data.get("due_date"),
+                        parent_task_id=parent_task_id,
                     )
 
                     if task:
@@ -392,6 +536,61 @@ class TaskService:
                 "google_to_joplin", "failed", error_msg
             )
             return []
+
+    def get_stalled_project_titles(self, user_id: str) -> list[str]:
+        """FR-034: Return project titles that have no incomplete subtasks (stalled projects)."""
+        config = self.logging_service.get_google_tasks_config(int(user_id))
+        if not config or not config.get("project_sync_enabled"):
+            return []
+
+        mappings = self.logging_service.get_all_project_sync_mappings(int(user_id))
+        if not mappings:
+            return []
+
+        task_list_id = self.get_task_list_id_for_user(user_id)
+        if not task_list_id:
+            return []
+
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return []
+
+        self.tasks_client.set_token(token)
+        try:
+            all_tasks = self.tasks_client.get_all_tasks(task_list_id, show_completed=False)
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+        except Exception as e:
+            logger.debug("Failed to fetch tasks for stalled projects: %s", e)
+            return []
+
+        # Parents that have at least one incomplete subtask
+        parents_with_subtasks: set[str] = set()
+        for task in all_tasks:
+            parent = task.get("parent")
+            if parent:
+                parents_with_subtasks.add(parent)
+
+        stalled = [
+            m.get("joplin_folder_title", "Unknown")
+            for m in mappings
+            if m.get("google_task_id") and m["google_task_id"] not in parents_with_subtasks
+        ]
+        return stalled
+
+    def get_task_list_id_for_user(self, user_id: str) -> str | None:
+        """Get the task list ID used for the user (from config or default)."""
+        config = self.logging_service.get_google_tasks_config(int(user_id))
+        if config and config.get("task_list_id"):
+            return config["task_list_id"]
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return None
+        self.tasks_client.set_token(token)
+        try:
+            return self.tasks_client.get_default_task_list()
+        except Exception:
+            return None
 
     def get_available_task_lists(self, user_id: str) -> list[dict[str, Any]]:
         """Get all available task lists for a user"""
@@ -516,6 +715,20 @@ class TaskService:
             return True
         except Exception as e:
             print(f"❌ Error toggling privacy mode: {e}")
+            return False
+
+    def toggle_project_sync(self, user_id: int, enabled: bool) -> bool:
+        """FR-034: Enable or disable Joplin project ↔ Google Tasks sync (subtasks under project parent)."""
+        try:
+            config = self.logging_service.get_google_tasks_config(user_id)
+            if not config:
+                config = {}
+
+            config['project_sync_enabled'] = enabled
+            self.logging_service.save_google_tasks_config(user_id, config)
+            return True
+        except Exception as e:
+            logger.warning("Error toggling project sync: %s", e)
             return False
 
     def set_task_creation_tags(self, user_id: int, tags: list[str]) -> bool:

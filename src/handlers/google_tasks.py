@@ -25,6 +25,9 @@ def register_google_tasks_handlers(application: Any, orch: TelegramOrchestrator)
     application.add_handler(CommandHandler("set_task_list", _set_task_list(orch)))
     application.add_handler(CommandHandler("toggle_auto_tasks", _toggle_auto_tasks(orch)))
     application.add_handler(CommandHandler("toggle_privacy", _toggle_privacy(orch)))
+    application.add_handler(CommandHandler("toggle_project_sync", _toggle_project_sync(orch)))
+    application.add_handler(CommandHandler("sync_projects", _sync_projects(orch)))
+    application.add_handler(CommandHandler("set_projects_folder", _set_projects_folder(orch)))
     application.add_handler(CommandHandler("google_tasks_status", _tasks_status(orch)))
     application.add_handler(CommandHandler("list_inbox_tasks", _list_inbox_tasks(orch)))
     application.add_handler(CommandHandler("cleanup_completed_tasks", _cleanup_completed_tasks(orch)))
@@ -96,6 +99,7 @@ def _verify(orch: TelegramOrchestrator):
                 "include_only_tagged": False,
                 "task_creation_tags": [],
                 "privacy_mode": False,
+                "project_sync_enabled": False,
             }
             orch.logging_service.save_google_tasks_config(user.id, config)
 
@@ -155,6 +159,7 @@ def _config(orch: TelegramOrchestrator):
             msg += f"Status: {'✅ Enabled' if cfg.get('enabled') else '❌ Disabled'}\n"
             msg += f"Auto task creation: {'✅ On' if cfg.get('auto_create_tasks') else '❌ Off'}\n"
             msg += f"Privacy mode: {'🔒 On' if cfg.get('privacy_mode') else '🔓 Off'}\n"
+            msg += f"Project sync (FR-034): {'✅ On' if cfg.get('project_sync_enabled') else '❌ Off'}\n"
             msg += f"Current task list: {cfg.get('task_list_name', 'Not set')}\n\n"
 
             if task_lists:
@@ -168,6 +173,9 @@ def _config(orch: TelegramOrchestrator):
             msg += "\nOther commands:\n"
             msg += "/toggle_auto_tasks - Turn auto task creation on/off\n"
             msg += "/toggle_privacy - Turn privacy mode on/off\n"
+            msg += "/toggle_project_sync - Joplin projects as parent tasks (FR-034)\n"
+            msg += "/sync_projects - Create parent tasks for all project folders\n"
+            msg += "/set_projects_folder - Choose which folder = Projects root\n"
             msg += "/google_tasks_status - View synchronization status\n"
             await update.message.reply_text(msg)
         except Exception as exc:
@@ -216,6 +224,154 @@ def _toggle_auto_tasks(orch: TelegramOrchestrator):
             await update.message.reply_text(f"Auto task creation: {'✅ Enabled' if enabled else '❌ Disabled'}")
         except Exception as exc:
             await update.message.reply_text(f"❌ Error: {exc}")
+
+    return handler
+
+
+def _toggle_project_sync(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        try:
+            cfg = orch.logging_service.get_google_tasks_config(user.id)
+            if not cfg:
+                await update.message.reply_text("❌ Google Tasks not authorized")
+                return
+            enabled = not cfg.get("project_sync_enabled", False)
+            if orch.task_service.toggle_project_sync(user.id, enabled):
+                await update.message.reply_text(
+                    f"Project sync (FR-034): {'✅ Enabled' if enabled else '❌ Disabled'}\n\n"
+                    "When on, tasks from notes in Projects/ folders become subtasks under the project."
+                )
+            else:
+                await update.message.reply_text("❌ Failed to update setting")
+        except Exception as exc:
+            await update.message.reply_text(f"❌ Error: {exc}")
+
+    return handler
+
+
+def _set_projects_folder(orch: TelegramOrchestrator):
+    """FR-034 Option D: Set which Joplin folder is the Projects root (override default)."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not orch.joplin_client:
+            await update.message.reply_text("❌ Joplin not available")
+            return
+        try:
+            cfg = orch.logging_service.get_google_tasks_config(user.id)
+            if not cfg:
+                await update.message.reply_text(
+                    "❌ Google Tasks not configured\n\nUse /authorize_google_tasks first"
+                )
+                return
+            if not context.args:
+                # Show current + list root folders to pick
+                current = cfg.get("projects_folder_id")
+                folders = await orch.joplin_client.get_folders()
+                root_folders = [f for f in folders if not (f.get("parent_id") or "")]
+                if not root_folders:
+                    await update.message.reply_text("No root folders found in Joplin.")
+                    return
+                lines = [
+                    "Choose which folder is your Projects root:",
+                    "",
+                    "Current: " + (current or "Default (Projects / 01 - projects / project)"),
+                    "",
+                    "Reply with the number to set, or 'default' to clear override:",
+                ]
+                for i, f in enumerate(root_folders[:15], 1):
+                    fid = f.get("id", "")
+                    title = f.get("title", "Unknown")
+                    mark = " ← current" if fid == current else ""
+                    lines.append(f"  {i}. {title}{mark}")
+                lines.append("  0. Use default (clear override)")
+                await update.message.reply_text("\n".join(lines))
+                orch.state_manager.update_state(user.id, {
+                    "awaiting_projects_folder": True,
+                    "root_folders": [(f.get("id"), f.get("title", "Unknown")) for f in root_folders[:15]],
+                })
+                return
+            # Direct arg: folder ID
+            folder_id = context.args[0].strip()
+            if folder_id.lower() == "default":
+                cfg["projects_folder_id"] = None
+                orch.logging_service.save_google_tasks_config(user.id, cfg)
+                await update.message.reply_text("✅ Using default Projects folder (Projects / 01 - projects / project)")
+                return
+            folders = await orch.joplin_client.get_folders()
+            if any(f.get("id") == folder_id for f in folders):
+                cfg["projects_folder_id"] = folder_id
+                orch.logging_service.save_google_tasks_config(user.id, cfg)
+                await update.message.reply_text(f"✅ Projects root set to folder ID: {folder_id[:12]}...")
+            else:
+                await update.message.reply_text("❌ Unknown folder ID. Use /set_projects_folder without args to pick from list.")
+        except Exception as exc:
+            await update.message.reply_text(f"❌ Error: {exc}")
+            logger.error("Error in set_projects_folder: %s", exc)
+
+    return handler
+
+
+def _sync_projects(orch: TelegramOrchestrator):
+    """FR-034: Create parent tasks in Google Tasks for all Joplin project folders."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not orch.task_service:
+            await update.message.reply_text("❌ Google Tasks integration not available")
+            return
+        try:
+            token = orch.logging_service.load_google_token(str(user.id))
+            if not token:
+                await update.message.reply_text(
+                    "❌ Google Tasks not authorized\n\nUse /authorize_google_tasks first"
+                )
+                return
+            cfg = orch.logging_service.get_google_tasks_config(user.id)
+            if not cfg or not cfg.get("project_sync_enabled"):
+                await update.message.reply_text(
+                    "❌ Project sync is disabled\n\nUse /toggle_project_sync to enable first"
+                )
+                return
+            if not orch.reorg_orchestrator:
+                await update.message.reply_text("❌ Could not access Joplin folders")
+                return
+            await update.message.chat.send_action("typing")
+            proj_folder_id = cfg.get("projects_folder_id")
+            projects = await orch.reorg_orchestrator.get_project_folders(
+                projects_folder_id=proj_folder_id
+            )
+            if not projects:
+                await update.message.reply_text(
+                    "No project folders found.\n\n"
+                    "Create folders under Projects (or 01 - projects) in Joplin."
+                )
+                return
+            # FR-034 Option C: Cleanup orphaned mappings (folders deleted in Joplin)
+            folders = await orch.joplin_client.get_folders()
+            folder_ids = {f.get("id", "") for f in folders}
+            removed = orch.task_service.cleanup_orphaned_project_mappings(
+                str(user.id), folder_ids
+            )
+            created, existing = orch.task_service.sync_project_parent_tasks(
+                str(user.id), projects
+            )
+            msg = (
+                f"✅ Synced projects\n\n"
+                f"Created: {created} parent task(s)\n"
+                f"Already existed: {existing}"
+            )
+            if removed > 0:
+                msg += f"\nRemoved: {removed} orphaned mapping(s)"
+            await update.message.reply_text(msg)
+        except Exception as exc:
+            await update.message.reply_text(f"❌ Error: {exc}")
+            logger.error("Error in sync_projects: %s", exc)
 
     return handler
 
