@@ -2,6 +2,16 @@
 
 **Purpose**: Ensure CI passes before pushing. The [GitHub Actions workflow](https://github.com/martinfou/telegram-joplin/actions) runs on every push to `main` and will fail if lint, mypy, or tests fail.
 
+## Git Pre-Commit Hook (optional)
+
+Install a hook that runs ruff and mypy automatically before each commit:
+
+```bash
+cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+```
+
+The hook runs ruff and mypy only (not tests). Run `pytest` manually before pushing.
+
 ## ⚠️ Run Before Every Commit
 
 > **Do not commit until lint, mypy, and tests pass.** Run these checks *before* `git commit`, not after.

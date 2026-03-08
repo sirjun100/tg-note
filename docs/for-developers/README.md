@@ -31,6 +31,14 @@ flowchart TD
   - `LOGS_DB_PATH`
   - `STATE_DB_PATH`
 
+## Pre-Commit Hook
+
+Run lint and mypy automatically before each commit:
+
+```bash
+cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+```
+
 ## Contribution Flow
 
 ```mermaid
