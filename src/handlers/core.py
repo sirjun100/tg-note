@@ -61,6 +61,21 @@ def _is_greeting(text: str) -> bool:
     return any(re.match(pattern, text_lower) for pattern in GREETING_PATTERNS)
 
 
+PROFILE_QUERY_PATTERNS = [
+    r"^who\s+am\s+i\s*[?.!]*$",
+    r"^what('s|s| is)\s+my\s+profile\s*[?.!]*$",
+    r"^tell\s+me\s+(about\s+)?myself\s*[?.!]*$",
+    r"^what\s+do\s+you\s+know\s+about\s+me\s*[?.!]*$",
+    r"^my\s+profile\s*[?.!]*$",
+]
+
+
+def _is_profile_query(text: str) -> bool:
+    """Check if text is asking about the user's profile (who am i, etc.)."""
+    text_lower = text.strip().lower()
+    return any(re.match(p, text_lower) for p in PROFILE_QUERY_PATTERNS)
+
+
 def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     application.add_handler(CommandHandler("start", _start(orch)))
     application.add_handler(CommandHandler("help", _start(orch)))  # Alias for /start
@@ -943,6 +958,23 @@ async def _handle_new_request(
                 await message.reply_text(format_error_message(
                     f"Failed to create task: {exc}\n\nUse /tasks_connect to connect your Google account first."
                 ))
+        return
+
+    # Profile queries: respond with stored profile without routing
+    if not force_note and not force_task and _is_profile_query(text):
+        profile = get_user_profile_context()
+        if profile:
+            preview = profile[:500] + "…" if len(profile) > 500 else profile
+            await message.reply_text(
+                f"📋 **Your profile**\n\n{preview}\n\n"
+                "Use /profile set &lt;text&gt; to update.",
+                parse_mode="HTML",
+            )
+        else:
+            await message.reply_text(
+                "You haven't set a profile yet. Use /profile set &lt;your about me&gt; to add one.",
+                parse_mode="HTML",
+            )
         return
 
     # Plain messages: use LLM content routing (note, task, or both)

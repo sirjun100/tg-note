@@ -44,3 +44,12 @@ class TestGreetingContent(unittest.TestCase):
         self.assertIn("<text>", plain)
         self.assertNotIn("&lt;", plain)
         self.assertNotIn("&gt;", plain)
+
+    def test_is_profile_query(self):
+        """_is_profile_query should match who am i and similar."""
+        self.assertTrue(core_module._is_profile_query("who am i"))
+        self.assertTrue(core_module._is_profile_query("Who am I?"))
+        self.assertTrue(core_module._is_profile_query("what is my profile"))
+        self.assertTrue(core_module._is_profile_query("tell me about myself"))
+        self.assertFalse(core_module._is_profile_query("create a note about me"))
+        self.assertFalse(core_module._is_profile_query("hello"))
