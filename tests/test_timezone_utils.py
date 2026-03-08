@@ -8,8 +8,8 @@ and date formatting across timezone boundaries.
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from datetime import datetime
+from unittest.mock import MagicMock
 
 import pytz
 

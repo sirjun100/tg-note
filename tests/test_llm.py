@@ -3,16 +3,16 @@
 Test LLM providers to ensure they are configured and working
 """
 
-import sys
 import os
+import sys
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 def test_llm_providers():
     """Test available LLM providers"""
-    from src.llm_providers import registry
     from src.llm_orchestrator import LLMOrchestrator
+    from src.llm_providers import registry
 
     print("🧪 Testing LLM Providers")
     print("=" * 40)

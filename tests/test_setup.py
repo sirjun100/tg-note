@@ -74,7 +74,7 @@ def test_config() -> bool:
         if has_llm:
             print(f"  ✅ LLM provider ({settings.llm.provider}) configured")
         else:
-            print(f"  ⚠️  No LLM API key set (DEEPSEEK_API_KEY, OPENAI_API_KEY, or OLLAMA)")
+            print("  ⚠️  No LLM API key set (DEEPSEEK_API_KEY, OPENAI_API_KEY, or OLLAMA)")
 
         print("  ✅ Configuration module loaded")
         return True

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import tempfile
 import os
+import tempfile
 from datetime import date, timedelta
 from unittest.mock import patch
 
@@ -13,13 +13,12 @@ from src.habit_service import (
     add_habit,
     calculate_longest_streak,
     calculate_streak,
+    delete_today_entry,
     get_entries_for_habit,
     get_habits,
-    get_stats,
     get_today_entries,
     log_entry,
     remove_habit,
-    delete_today_entry,
 )
 
 

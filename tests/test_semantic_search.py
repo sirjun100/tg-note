@@ -4,7 +4,7 @@ Tests for FR-026 Semantic Search and Q&A.
 
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

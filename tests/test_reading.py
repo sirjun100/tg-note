@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,7 +15,6 @@ from src.reading_service import (
     add_to_queue,
     delete_from_queue,
     get_queue,
-    get_random_unread,
     get_stats,
     mark_as_read,
 )
@@ -81,7 +80,7 @@ class TestAddToQueue:
                 "extracted_text": "",
                 "domain": "example.com",
             }
-            result = await add_to_queue(joplin, "https://example.com/article", datetime.now(timezone.utc))
+            result = await add_to_queue(joplin, "https://example.com/article", datetime.now(UTC))
 
         assert result["note_id"] == "note456"
         assert result["title"] == "Test Article"
@@ -105,7 +104,7 @@ class TestAddToQueue:
             ]
         )
 
-        result = await add_to_queue(joplin, "https://example.com/same", datetime.now(timezone.utc))
+        result = await add_to_queue(joplin, "https://example.com/same", datetime.now(UTC))
 
         assert result["duplicate"] is True
         assert result["note_id"] == "existing"

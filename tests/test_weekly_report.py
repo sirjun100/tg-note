@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -231,9 +231,9 @@ class TestGenerateWeeklyReport:
 
     async def test_generate_with_db_metrics(self):
         """Verify DB metrics (messages, decisions) are collected."""
+        import os
         import sqlite3
         import tempfile
-        import os
 
         db_path = os.path.join(tempfile.mkdtemp(), "test_logs.db")
 

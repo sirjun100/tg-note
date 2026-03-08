@@ -819,7 +819,7 @@ async def _route_plain_message(
             except AppError as exc:
                 logger.warning("Failed to create task (both flow): %s", exc)
                 await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
-                return
+                return True
             except Exception as exc:
                 logger.warning("Failed to create task (both flow): %s", exc)
                 has_token = orch.logging_service.load_google_token(str(user_id)) is not None
@@ -833,7 +833,7 @@ async def _route_plain_message(
                             f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /tasks_connect first."
                         )
                     )
-                return
+                return True
             if created:
                 orch.logging_service.log_decision(
                     Decision(

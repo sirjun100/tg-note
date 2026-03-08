@@ -9,13 +9,12 @@ This test verifies the complete flow:
 """
 
 import asyncio
-import unittest
-import tempfile
 import os
-import sys
 import sqlite3
-from datetime import datetime
-from unittest.mock import MagicMock, AsyncMock
+import sys
+import tempfile
+import unittest
+from unittest.mock import AsyncMock
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _REPO_ROOT not in sys.path:
@@ -71,7 +70,7 @@ class TestSprintFiveIntegration(unittest.TestCase):
 
         tag_info = asyncio.run(self.joplin_client.apply_tags_and_track_new(note_id, tags_from_llm))
 
-        print(f"\n2. Applied tags to note:")
+        print("\n2. Applied tags to note:")
         print(f"   New tags: {tag_info['new_tags']}")
         print(f"   Existing tags: {tag_info['existing_tags']}")
         print(f"   Success: {tag_info['success']}")
@@ -112,7 +111,7 @@ class TestSprintFiveIntegration(unittest.TestCase):
                 is_new=False
             )
 
-        print(f"\n5. Logged tag creation to database")
+        print("\n5. Logged tag creation to database")
 
         # Step 6: Verify database contains audit trail
         with sqlite3.connect(self.db_path) as conn:
@@ -135,7 +134,7 @@ class TestSprintFiveIntegration(unittest.TestCase):
             )
             logged_tags = [row[0] for row in cursor.fetchall()]
 
-        print(f"\n6. Database audit trail:")
+        print("\n6. Database audit trail:")
         print(f"   Total tags logged: {total_tags}")
         print(f"   New tags logged: {new_tag_count}")
         print(f"   Tags: {logged_tags}")
@@ -199,7 +198,7 @@ class TestSprintFiveIntegration(unittest.TestCase):
         # Verify empty result
         self.assertEqual(formatted, "")
 
-        success_message = f"✅ Note created: 'Meeting Notes' in folder 'Work'"
+        success_message = "✅ Note created: 'Meeting Notes' in folder 'Work'"
         print(f"Success message (no tag line):\n{success_message}")
 
         print("✅ Empty tags workflow test PASSED")

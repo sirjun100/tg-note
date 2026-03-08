@@ -12,13 +12,12 @@ Tests cover:
 """
 
 import unittest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from typing import Dict, Any, List
+from unittest.mock import AsyncMock, Mock
 
-from src.reorg_orchestrator import ReorgOrchestrator, ReorgException, TemplateFolderException
 from src.enrichment_service import EnrichmentService, EnrichmentStats
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
+from src.reorg_orchestrator import ReorgOrchestrator, TemplateFolderException
 
 
 class TestReorgOrchestrator(unittest.IsolatedAsyncioTestCase):

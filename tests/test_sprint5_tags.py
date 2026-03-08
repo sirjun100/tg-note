@@ -9,13 +9,13 @@ Tests for:
 """
 
 import asyncio
-import unittest
-import tempfile
 import os
-import sys
 import sqlite3
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+import sys
+import tempfile
+import unittest
 from datetime import datetime
+from unittest.mock import AsyncMock
 
 # Add project root to path
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

@@ -8,7 +8,7 @@ and that the plain-text fallback strips HTML correctly.
 from __future__ import annotations
 
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 # Import the module to test (conftest adds project root to path)
 from src.handlers import core as core_module
