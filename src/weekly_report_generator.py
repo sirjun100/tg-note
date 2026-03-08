@@ -346,6 +346,15 @@ class WeeklyReportGenerator:
             user_id, current_start, current_end
         )
 
+        # Sort: tasks with * at start first
+        def _star_first(t: dict) -> tuple[bool, str]:
+            title = (t.get("title") or "").strip()
+            has_star = title.startswith(("*", "⭐", "★"))
+            return (not has_star, title)
+
+        pending_tasks = sorted(pending_tasks, key=_star_first)
+        overdue_tasks = sorted(overdue_tasks, key=_star_first)
+
         stalled: list[str] = []
         if self.task_service:
             with contextlib.suppress(Exception):
@@ -536,8 +545,8 @@ class WeeklyReportGenerator:
 
         # Footer
         lines.append("—" * 25)
-        lines.append("🔗 /weekly_report — regenerate")
-        lines.append("⚙️ /show_report_config — settings")
+        lines.append("🔗 /report_weekly — regenerate")
+        lines.append("⚙️ /report_config — settings")
 
         return "\n".join(lines)
 

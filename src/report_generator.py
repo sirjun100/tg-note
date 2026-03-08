@@ -384,6 +384,13 @@ Response:"""
             return PriorityLevel.HIGH
         return None
 
+    def _has_star_prefix(self, title: str) -> bool:
+        """True if title starts with * / ⭐ / ★ (used for sorting starred tasks first)."""
+        if not title or not isinstance(title, str):
+            return False
+        t = title.strip()
+        return t.startswith(("*", "⭐", "★"))
+
     def create_google_task_item(
         self, task: dict[str, Any]
     ) -> ReportItem | None:
@@ -1122,8 +1129,13 @@ Response:"""
 
         # Priority Tasks (Tasks = Google Tasks, pending)
         # No inferred priority label — Google Tasks have no real priority; show due date instead
+        # Sort: tasks with * at start first, then by priority score
         priority_items = (
             report.critical_items + report.high_items + report.medium_items + report.low_items
+        )
+        priority_items = sorted(
+            priority_items,
+            key=lambda x: (not self._has_star_prefix(x.title), -x.priority_score),
         )
         if priority_items:
             lines.append("🎯 Tasks (pending)")
@@ -1180,8 +1192,8 @@ Response:"""
 
         # Footer
         lines.append("—" * 25)
-        lines.append("🔗 /daily_report — regenerate")
-        lines.append("⚙️ /show_report_config — settings")
+        lines.append("🔗 /report_daily — regenerate")
+        lines.append("⚙️ /report_config — settings")
 
         return "\n".join(lines)
 
@@ -1208,7 +1220,7 @@ Response:"""
             top = report.all_items[0]
             lines.append(f"\n🎯 Top Priority: {top.title}")
 
-        lines.append("\n/daily_report - Full report")
+        lines.append("\n/report_daily - Full report")
 
         return "\n".join(lines)
 
@@ -1285,10 +1297,10 @@ Response:"""
 
         lines.append("")
         lines.append("Commands:")
-        lines.append("  /configure_report_time <HH:MM>")
-        lines.append("  /configure_report_timezone <timezone>")
-        lines.append("  /toggle_daily_report on|off")
-        lines.append("  /configure_report_content critical|high|medium|all")
+        lines.append("  /report_set_time <HH:MM>")
+        lines.append("  /report_set_timezone <timezone>")
+        lines.append("  /report_toggle_schedule on|off")
+        lines.append("  /report_set_content critical|high|medium|all")
         lines.append("  /report_help")
 
         return "\n".join(lines)
