@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from config import LLM_PROVIDER
+from src.constants import LLM_NOTE_MAX_TOKENS
 from src.llm_providers import registry as provider_registry
 from src.logging_service import LoggingService
 
@@ -140,7 +141,7 @@ class LLMOrchestrator:
                     functions=functions,
                     function_call={"name": "create_joplin_note"},
                     temperature=0.3,
-                    max_tokens=1000
+                    max_tokens=LLM_NOTE_MAX_TOKENS,
                 )
 
                 logger.info(f"✅ Received response from {self.provider_name}")

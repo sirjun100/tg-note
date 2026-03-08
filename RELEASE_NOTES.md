@@ -17,6 +17,7 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 - **/bookmark feature request** — FR-051 added for saving URLs to Joplin with metadata and tags. [FR-051](project-management/backlog/features/FR-051-bookmark-command.md)
 
 ### Bug Fixes
+- **Recipe note truncation** — Fixed LLM response truncation when saving long recipes (e.g. carrot cake) that caused JSON parse failure on Fly. Increased max_tokens to 2500 for note generation.
 - **Mypy return-value errors** — Fixed `_route_plain_message` exception handlers to return `True` instead of bare `return`.
 - **Ruff lint** — Auto-fixed unused imports, import order, and other lint issues across tests.
 
