@@ -9,7 +9,7 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-06 (Sprint 13 ✅, Sprint 14 ✅, Sprint 15 ✅ completed)
+**Last Updated**: 2026-03-08 (Sprint 15 ✅, Sprint 16 planned)
 
 ## Project Overview
 
@@ -77,7 +77,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [FR-031](features/FR-031-monthly-review-report.md) | Monthly Review Report | 🟢 Low | 5 | ✅ | Sprint 10 | 2026-03-05 | 2026-03-05 |
 | [FR-032](features/FR-032-habit-tracking.md) | Habit Check-ins and Tracking | 🟢 Low | 5 | ✅ | Sprint 11 | 2026-03-05 | 2026-03-05 |
 | [FR-033](features/FR-033-flashcard.md) | Flashcard Practice from Notes | 🟠 High | 8 | ✅ | Sprint 14 | 2026-03-05 | 2026-03-06 |
-| [FR-034](features/FR-034-joplin-google-tasks-project-sync.md) | Joplin Projects ↔ Google Tasks Sync (Project = Task, Tasks = Subtasks) | 🟠 High | 13 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
+| [FR-034](features/FR-034-joplin-google-tasks-project-sync.md) | Joplin Projects ↔ Google Tasks Sync (Project = Task, Tasks = Subtasks) | 🟠 High | 13 | ⭕ | Sprint 16 | 2026-03-05 | 2026-03-08 |
 | [FR-035](features/FR-035-world-class-brain-dump.md) | World-Class Brain Dump Experience (modes, time awareness, recovery, personalization) | 🟠 High | 13 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
 | [FR-036](features/FR-036-documentation-code-consistency-review.md) | Documentation-Code Consistency Review (pre-sprint planning, hybrid, report) | 🟠 High | 8 | ✅ | Sprint 13 | 2026-03-05 | 2026-03-05 |
 | [FR-037](features/FR-037-reports-great-on-telegram.md) | Reports Look Great on Telegram | 🟡 Medium | 5 | ✅ | Backlog | 2026-03-05 | 2026-03-06 |
@@ -170,8 +170,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | **Sprint 13** | Apr 21-May 4 | BF-007 (URL validation), FR-036 (Doc-code review) | 13 | ✅ Complete |
 | **Sprint 14** | May 5-18 | BF-017 (Dream fix), FR-033 (Flashcard) | 9 | ✅ Complete |
 | **Sprint 15** | May 19-Jun 1 | BF-022, BF-023, FR-044 (/project_new), FR-039 (Star) | 12 | ✅ Complete |
+| **Sprint 16** | Jun 2-15 | FR-034 (Project Sync) | 13 | ⏳ Planned |
 
-**Remaining Backlog**: 47 points (FR-016 ~55%, FR-018 ~30%, FR-034, FR-035)
+**Remaining Backlog**: 34 points (FR-016 ~55%, FR-018 ~30%, FR-035, FR-051, etc.)
 **Projected Completion**: TBD — CI/CD operational, new features added to backlog
 
 ## Notes
@@ -239,7 +240,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [Sprint 13](../sprints/sprint-13-quality-and-validation.md) | Apr 21-May 4 | Quality and Validation (BF-007, FR-036) | 13 | ✅ Complete | 13 pts |
 | [Sprint 14](../sprints/sprint-14-flashcard-and-dream-fix.md) | May 5-18 | Flashcard & Dream Fix (BF-017, FR-033) | 9 | ✅ Complete | 9 pts |
 | [Sprint 15](../sprints/sprint-15-stability-and-project-foundation.md) | May 19-Jun 1 | Stability & Project Foundation (BF-022, BF-023, FR-044, FR-039) | 12 | ✅ Complete | 12 pts |
-| **TOTAL** | | | **282 pts** | **198 Complete, 84 Planned** | **14 avg** |
+| [Sprint 16](../sprints/sprint-16-project-sync.md) | Jun 2-15 | Project Sync (FR-034) | 13 | ⏳ Planned | — |
+| **TOTAL** | | | **295 pts** | **198 Complete, 97 Planned** | **14 avg** |
 
 **Completion Status**: 82% Complete (198/248 points)
   - Sprint 10 Complete: FR-023, FR-024, FR-029, FR-031, Joplin 24/7 ✅

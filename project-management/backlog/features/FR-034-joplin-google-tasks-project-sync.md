@@ -4,8 +4,8 @@
 **Priority**: 🟠 High
 **Story Points**: 13
 **Created**: 2026-03-05
-**Updated**: 2026-03-06
-**Assigned Sprint**: Backlog (Sprint 13+ candidate)
+**Updated**: 2026-03-08
+**Assigned Sprint**: Sprint 16
 
 ## Description
 
