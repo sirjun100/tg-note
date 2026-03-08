@@ -1,4 +1,4 @@
-# Sprint 6: Daily Priority Reports (FR-014)
+# Sprint 6: Daily Priority Reports (US-014)
 
 **Sprint Goal**: Deliver unified daily priority reports aggregating Joplin notes and Google Tasks with on-demand and scheduled delivery.
 
@@ -31,10 +31,10 @@
 - Comprehensive test suite
 
 **Dependencies**:
-- Joplin integration (✅ Complete - FR-005)
-- Google Tasks integration (✅ Complete - FR-012)
-- Logging service (✅ Complete - FR-010)
-- Conversation state management (✅ Complete - FR-007)
+- Joplin integration (✅ Complete - US-005)
+- Google Tasks integration (✅ Complete - US-012)
+- Logging service (✅ Complete - US-010)
+- Conversation state management (✅ Complete - US-007)
 
 **Risks & Blockers**:
 - APScheduler timezone handling (Medium risk - mitigated by UTC + user timezone config)
@@ -62,7 +62,7 @@
 - [x] Edge cases handled (no items, mixed priority levels)
 
 **Reference Documents**:
-- FR-014: Daily Priority Report for Review and Action Items
+- US-014: Daily Priority Report for Review and Action Items
 - Joplin Client API documentation
 - Google Tasks API documentation
 - APScheduler documentation
@@ -82,19 +82,19 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-014](../backlog/features/FR-014-daily-priority-report.md)
+**Backlog Reference**: [US-014](../backlog/user-stories/US-014-daily-priority-report.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create report data model and priority scoring algorithm | `report_generator.py:ReportGenerator.score_items()` | FR-014 Priority Algorithm | ✅ | 1 | Claude Code |
-| T-002 | Implement report aggregation (Joplin + Google Tasks) | `report_generator.py:ReportGenerator.generate_report()` | FR-014 Report Components | ✅ | 2 | Claude Code |
-| T-003 | Format report for Telegram message display | `report_generator.py:ReportGenerator.format_message()` | FR-014 Message Format | ✅ | 1 | Claude Code |
-| T-004 | Implement /daily_report on-demand command | `telegram_orchestrator.py:handle_daily_report()` | FR-014 Telegram Commands | ✅ | 1 | Claude Code |
-| T-005 | Create scheduler service with APScheduler | `scheduler_service.py` (new) | FR-014 Scheduled Delivery | ✅ | 1.5 | Claude Code |
-| T-006 | Implement all 7 configuration commands | `telegram_orchestrator.py:handle_config_*()` | FR-014 Configuration | ✅ | 1 | Claude Code |
-| T-007 | Add database schema for reports and configuration | `database_schema.sql` | FR-014 Database Schema | ✅ | 0.5 | Claude Code |
+| T-001 | Create report data model and priority scoring algorithm | `report_generator.py:ReportGenerator.score_items()` | US-014 Priority Algorithm | ✅ | 1 | Claude Code |
+| T-002 | Implement report aggregation (Joplin + Google Tasks) | `report_generator.py:ReportGenerator.generate_report()` | US-014 Report Components | ✅ | 2 | Claude Code |
+| T-003 | Format report for Telegram message display | `report_generator.py:ReportGenerator.format_message()` | US-014 Message Format | ✅ | 1 | Claude Code |
+| T-004 | Implement /daily_report on-demand command | `telegram_orchestrator.py:handle_daily_report()` | US-014 Telegram Commands | ✅ | 1 | Claude Code |
+| T-005 | Create scheduler service with APScheduler | `scheduler_service.py` (new) | US-014 Scheduled Delivery | ✅ | 1.5 | Claude Code |
+| T-006 | Implement all 7 configuration commands | `telegram_orchestrator.py:handle_config_*()` | US-014 Configuration | ✅ | 1 | Claude Code |
+| T-007 | Add database schema for reports and configuration | `database_schema.sql` | US-014 Database Schema | ✅ | 0.5 | Claude Code |
 
 **Total Task Points**: 8
 
@@ -365,7 +365,7 @@ CREATE INDEX idx_daily_reports_created ON daily_reports(created_at);
 
 ## References
 
-- **Feature FR-014**: [Daily Priority Report](../backlog/features/FR-014-daily-priority-report.md)
+- **Feature US-014**: [Daily Priority Report](../backlog/user-stories/US-014-daily-priority-report.md)
 - **Sprint 5 Results**: [Sprint 5 Completion](sprint-05-user-engagement-features.md)
 - **Product Backlog**: [Product Backlog](../backlog/product-backlog.md)
 - **Sprint & Backlog Planning**: [Planning Document](../docs/sprint-and-backlog-planning.md)

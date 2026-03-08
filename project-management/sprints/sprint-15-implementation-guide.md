@@ -8,16 +8,16 @@
 
 ## Quick Start (for LLM)
 
-1. **BF-022**: Verify `src/handlers/search.py` has the fix (grep BF-022); add unit tests; test in production.
-2. **BF-023**: Edit `src/handlers/ask.py` — add `html.escape`, `_send_ask_response_safe`, `split_message_for_telegram`; replace lines 60–66.
-3. **FR-044**: Add `create_project` to `src/reorg_orchestrator.py`; add `_project_new` handler in `src/handlers/reorg.py`; register `project_new` and `pn`; update greeting in `src/handlers/core.py`.
-4. **FR-039**: Add `URGENT` to `PriorityLevel`, `_detect_star_priority`, update `create_google_task_item` and `_build_routing_system_prompt` in `src/report_generator.py` and `src/llm_orchestrator.py`.
+1. **DEF-022**: Verify `src/handlers/search.py` has the fix (grep DEF-022); add unit tests; test in production.
+2. **DEF-023**: Edit `src/handlers/ask.py` — add `html.escape`, `_send_ask_response_safe`, `split_message_for_telegram`; replace lines 60–66.
+3. **US-044**: Add `create_project` to `src/reorg_orchestrator.py`; add `_project_new` handler in `src/handlers/reorg.py`; register `project_new` and `pn`; update greeting in `src/handlers/core.py`.
+4. **US-039**: Add `URGENT` to `PriorityLevel`, `_detect_star_priority`, update `create_google_task_item` and `_build_routing_system_prompt` in `src/report_generator.py` and `src/llm_orchestrator.py`.
 
 All code snippets, line numbers, and patterns are in the sections below.
 
 ---
 
-## 1. BF-022: /find Command Fix — VERIFY (Implementation May Exist)
+## 1. DEF-022: /find Command Fix — VERIFY (Implementation May Exist)
 
 ### Current State
 
@@ -30,7 +30,7 @@ The fix may already be implemented. Check for:
 
 ### Verification Tasks
 
-1. **Confirm implementation**: Grep for `BF-022` in `src/handlers/search.py` — comments should reference it.
+1. **Confirm implementation**: Grep for `DEF-022` in `src/handlers/search.py` — comments should reference it.
 2. **Unit tests**: Add to `tests/test_search.py` (or create):
    - `test_search_folders_failure_returns_results_with_unknown` — mock `get_folders` to raise; assert results still sent, folder shows "Unknown"
    - `test_search_special_chars_in_title_no_parse_error` — search returns note with title containing `*`, `_`, `` ` ``; assert no BadRequest
@@ -42,7 +42,7 @@ Copy from `src/handlers/core.py` lines 125–149 (`_greeting_to_plain`, `_send_g
 
 ---
 
-## 2. BF-023: /ask Command Fix — IMPLEMENT
+## 2. DEF-023: /ask Command Fix — IMPLEMENT
 
 ### Problem
 
@@ -61,14 +61,14 @@ Copy from `src/handlers/core.py` lines 125–149 (`_greeting_to_plain`, `_send_g
 2. **Add helper** (before `_ask`):
    ```python
    def _ask_html_to_plain(html_text: str) -> str:
-       """Strip HTML for plain-text fallback (BF-023)."""
+       """Strip HTML for plain-text fallback (DEF-023)."""
        import re
        out = re.sub(r"</?b>", "", html_text)
        out = re.sub(r"</?i>", "", out)
        return out.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
 
    async def _send_ask_response_safe(message, msg_html: str) -> None:
-       """Send /ask response with HTML; fallback to plain; split if > 4096 chars (BF-023)."""
+       """Send /ask response with HTML; fallback to plain; split if > 4096 chars (DEF-023)."""
        plain = _ask_html_to_plain(msg_html)
        if len(msg_html) > 4096:
            for chunk in split_message_for_telegram(plain):
@@ -88,7 +88,7 @@ Copy from `src/handlers/core.py` lines 125–149 (`_greeting_to_plain`, `_send_g
 
 3. **Replace lines 60–66** in `_ask` handler:
    ```python
-   # Build response with HTML + escape (BF-023)
+   # Build response with HTML + escape (DEF-023)
    q_esc = html.escape(question)
    lines = [f"🔍 <b>{q_esc}</b>\n", html.escape(answer)]
    if sources:
@@ -103,16 +103,16 @@ Copy from `src/handlers/core.py` lines 125–149 (`_greeting_to_plain`, `_send_g
 
 ### References
 
-- [BF-023](../backlog/bugs/BF-023-ask-command-crash.md)
-- [BF-010](../backlog/bugs/BF-010-greeting-parse-entities-error.md) — same pattern
-- [BF-022](../backlog/bugs/BF-022-find-command-flyio-error.md) — same pattern
+- [DEF-023](../backlog/defects/DEF-023-ask-command-crash.md)
+- [DEF-010](../backlog/defects/DEF-010-greeting-parse-entities-error.md) — same pattern
+- [DEF-022](../backlog/defects/DEF-022-find-command-flyio-error.md) — same pattern
 - `src/handlers/search.py` lines 53–76
-- `src/security_utils.py` `split_message_for_telegram` (BF-019)
+- `src/security_utils.py` `split_message_for_telegram` (DEF-019)
 - `src/constants.py` `TELEGRAM_MESSAGE_MAX_LENGTH = 4096`
 
 ---
 
-## 3. FR-044: /project_new Command — IMPLEMENT
+## 3. US-044: /project_new Command — IMPLEMENT
 
 ### Overview
 
@@ -259,11 +259,11 @@ In `_build_greeting()` (around line 97), add under **📝 Capture** or create **
 
 ### Duplicate Handling (Simplified)
 
-FR-044 full spec says: if exists, list subfolders and optionally ask to add missing ones. For MVP: show "Project X already exists. Use /find to search." The `create_project` raises `ReorgException` with that message when folder exists.
+US-044 full spec says: if exists, list subfolders and optionally ask to add missing ones. For MVP: show "Project X already exists. Use /find to search." The `create_project` raises `ReorgException` with that message when folder exists.
 
 ---
 
-## 4. FR-039: Star on Task as High Priority — IMPLEMENT
+## 4. US-039: Star on Task as High Priority — IMPLEMENT
 
 ### Overview
 
@@ -280,7 +280,7 @@ Tasks with `*`, `**`, `***` (or ⭐/★) at the **beginning** of the title get p
        HIGH = 3
        MEDIUM = 1
        LOW = 0
-       URGENT = 6   # FR-039: *** at start of title
+       URGENT = 6   # US-039: *** at start of title
    ```
 
 2. Add to `_priority_label` (around line 1007):
@@ -295,7 +295,7 @@ Tasks with `*`, `**`, `***` (or ⭐/★) at the **beginning** of the title get p
 3. Add helper (before `create_google_task_item`):
    ```python
    def _detect_star_priority(self, title: str) -> PriorityLevel | None:
-       """FR-039: Detect * / ** / *** or ⭐/★ at start of title. Star wins over due date."""
+       """US-039: Detect * / ** / *** or ⭐/★ at start of title. Star wins over due date."""
        if not title or not isinstance(title, str):
            return None
        t = title.strip()
@@ -314,7 +314,7 @@ Tasks with `*`, `**`, `***` (or ⭐/★) at the **beginning** of the title get p
 
 Replace the priority logic (around line 388):
 ```python
-# FR-039: Star at start of title wins over due date
+# US-039: Star at start of title wins over due date
 title = task.get("title", "Untitled Task")
 star_priority = self._detect_star_priority(title)
 if star_priority is not None:
@@ -347,11 +347,11 @@ Add handling for `PriorityLevel.URGENT`:
 elif item.priority_level == PriorityLevel.URGENT:
     report.critical_items.append(item)  # or add report.urgent_items if you add that
 ```
-Per FR-039, URGENT > CRITICAL, so urgent items can go in `critical_items` (top of report) or you add an `urgent_items` section. Simplest: treat URGENT like CRITICAL for categorization.
+Per US-039, URGENT > CRITICAL, so urgent items can go in `critical_items` (top of report) or you add an `urgent_items` section. Simplest: treat URGENT like CRITICAL for categorization.
 
 ### References
 
-- [FR-039](../backlog/features/FR-039-star-on-task-as-high-priority.md)
+- [US-039](../backlog/user-stories/US-039-star-on-task-as-high-priority.md)
 - `src/report_generator.py` — `create_google_task_item`, `_priority_label`, `categorize_items`
 - `src/llm_orchestrator.py` — `_build_routing_system_prompt`
 
@@ -361,10 +361,10 @@ Per FR-039, URGENT > CRITICAL, so urgent items can go in `critical_items` (top o
 
 | Item   | Primary File           | Key Methods/Patterns                                      |
 |--------|------------------------|-----------------------------------------------------------|
-| BF-022 | `handlers/search.py`   | `_send_search_results_safe`, `html.escape`, try/except   |
-| BF-023 | `handlers/ask.py`      | `html.escape`, `split_message_for_telegram`, safe send    |
-| FR-044 | `reorg_orchestrator.py`, `handlers/reorg.py` | `create_project`, `get_or_create_folder_by_path`, `create_note` |
-| FR-039 | `report_generator.py`, `llm_orchestrator.py` | `_detect_star_priority`, `create_google_task_item`, routing prompt |
+| DEF-022 | `handlers/search.py`   | `_send_search_results_safe`, `html.escape`, try/except   |
+| DEF-023 | `handlers/ask.py`      | `html.escape`, `split_message_for_telegram`, safe send    |
+| US-044 | `reorg_orchestrator.py`, `handlers/reorg.py` | `create_project`, `get_or_create_folder_by_path`, `create_note` |
+| US-039 | `report_generator.py`, `llm_orchestrator.py` | `_detect_star_priority`, `create_google_task_item`, routing prompt |
 
 ---
 
@@ -372,16 +372,16 @@ Per FR-039, URGENT > CRITICAL, so urgent items can go in `critical_items` (top o
 
 **File**: `src/telegram_orchestrator.py`
 
-FR-044 handlers are added inside `register_reorg_handlers` — no change to `telegram_orchestrator.py` needed.
+US-044 handlers are added inside `register_reorg_handlers` — no change to `telegram_orchestrator.py` needed.
 
 ---
 
 ## 7. Tests to Add
 
-- **BF-022**: `tests/test_search.py` — folder failure, special chars
-- **BF-023**: `tests/test_ask.py` — HTML escape, long message split, parse fallback
-- **FR-044**: `tests/test_reorg_orchestrator.py` — `create_project` with mock Joplin
-- **FR-039**: `tests/test_report_generator.py` — `_detect_star_priority`, star wins in `create_google_task_item`
+- **DEF-022**: `tests/test_search.py` — folder failure, special chars
+- **DEF-023**: `tests/test_ask.py` — HTML escape, long message split, parse fallback
+- **US-044**: `tests/test_reorg_orchestrator.py` — `create_project` with mock Joplin
+- **US-039**: `tests/test_report_generator.py` — `_detect_star_priority`, star wins in `create_google_task_item`
 
 ---
 

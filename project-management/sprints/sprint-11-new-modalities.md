@@ -25,10 +25,10 @@
 
 **Dependencies**:
 - Sprint 10 (Greeting - for command list updates)
-- Joplin REST API (Complete - FR-005)
+- Joplin REST API (Complete - US-005)
 - Gemini API (Configured - GEMINI_API_KEY)
 - URL Enrichment (Complete - for read-later)
-- Google Tasks (Complete - FR-012, for planning in Sprint 12)
+- Google Tasks (Complete - US-012, for planning in Sprint 12)
 
 **Risks & Blockers**:
 - Gemini rate limits for OCR (mitigated by retry pattern from recipe_image.py)
@@ -53,7 +53,7 @@
 - [ ] Processing indicator shown while OCR runs
 
 **Reference Documents**:
-- [FR-030: Photo/Screenshot OCR Capture](../backlog/features/FR-030-photo-ocr-capture.md)
+- [US-030: Photo/Screenshot OCR Capture](../backlog/user-stories/US-030-photo-ocr-capture.md)
 - [API Reference: Gemini](../../docs/api-reference.md)
 
 **Technical References**:
@@ -68,16 +68,16 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-030](../backlog/features/FR-030-photo-ocr-capture.md)
+**Backlog Reference**: [US-030](../backlog/user-stories/US-030-photo-ocr-capture.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create ocr_service with Gemini vision extraction | `ocr_service.py:extract_text_from_image()` | FR-030 Gemini OCR | ✅ | 1.5 | — |
-| T-002 | Add create_resource() to JoplinClient | `JoplinClient.create_resource()` | FR-030 Joplin Resources | ✅ | 1 | — |
-| T-003 | Create photo handler with progress indicator | `handlers/photo.py` | FR-030 Handler | ✅ | 1.5 | — |
-| T-004 | Integrate caption, classification, note creation | `handlers/photo.py` | FR-030 Flow | ✅ | 1 | — |
+| T-001 | Create ocr_service with Gemini vision extraction | `ocr_service.py:extract_text_from_image()` | US-030 Gemini OCR | ✅ | 1.5 | — |
+| T-002 | Add create_resource() to JoplinClient | `JoplinClient.create_resource()` | US-030 Joplin Resources | ✅ | 1 | — |
+| T-003 | Create photo handler with progress indicator | `handlers/photo.py` | US-030 Handler | ✅ | 1.5 | — |
+| T-004 | Integrate caption, classification, note creation | `handlers/photo.py` | US-030 Flow | ✅ | 1 | — |
 
 **Total Task Points**: 5
 
@@ -97,7 +97,7 @@
 - [ ] Optional: `/reading random` picks a random unread item
 
 **Reference Documents**:
-- [FR-028: Read Later Queue](../backlog/features/FR-028-read-later-queue.md)
+- [US-028: Read Later Queue](../backlog/user-stories/US-028-read-later-queue.md)
 
 **Technical References**:
 - File: `src/url_enrichment.py` - Reuse for title/summary
@@ -111,16 +111,16 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-028](../backlog/features/FR-028-read-later-queue.md)
+**Backlog Reference**: [US-028](../backlog/user-stories/US-028-read-later-queue.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create reading_service for queue CRUD | `reading_service.py` | FR-028 Service | ✅ | 1.5 | — |
-| T-002 | Implement /readlater with URL enrichment | `handlers/reading.py` | FR-028 Save | ✅ | 1 | — |
-| T-003 | Implement /reading and /reading done | `handlers/reading.py` | FR-028 Queue Display | ✅ | 1.5 | — |
-| T-004 | Add Reading List folder setup | `reading_service.py` | FR-028 Folder Structure | ✅ | 1 | — |
+| T-001 | Create reading_service for queue CRUD | `reading_service.py` | US-028 Service | ✅ | 1.5 | — |
+| T-002 | Implement /readlater with URL enrichment | `handlers/reading.py` | US-028 Save | ✅ | 1 | — |
+| T-003 | Implement /reading and /reading done | `handlers/reading.py` | US-028 Queue Display | ✅ | 1.5 | — |
+| T-004 | Add Reading List folder setup | `reading_service.py` | US-028 Folder Structure | ✅ | 1 | — |
 
 **Total Task Points**: 5
 
@@ -141,8 +141,8 @@
 - [ ] `/dream_cancel` cancels without saving
 
 **Reference Documents**:
-- [FR-025: Jungian Dream Analysis](../backlog/features/FR-025-jungian-dream-analysis.md)
-- [FR-019: Stoic Journal](../backlog/features/FR-019-stoic-journal.md) - Conversation flow pattern
+- [US-025: Jungian Dream Analysis](../backlog/user-stories/US-025-jungian-dream-analysis.md)
+- [US-019: Stoic Journal](../backlog/user-stories/US-019-stoic-journal.md) - Conversation flow pattern
 
 **Technical References**:
 - File: `src/handlers/stoic.py` - Conversation state pattern
@@ -155,17 +155,17 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-025](../backlog/features/FR-025-jungian-dream-analysis.md)
+**Backlog Reference**: [US-025](../backlog/user-stories/US-025-jungian-dream-analysis.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create dream handler with /dream, /dream_done, /dream_cancel | `handlers/dream.py` | FR-025 Commands | ✅ | 1.5 | — |
-| T-002 | Add DREAM_ANALYST persona state and routing | `core.py`, `state_manager.py` | FR-025 State | ✅ | 1.5 | — |
-| T-003 | Implement dream description and Jungian analysis prompts | `prompts/` | FR-025 Analysis | ✅ | 2 | — |
-| T-004 | Add dream image generation via Gemini | `handlers/dream.py` | FR-025 Image Gen | ✅ | 2 | — |
-| T-005 | Save dream note to Joplin (Dream Journal folder) | `handlers/dream.py` | FR-025 Output | ✅ | 1 | — |
+| T-001 | Create dream handler with /dream, /dream_done, /dream_cancel | `handlers/dream.py` | US-025 Commands | ✅ | 1.5 | — |
+| T-002 | Add DREAM_ANALYST persona state and routing | `core.py`, `state_manager.py` | US-025 State | ✅ | 1.5 | — |
+| T-003 | Implement dream description and Jungian analysis prompts | `prompts/` | US-025 Analysis | ✅ | 2 | — |
+| T-004 | Add dream image generation via Gemini | `handlers/dream.py` | US-025 Image Gen | ✅ | 2 | — |
+| T-005 | Save dream note to Joplin (Dream Journal folder) | `handlers/dream.py` | US-025 Output | ✅ | 1 | — |
 
 **Total Task Points**: 8
 
@@ -186,7 +186,7 @@
 - [ ] Habits reset daily at user's configured timezone midnight
 
 **Reference Documents**:
-- [FR-032: Habit Check-ins and Tracking](../backlog/features/FR-032-habit-tracking.md)
+- [US-032: Habit Check-ins and Tracking](../backlog/user-stories/US-032-habit-tracking.md)
 
 **Technical References**:
 - File: `src/habit_service.py` (new) - SQLite CRUD, streak calculation
@@ -199,16 +199,16 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-032](../backlog/features/FR-032-habit-tracking.md)
+**Backlog Reference**: [US-032](../backlog/user-stories/US-032-habit-tracking.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create habit_service with SQLite schema | `habit_service.py` | FR-032 Data Model | ✅ | 1.5 | — |
-| T-002 | Implement streak calculation | `HabitService.calculate_streak()` | FR-032 Streaks | ✅ | 1 | — |
-| T-003 | Create habits handler with /habits, add, remove, list, stats | `handlers/habits.py` | FR-032 Commands | ✅ | 1.5 | — |
-| T-004 | Add inline keyboard and callback handler | `handlers/habits.py` | FR-032 Buttons | ✅ | 1 | — |
+| T-001 | Create habit_service with SQLite schema | `habit_service.py` | US-032 Data Model | ✅ | 1.5 | — |
+| T-002 | Implement streak calculation | `HabitService.calculate_streak()` | US-032 Streaks | ✅ | 1 | — |
+| T-003 | Create habits handler with /habits, add, remove, list, stats | `handlers/habits.py` | US-032 Commands | ✅ | 1.5 | — |
+| T-004 | Add inline keyboard and callback handler | `handlers/habits.py` | US-032 Buttons | ✅ | 1 | — |
 
 **Total Task Points**: 5
 
@@ -216,17 +216,17 @@
 
 ## Sprint Summary
 
-**Total Story Points**: 31 (includes FR-027 from Sprint 12)
+**Total Story Points**: 31 (includes US-027 from Sprint 12)
 **Total Task Points**: 23
 **Status**: ✅ Complete
 
 **Sprint Burndown Plan**:
 - Week 1: Stories 1-2 (Photo OCR, Read Later) - 10 points
 - Week 2: Stories 3-4 (Dream Analysis, Habit Tracking) - 13 points
-- FR-027 (Weekly Planning) implemented in Sprint 11 scope
+- US-027 (Weekly Planning) implemented in Sprint 11 scope
 
 **Sprint Review Notes**:
-- All 5 features delivered: FR-025, FR-027, FR-028, FR-030, FR-032
+- All 5 features delivered: US-025, US-027, US-028, US-030, US-032
 
 **Sprint Retrospective Notes**:
 - **What went well?**

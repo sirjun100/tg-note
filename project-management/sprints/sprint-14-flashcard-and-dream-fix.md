@@ -1,10 +1,10 @@
 # Sprint 14: Flashcard Practice & Dream Fix
 
-**Sprint Goal**: Fix the /dream command crash (BF-017) and deliver flashcard practice from Joplin notes (FR-033), turning the Second Brain into a memory-building practice gym.
+**Sprint Goal**: Fix the /dream command crash (DEF-017) and deliver flashcard practice from Joplin notes (US-033), turning the Second Brain into a memory-building practice gym.
 
 **Duration**: 2026-05-05 - 2026-05-18 (2 weeks)
 **Status**: ✅ Completed
-**Team Velocity**: 9 points (BF-017 + FR-033)
+**Team Velocity**: 9 points (DEF-017 + US-033)
 **Sprint Planning Date**: 2026-03-06
 **Sprint Review Date**: 2026-05-18
 **Sprint Retrospective Date**: 2026-05-18
@@ -16,22 +16,22 @@
 - Flashcard system: card extraction from notes, SM-2 scheduling, session flow in Telegram
 
 **Key Deliverables**:
-- BF-017: /dream command responds reliably with welcome message (no crash)
-- FR-033: /flashcard command with spaced repetition, card extraction from #flashcard notes, session flow
+- DEF-017: /dream command responds reliably with welcome message (no crash)
+- US-033: /flashcard command with spaced repetition, card extraction from #flashcard notes, session flow
 
 **Dependencies**:
-- FR-005 (Joplin REST API) ✅
-- FR-006 (LLM Integration) ✅
-- FR-007 (Conversation State Management) ✅
+- US-005 (Joplin REST API) ✅
+- US-006 (LLM Integration) ✅
+- US-007 (Conversation State Management) ✅
 - `src/handlers/dream.py` (existing)
 - `src/joplin_client.py`, `src/llm_orchestrator.py` (existing)
 
 **Risks & Blockers**:
-- BF-017: May be Markdown parse issue (similar to BF-010, BF-014) — switch to HTML or plain text if needed
-- FR-033: LLM card extraction quality — allow manual cards, skip option
+- DEF-017: May be Markdown parse issue (similar to DEF-010, DEF-014) — switch to HTML or plain text if needed
+- US-033: LLM card extraction quality — allow manual cards, skip option
 
 **Alternative Scope** (if preferring brain dump focus):
-- BF-017 (1 pt) + FR-035 World-Class Brain Dump (13 pts) = 14 pts — replaces FR-033 with brain dump enhancements
+- DEF-017 (1 pt) + US-035 World-Class Brain Dump (13 pts) = 14 pts — replaces US-033 with brain dump enhancements
 
 ---
 
@@ -56,13 +56,13 @@
 - [ ] If Markdown parse is the cause, switch to HTML or plain text
 
 **Reference Documents**:
-- [BF-017: Dream Command Crashes Agent](../backlog/bugs/BF-017-dream-command-crash.md)
-- [BF-010: Greeting Parse Entities](../backlog/bugs/BF-010-greeting-parse-entities-error.md)
-- [BF-014: Dream Parse Entities](../backlog/bugs/BF-014-dream-parse-entities-error.md)
+- [DEF-017: Dream Command Crashes Agent](../backlog/defects/DEF-017-dream-command-crash.md)
+- [DEF-010: Greeting Parse Entities](../backlog/defects/DEF-010-greeting-parse-entities-error.md)
+- [DEF-014: Dream Parse Entities](../backlog/defects/DEF-014-dream-parse-entities-error.md)
 
 **Technical References**:
 - File: `src/handlers/dream.py` — `dream_cmd`, `register_dream_handlers`
-- Fix pattern: BF-010, BF-014 (parse_mode, entity escaping)
+- Fix pattern: DEF-010, DEF-014 (parse_mode, entity escaping)
 
 **Story Points**: 1
 
@@ -70,15 +70,15 @@
 
 **Status**: ⭕ Not Started
 
-**Backlog Reference**: [BF-017](../backlog/bugs/BF-017-dream-command-crash.md)
+**Backlog Reference**: [DEF-017](../backlog/defects/DEF-017-dream-command-crash.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Diagnose crash (logging, parse_mode, state) | `handlers/dream.py:dream_cmd` | BF-017 | ⭕ | 0.25 | — |
-| T-002 | Fix welcome message (HTML or plain text if Markdown fails) | `handlers/dream.py` | BF-017 | ⭕ | 0.5 | — |
-| T-003 | Add exception handling and user-facing error message | `handlers/dream.py` | BF-017 | ⭕ | 0.25 | — |
+| T-001 | Diagnose crash (logging, parse_mode, state) | `handlers/dream.py:dream_cmd` | DEF-017 | ⭕ | 0.25 | — |
+| T-002 | Fix welcome message (HTML or plain text if Markdown fails) | `handlers/dream.py` | DEF-017 | ⭕ | 0.5 | — |
+| T-003 | Add exception handling and user-facing error message | `handlers/dream.py` | DEF-017 | ⭕ | 0.25 | — |
 
 **Total Task Points**: 1
 
@@ -118,7 +118,7 @@
 - [ ] `/flashcard help` — usage guide
 
 **Reference Documents**:
-- [FR-033: Flashcard Practice from Notes](../backlog/features/FR-033-flashcard.md)
+- [US-033: Flashcard Practice from Notes](../backlog/user-stories/US-033-flashcard.md)
 
 **Technical References**:
 - File: `src/flashcard_service.py` (new) — Card CRUD, SM-2, session logic
@@ -132,18 +132,18 @@
 
 **Status**: ⭕ Not Started
 
-**Backlog Reference**: [FR-033](../backlog/features/FR-033-flashcard.md)
+**Backlog Reference**: [US-033](../backlog/user-stories/US-033-flashcard.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-004 | Create DB schema (flashcards, card_reviews, flashcard_sessions) | Migration / schema | FR-033 | ⭕ | 1 | — |
-| T-005 | Implement FlashcardService (CRUD, SM-2 scheduling, due selection) | `flashcard_service.py` | FR-033 | ⭕ | 2 | — |
-| T-006 | Add LLM card extraction (prompt, extract_flashcards_from_note) | `llm_orchestrator.py`, prompt | FR-033 | ⭕ | 1.5 | — |
-| T-007 | Create flashcard handlers (/flashcard, session flow, inline keyboards) | `handlers/flashcard.py` | FR-033 | ⭕ | 2 | — |
-| T-008 | Implement tag/folder filtering, stats, help | `flashcard_service.py`, handlers | FR-033 | ⭕ | 1 | — |
-| T-009 | Register handlers, add to greeting/help, unit tests | `handlers/__init__.py`, tests | FR-033 | ⭕ | 0.5 | — |
+| T-004 | Create DB schema (flashcards, card_reviews, flashcard_sessions) | Migration / schema | US-033 | ⭕ | 1 | — |
+| T-005 | Implement FlashcardService (CRUD, SM-2 scheduling, due selection) | `flashcard_service.py` | US-033 | ⭕ | 2 | — |
+| T-006 | Add LLM card extraction (prompt, extract_flashcards_from_note) | `llm_orchestrator.py`, prompt | US-033 | ⭕ | 1.5 | — |
+| T-007 | Create flashcard handlers (/flashcard, session flow, inline keyboards) | `handlers/flashcard.py` | US-033 | ⭕ | 2 | — |
+| T-008 | Implement tag/folder filtering, stats, help | `flashcard_service.py`, handlers | US-033 | ⭕ | 1 | — |
+| T-009 | Register handlers, add to greeting/help, unit tests | `handlers/__init__.py`, tests | US-033 | ⭕ | 0.5 | — |
 
 **Total Task Points**: 8
 
@@ -151,15 +151,15 @@
 
 ## Sprint Summary
 
-**Total Story Points**: 9 (BF-017: 1, FR-033: 8)
+**Total Story Points**: 9 (DEF-017: 1, US-033: 8)
 **Total Task Points**: 9
 **Estimated Velocity**: 9 points
 
 **Sprint Burndown Plan**:
-- Week 1: Story 1 (BF-017) — 1 pt; Story 2 start (T-004, T-005, T-006)
-- Week 2: Story 2 (FR-033) — 8 pts; T-007, T-008, T-009
+- Week 1: Story 1 (DEF-017) — 1 pt; Story 2 start (T-004, T-005, T-006)
+- Week 2: Story 2 (US-033) — 8 pts; T-007, T-008, T-009
 
-**Buffer**: 5 points under ~14 pt velocity — allows for FR-016/FR-018 progress or Sprint 13 spillover.
+**Buffer**: 5 points under ~14 pt velocity — allows for US-016/US-018 progress or Sprint 13 spillover.
 
 **Sprint Review Notes**:
 - [ ] [RELEASE_NOTES.md](../../../RELEASE_NOTES.md) updated (see [release-notes-process.md](../docs/processes/release-notes-process.md))

@@ -12,9 +12,9 @@ This is a generic template for creating bug fix items. Copy this template when r
 ## Usage
 
 1. Copy this template
-2. Assign unique ID (e.g., BF-001, BF-015, or use your ID format)
+2. Assign unique ID (e.g., DEF-001, DEF-015, or use your ID format)
 3. Fill in all sections, especially reproduction steps
-4. Save to: `backlog/bugs/[ID]-[bug-description].md`
+4. Save to: `backlog/defects/[ID]-[bug-description].md`
 5. Add entry to main product backlog table
 
 ---
@@ -174,7 +174,7 @@ Examples:
 
 Examples:
 - Temporary workaround: Users can use email without '+' character
-- Related bug: BF-012 (similar issue in password validation)
+- Related bug: DEF-012 (similar issue in password validation)
 - This bug affects 15% of users with email addresses containing '+'
 
 ## History
@@ -228,7 +228,7 @@ Before submitting, ensure:
 - [ ] Technical references are included (if applicable)
 - [ ] Testing checklist is completed (if fix is implemented)
 - [ ] Links to related documents are correct
-- [ ] File is saved with correct naming convention: `BF-XXX-bug-description.md`
+- [ ] File is saved with correct naming convention: `DEF-XXX-bug-description.md`
 - [ ] Entry is added to product backlog table
 - [ ] Any charts/diagrams use **Mermaid** (see [documentation-standards.md](../processes/documentation-standards.md))
 - [ ] Mermaid diagrams validate (wrap labels with `/`, `=`, `:`, etc. in double quotes; test at [mermaid.live](https://mermaid.live/))

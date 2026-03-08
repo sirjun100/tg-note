@@ -23,8 +23,8 @@ requires: [markdown-support]
 - Establish documentation standards and templates
 
 **Key Deliverables**:
-- Completed git commit message template (FR-001)
-- Mermaid workflow diagrams integrated into process documentation (FR-002)
+- Completed git commit message template (US-001)
+- Mermaid workflow diagrams integrated into process documentation (US-002)
 - Updated backlog management process document with visual workflows
 
 **Dependencies**:
@@ -46,7 +46,7 @@ requires: [markdown-support]
 - [x] Git commit message template created (markdown format with guidelines)
 - [x] Git commit message template created (text format for direct git integration)
 - [x] Git commit message examples document created with multiple scenarios
-- [x] Template includes task number format (FR-XXX or BF-XXX)
+- [x] Template includes task number format (US-XXX or DEF-XXX)
 - [x] Template includes business description section
 - [x] Template includes technical changes section
 - [x] Template documented in template-catalog.md
@@ -71,13 +71,13 @@ requires: [markdown-support]
 
 **Status**: ✅ Completed
 
-**Backlog Reference**: [FR-001](features/FR-001-git-commit-template.md) - Add Git Commit Message Template
+**Backlog Reference**: [US-001](user-stories/US-001-git-commit-template.md) - Add Git Commit Message Template
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Verify all acceptance criteria are met | N/A | FR-001 acceptance criteria | ✅ | 1 | Team |
+| T-001 | Verify all acceptance criteria are met | N/A | US-001 acceptance criteria | ✅ | 1 | Team |
 | T-002 | Review template files for completeness | `templates/git-commit-template.md` | Template documentation | ✅ | 1 | Team |
 | T-003 | Verify examples document covers all scenarios | `examples/git-commit-example.md` | Examples documentation | ✅ | 1 | Team |
 | T-004 | Confirm template-catalog.md includes new template | `template-catalog.md` | Template catalog | ✅ | 1 | Team |
@@ -118,13 +118,13 @@ requires: [markdown-support]
 
 **Status**: ✅ Completed
 
-**Backlog Reference**: [FR-002](features/FR-002-mermaid-workflow-diagrams.md) - Add Mermaid Workflow Diagrams for Backlog Management
+**Backlog Reference**: [US-002](user-stories/US-002-mermaid-workflow-diagrams.md) - Add Mermaid Workflow Diagrams for Backlog Management
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-006 | Review proposed diagrams in FR-002 for accuracy | `FR-002-mermaid-workflow-diagrams.md` | Feature request document | ✅ | 1 | Team |
+| T-006 | Review proposed diagrams in US-002 for accuracy | `US-002-mermaid-workflow-diagrams.md` | Feature request document | ✅ | 1 | Team |
 | T-007 | Integrate feature request workflow diagram into process doc | `processes/backlog-management-process.md` | Backlog management process | ✅ | 1 | Team |
 | T-008 | Integrate bug fix workflow diagram into process doc | `processes/backlog-management-process.md` | Backlog management process | ✅ | 1 | Team |
 | T-009 | Integrate status lifecycle diagram into process doc | `processes/backlog-management-process.md` | Backlog management process | ✅ | 1 | Team |
@@ -181,8 +181,8 @@ Use Fibonacci sequence for story point estimation:
 ## Notes
 
 - Both stories are high priority and foundational for the backlog toolkit
-- FR-001 is already in progress with most acceptance criteria met
-- FR-002 needs implementation of diagrams into the process document
-- Diagrams proposed in FR-002 should be reviewed and refined before integration
+- US-001 is already in progress with most acceptance criteria met
+- US-002 needs implementation of diagrams into the process document
+- Diagrams proposed in US-002 should be reviewed and refined before integration
 - Test Mermaid.js rendering in GitHub, GitLab, VS Code, and other common viewers
 

@@ -9,8 +9,8 @@ project-management/
 ├── STATE.md             # Process state — where the AI is in the workflow (read/update when helping)
 ├── backlog/             # Active backlog items
 │   ├── product-backlog.md    # Main backlog overview
-│   ├── features/            # Feature requests (FR-XXX-*.md)
-│   └── bugs/                # Bug fixes (BF-XXX-*.md)
+│   ├── user-stories/         # User stories (US-XXX-*.md)
+│   └── defects/               # Defects (DEF-XXX-*.md)
 ├── sprints/             # Sprint planning documents
 │   └── sprint-XX-*.md
 └── docs/                # Reference documentation
@@ -24,15 +24,15 @@ project-management/
 
 ## Strict Structure Rules
 
-- All FR files and FR implementation summaries stay under `backlog/features/`.
+- All user story files and implementation summaries stay under `backlog/user-stories/`.
 - All sprint planning and sprint follow-up documents stay under `sprints/`.
 - `docs/` at repository root is reserved for product/user/developer guides, not planning artifacts.
 
 ## Quick Start
 
 1. **View the backlog**: Open `backlog/product-backlog.md`
-2. **Create a feature**: Copy `docs/templates/feature-request-template.md` to `backlog/features/FR-XXX-name.md`
-3. **Create a bug fix**: Copy `docs/templates/bug-fix-template.md` to `backlog/bugs/BF-XXX-name.md`
+2. **Create a user story**: Copy `docs/templates/feature-request-template.md` to `backlog/user-stories/US-XXX-name.md`
+3. **Create a defect**: Copy `docs/templates/bug-fix-template.md` to `backlog/defects/DEF-XXX-name.md`
 4. **Plan a sprint**: Copy `docs/templates/sprint-planning-template.md` to `sprints/sprint-XX-name.md`
 
 ## Workflow
@@ -42,12 +42,12 @@ project-management/
 
 ### Daily Work
 - Update status in `backlog/product-backlog.md`
-- Work on items in `backlog/features/` or `backlog/bugs/`
+- Work on items in `backlog/user-stories/` or `backlog/defects/`
 
 ### Creating New Items
 - Use templates from `docs/templates/`
 - Add entry to `backlog/product-backlog.md`
-- Follow naming: `FR-XXX-feature-name.md` or `BF-XXX-bug-name.md`
+- Follow naming: `US-XXX-feature-name.md` or `DEF-XXX-bug-name.md`
 
 ### Sprint Planning
 - Create sprint document in `sprints/`

@@ -28,17 +28,17 @@ This is the main product backlog tracking all feature requests and bug fixes.
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
-| [FR-001](features/FR-001-feature-name.md) | [Feature Title] | 🔴 Critical | [X] | ⭕ | - | [YYYY-MM-DD] | [YYYY-MM-DD] |
-| [FR-002](features/FR-002-feature-name.md) | [Feature Title] | 🟠 High | [X] | ⏳ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
-| [FR-003](features/FR-003-feature-name.md) | [Feature Title] | 🟡 Medium | [X] | ✅ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
+| [US-001](user-stories/US-001-feature-name.md) | [Feature Title] | 🔴 Critical | [X] | ⭕ | - | [YYYY-MM-DD] | [YYYY-MM-DD] |
+| [US-002](user-stories/US-002-feature-name.md) | [Feature Title] | 🟠 High | [X] | ⏳ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
+| [US-003](user-stories/US-003-feature-name.md) | [Feature Title] | 🟡 Medium | [X] | ✅ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
 
 ## Bug Fixes
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
-| [BF-001](bugs/BF-001-bug-description.md) | [Bug Description] | 🔴 Critical | [X] | ⭕ | - | [YYYY-MM-DD] | [YYYY-MM-DD] |
-| [BF-002](bugs/BF-002-bug-description.md) | [Bug Description] | 🟠 High | [X] | ⏳ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
-| [BF-003](bugs/BF-003-bug-description.md) | [Bug Description] | 🟡 Medium | [X] | ✅ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
+| [DEF-001](defects/DEF-001-bug-description.md) | [Bug Description] | 🔴 Critical | [X] | ⭕ | - | [YYYY-MM-DD] | [YYYY-MM-DD] |
+| [DEF-002](defects/DEF-002-bug-description.md) | [Bug Description] | 🟠 High | [X] | ⏳ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
+| [DEF-003](defects/DEF-003-bug-description.md) | [Bug Description] | 🟡 Medium | [X] | ✅ | Sprint 1 | [YYYY-MM-DD] | [YYYY-MM-DD] |
 
 ---
 
@@ -57,8 +57,8 @@ This is the main product backlog tracking all feature requests and bug fixes.
 
 ## Column Definitions
 
-- **ID**: Unique identifier (FR-XXX for features, BF-XXX for bugs)
-  - Link to detailed item: `[FR-001](features/FR-001-feature-name.md)`
+- **ID**: Unique identifier (US-XXX for user stories, DEF-XXX for defects)
+  - Link to detailed item: `[US-001](user-stories/US-001-feature-name.md)`
 - **Title**: Short, descriptive title (50 characters or less recommended)
 - **Priority**: Visual priority indicator (🔴 🟠 🟡 🟢)
 - **Points**: Story points (Fibonacci: 1, 2, 3, 5, 8, 13)
@@ -69,8 +69,8 @@ This is the main product backlog tracking all feature requests and bug fixes.
 
 ## Notes
 
-- Feature request details: See `features/FR-XXX-*.md` files
-- Bug fix details: See `bugs/BF-XXX-*.md` files
+- Feature request details: See `user-stories/US-XXX-*.md` files
+- Bug fix details: See `defects/DEF-XXX-*.md` files
 - Sprint assignments: See `../sprints/sprint-XX-*.md` files (if using sprint planning)
 
 ## Backlog Statistics (Optional)
@@ -104,7 +104,7 @@ This is the main product backlog tracking all feature requests and bug fixes.
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
-| [FR-042](features/FR-042-user-authentication.md) | User Authentication | 🟠 High | 13 | ⏳ | Sprint 5 | 2024-01-10 | 2024-01-15 |
+| [US-042](user-stories/US-042-user-authentication.md) | User Authentication | 🟠 High | 13 | ⏳ | Sprint 5 | 2024-01-10 | 2024-01-15 |
 
 This entry indicates:
 - Feature Request #42 about User Authentication
@@ -114,7 +114,7 @@ This entry indicates:
 - Assigned to Sprint 5
 - Created on January 10, 2024
 - Last updated on January 15, 2024
-- Clicking FR-042 links to detailed document
+- Clicking US-042 links to detailed document
 
 ---
 

@@ -70,7 +70,7 @@
 
 **Status**: ✅ Completed
 
-**Backlog Reference**: [FR-012](features/FR-012-google-tasks-integration.md)
+**Backlog Reference**: [US-012](user-stories/US-012-google-tasks-integration.md)
 
 **Tasks**:
 
@@ -197,7 +197,7 @@
 3. ✅ Enhanced logging service with task tracking (`src/logging_service.py`)
 4. ✅ Telegram bot integration with 7 new commands (`src/telegram_orchestrator.py`)
 5. ✅ Database schema with 3 new tables (`database_schema.sql`)
-6. ✅ Complete implementation documentation (`FR-012-IMPLEMENTATION-SUMMARY.md`)
+6. ✅ Complete implementation documentation (`US-012-IMPLEMENTATION-SUMMARY.md`)
 
 **Quality Assurance**:
 - ✅ All 11 unit tests passing (100%)
@@ -207,8 +207,8 @@
 - ✅ Production-ready code
 
 **Related Documentation**:
-- [FR-012 Implementation Summary](../backlog/features/FR-012-IMPLEMENTATION-SUMMARY.md)
-- [FR-012 Feature Request](../backlog/features/FR-012-google-tasks-integration.md)
+- [US-012 Implementation Summary](../backlog/user-stories/US-012-IMPLEMENTATION-SUMMARY.md)
+- [US-012 Feature Request](../backlog/user-stories/US-012-google-tasks-integration.md)
 - [Product Backlog](../backlog/product-backlog.md)
 
 **Sprint Completion Date**: 2025-01-23

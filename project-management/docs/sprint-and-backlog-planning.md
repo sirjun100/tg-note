@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The Telegram-Joplin Bot project is 93% complete (198/214 story points). Sprint 10 (Core UX) and Sprint 11 (New Modalities) are complete. Sprint 9 (DB Reorganization) is ~55% complete. Sprint 12 (FR-026 Semantic Search) is planned.
+The Telegram-Joplin Bot project is 93% complete (198/214 story points). Sprint 10 (Core UX) and Sprint 11 (New Modalities) are complete. Sprint 9 (DB Reorganization) is ~55% complete. Sprint 12 (US-026 Semantic Search) is planned.
 
 ---
 
@@ -68,7 +68,7 @@ The Telegram-Joplin Bot project is 93% complete (198/214 story points). Sprint 1
 
 ### Planned Feature (5 Points Total)
 
-#### FR-013: Display Tags in AI Response (5 Points)
+#### US-013: Display Tags in AI Response (5 Points)
 **Priority**: 🟡 Medium | **Complexity**: Low | **Risk**: Very Low
 
 **What**: Show which tags were applied when creating a note
@@ -116,17 +116,17 @@ After Sprint 5 completion (Jan 31), 4 major features remain to be implemented ac
 
 | Sprint | Duration | Feature | Points | Status | Est. End |
 |--------|----------|---------|--------|--------|----------|
-| **Sprint 5** | Jan 27-31 | FR-013 (Tags) | 5 | ⏳ | **Jan 31** |
-| **Sprint 6** | Feb 3-16 | FR-014 (Daily Reports) | 8 | ⭕ | Feb 16 |
-| **Sprint 7** | Feb 17-23 | FR-017 (GTD Expert) | 8 | ⭕ | Feb 23 |
-| **Sprint 8** | Feb 24-Mar 9 | FR-015 (Weekly Reports) | 13 | ⭕ | Mar 9 |
-| **Sprint 9** | Mar 10-31 | FR-016 (DB Reorganization) | 21 | ⭕ | Mar 31 |
+| **Sprint 5** | Jan 27-31 | US-013 (Tags) | 5 | ⏳ | **Jan 31** |
+| **Sprint 6** | Feb 3-16 | US-014 (Daily Reports) | 8 | ⭕ | Feb 16 |
+| **Sprint 7** | Feb 17-23 | US-017 (GTD Expert) | 8 | ⭕ | Feb 23 |
+| **Sprint 8** | Feb 24-Mar 9 | US-015 (Weekly Reports) | 13 | ⭕ | Mar 9 |
+| **Sprint 9** | Mar 10-31 | US-016 (DB Reorganization) | 21 | ⭕ | Mar 31 |
 
 ---
 
 ## Sprint 6: Daily Priority Reports
 
-### FR-014: Daily Priority Report (8 Points)
+### US-014: Daily Priority Report (8 Points)
 **Priority**: 🟠 High | **Complexity**: Medium | **Risk**: Medium
 
 **What**: Generate daily summaries of important items requiring attention
@@ -152,7 +152,7 @@ After Sprint 5 completion (Jan 31), 4 major features remain to be implemented ac
 
 ## Sprint 7: GTD Expert Persona
 
-### FR-017: GTD Expert Persona for Brain Dumping (8 Points)
+### US-017: GTD Expert Persona for Brain Dumping (8 Points)
 **Priority**: 🟠 High | **Complexity**: Medium | **Risk**: Medium
 
 **What**: Intelligent persona that helps users quickly capture and process tasks using GTD methodology
@@ -169,7 +169,7 @@ After Sprint 5 completion (Jan 31), 4 major features remain to be implemented ac
 
 ## Sprint 8: Weekly Review & Reports
 
-### FR-015: Weekly Review and Report (13 Points)
+### US-015: Weekly Review and Report (13 Points)
 **Priority**: 🟠 High | **Complexity**: High | **Risk**: Medium
 
 **What**: Comprehensive weekly summaries with trends and recommendations
@@ -193,13 +193,13 @@ After Sprint 5 completion (Jan 31), 4 major features remain to be implemented ac
 
 **Estimated Timeline**: 2-2.5 weeks (Feb 24-Mar 9)
 
-**Dependencies**: FR-014 (Daily Reports - foundational)
+**Dependencies**: US-014 (Daily Reports - foundational)
 
 ---
 
 ## Sprint 9: Joplin Database Reorganization
 
-### FR-016: Database Reorganization (21 Points)
+### US-016: Database Reorganization (21 Points)
 **Priority**: 🟠 High | **Complexity**: Very High | **Risk**: High
 
 **What**: Strategic reorganization of Joplin database with PARA framework options
@@ -237,28 +237,28 @@ After Sprint 5 completion (Jan 31), 4 major features remain to be implemented ac
 
 ## Sprints 10-12: Feature Expansion (63 Points)
 
-Planned sprints for FR-023 through FR-032. See sprint documents for full task breakdowns.
+Planned sprints for US-023 through US-032. See sprint documents for full task breakdowns.
 
 ### Sprint 10: Core UX (Mar 10-23, 20 pts)
-- **FR-024** Greeting Response and Command Help (3 pts)
-- **FR-029** Quick Note Search (3 pts)
-- **FR-023** Intelligent Content Routing (8 pts)
-- **FR-031** Monthly Review Report (5 pts)
+- **US-024** Greeting Response and Command Help (3 pts)
+- **US-029** Quick Note Search (3 pts)
+- **US-023** Intelligent Content Routing (8 pts)
+- **US-031** Monthly Review Report (5 pts)
 - **Operational** Joplin 24/7 availability (1 pt)
 
 [Sprint 10 Plan](../sprints/sprint-10-core-ux.md)
 
 ### Sprint 11: New Modalities (Mar 24-Apr 6, 23 pts)
-- **FR-030** Photo/Screenshot OCR Capture (5 pts)
-- **FR-028** Read Later Queue (5 pts)
-- **FR-025** Jungian Dream Analysis (8 pts)
-- **FR-032** Habit Check-ins and Tracking (5 pts)
+- **US-030** Photo/Screenshot OCR Capture (5 pts)
+- **US-028** Read Later Queue (5 pts)
+- **US-025** Jungian Dream Analysis (8 pts)
+- **US-032** Habit Check-ins and Tracking (5 pts)
 
 [Sprint 11 Plan](../sprints/sprint-11-new-modalities.md)
 
 ### Sprint 12: Advanced Intelligence (Apr 7-20, 21 pts)
-- **FR-026** Semantic Search and Q&A Over Notes (13 pts)
-- **FR-027** Weekly Planning Session (8 pts)
+- **US-026** Semantic Search and Q&A Over Notes (13 pts)
+- **US-027** Weekly Planning Session (8 pts)
 
 [Sprint 12 Plan](../sprints/sprint-12-advanced-intelligence.md)
 
@@ -274,14 +274,14 @@ Sprint 2  (Jan 10-20):     ✅ Complete
 Sprint 3  (Jan 20-27):     ✅ Complete
 Sprint 4  (Jan 23-24):     ✅ Complete
 
-Sprint 5  (Jan 27-31):     ⏳ FR-013 (Tags)
-Sprint 6  (Feb 3-16):      ⭕ FR-014 (Daily Reports)
-Sprint 7  (Feb 17-23):     ⭕ FR-017 (GTD Expert)
-Sprint 8  (Feb 24-Mar 9):  ⭕ FR-015 (Weekly Reports)
-Sprint 9  (Mar 10-31):     ⏳ FR-016 (DB Reorganization)
-Sprint 10 (Mar 10-23):     ⭕ FR-024, FR-029, FR-023, FR-031 (Core UX)
-Sprint 11 (Mar 24-Apr 6):  ⭕ FR-030, FR-028, FR-025, FR-032 (New Modalities)
-Sprint 12 (Apr 7-20):      ⭕ FR-026, FR-027 (Advanced Intelligence)
+Sprint 5  (Jan 27-31):     ⏳ US-013 (Tags)
+Sprint 6  (Feb 3-16):      ⭕ US-014 (Daily Reports)
+Sprint 7  (Feb 17-23):     ⭕ US-017 (GTD Expert)
+Sprint 8  (Feb 24-Mar 9):  ⭕ US-015 (Weekly Reports)
+Sprint 9  (Mar 10-31):     ⏳ US-016 (DB Reorganization)
+Sprint 10 (Mar 10-23):     ⭕ US-024, US-029, US-023, US-031 (Core UX)
+Sprint 11 (Mar 24-Apr 6):  ⭕ US-030, US-028, US-025, US-032 (New Modalities)
+Sprint 12 (Apr 7-20):      ⭕ US-026, US-027 (Advanced Intelligence)
 
 Project Completion: April 20, 2026 (Sprints 10-12)
 ```
@@ -375,7 +375,7 @@ Given historical velocity and feature complexity:
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|-----------|
 | Trend analysis complexity | Medium | Medium | Prototype first; test thoroughly |
-| Migration failures (FR-016) | High | Very High | Backup system; extensive rollback testing |
+| Migration failures (US-016) | High | Very High | Backup system; extensive rollback testing |
 | Performance on large DBs | High | High | Optimize queries; batch processing |
 | User confusion on frameworks | Medium | Medium | Guided wizard approach |
 
@@ -409,14 +409,14 @@ Given historical velocity and feature complexity:
 ## Dependencies & Integration Points
 
 ### Sprint 5 Dependencies
-- ✅ Core note creation (FR-006)
-- ✅ Joplin tagging (FR-005)
-- ✅ Logging service (FR-010)
+- ✅ Core note creation (US-006)
+- ✅ Joplin tagging (US-005)
+- ✅ Logging service (US-010)
 
 ### Sprint 6 Dependencies
-- ✅ Google Tasks integration (FR-012)
-- ✅ Logging system (FR-010)
-- ✅ Joplin note retrieval (FR-005)
+- ✅ Google Tasks integration (US-012)
+- ✅ Logging system (US-010)
+- ✅ Joplin note retrieval (US-005)
 - 🟡 APScheduler library (new)
 - 🟡 pytz library (new)
 
@@ -425,11 +425,11 @@ Given historical velocity and feature complexity:
 - 🟡 GTD methodology knowledge
 
 ### Sprint 8 Dependencies
-- ⭕ FR-014 (Daily Reports) - foundational for trends
+- ⭕ US-014 (Daily Reports) - foundational for trends
 
 ### Sprint 9 Dependencies
 - ✅ All other features (independent)
-- 🟡 LLM integration for suggestions (FR-006)
+- 🟡 LLM integration for suggestions (US-006)
 
 ---
 
@@ -437,7 +437,7 @@ Given historical velocity and feature complexity:
 
 ### Sprint 5 Preparation
 
-- [ ] Review FR-013 scope
+- [ ] Review US-013 scope
 - [ ] Update database schema for tag_creation_history table
 - [ ] Plan tag extraction logic from LLM response
 - [ ] Design simple tag display format
@@ -530,7 +530,7 @@ Each sprint will be measured on:
    - Edge case testing (special characters, long names)
 
 3. **Documentation**
-   - Update FR-013 completion notes
+   - Update US-013 completion notes
    - Document database changes
    - Create user-facing help text
 
@@ -558,7 +558,7 @@ Each sprint will be measured on:
 
 ### Future Enhancements (Post-MVP)
 
-After FR-016 completion, the project is feature-complete. Future enhancements could include:
+After US-016 completion, the project is feature-complete. Future enhancements could include:
 - Mobile app for Telegram bot
 - Web dashboard for analytics
 - Advanced analytics and insights
@@ -606,7 +606,7 @@ After FR-016 completion, the project is feature-complete. Future enhancements co
    - Lessons for future sprints
 
 3. **Sprint 6 Planning** (Feb 1-2)
-   - Confirm FR-014 scope
+   - Confirm US-014 scope
    - Plan daily report feature
    - Finalize timeline
 
@@ -618,13 +618,13 @@ After FR-016 completion, the project is feature-complete. Future enhancements co
 
 | Feature | Points | Complexity | Type | Timeline |
 |---------|--------|-----------|------|----------|
-| **FR-013** | 5 | Low | User-Facing | Sprint 5 (Jan 27-31) |
-| **FR-014** | 8 | Medium | User-Facing | Sprint 6 (Feb 3-16) |
-| **FR-017** | 8 | Medium | User-Facing | Sprint 7 (Feb 17-23) |
-| **FR-015** | 13 | High | Analytics | Sprint 8 (Feb 24-Mar 9) |
-| **FR-016** | 21 | Very High | System | Sprint 9 (Mar 10-31) |
+| **US-013** | 5 | Low | User-Facing | Sprint 5 (Jan 27-31) |
+| **US-014** | 8 | Medium | User-Facing | Sprint 6 (Feb 3-16) |
+| **US-017** | 8 | Medium | User-Facing | Sprint 7 (Feb 17-23) |
+| **US-015** | 13 | High | Analytics | Sprint 8 (Feb 24-Mar 9) |
+| **US-016** | 21 | Very High | System | Sprint 9 (Mar 10-31) |
 
-**Total Remaining**: 55 points (including FR-017)
+**Total Remaining**: 55 points (including US-017)
 
 ---
 

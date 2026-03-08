@@ -1,4 +1,4 @@
-# Sprint 7: GTD Expert Persona (FR-017)
+# Sprint 7: GTD Expert Persona (US-017)
 
 **Sprint Goal**: Implement an interactive "GTD Expert" persona to guide users through 15-minute high-speed capture sessions (Mindsweep).
 
@@ -30,9 +30,9 @@
 - Integration with Google Tasks for action items
 
 **Dependencies**:
-- Conversation state management (✅ Complete - FR-007)
-- LLM Integration (✅ Complete - FR-006)
-- Joplin REST client (✅ Complete - FR-005)
+- Conversation state management (✅ Complete - US-007)
+- LLM Integration (✅ Complete - US-006)
+- Joplin REST client (✅ Complete - US-005)
 
 **Risks & Blockers**:
 - Context window/memory management for long sessions (Low risk)
@@ -58,7 +58,7 @@
 - [ ] Persona follows "focused but friendly coach" model
 
 **Reference Documents**:
-- [FR-017: GTD Expert Persona](../backlog/features/FR-017-gtd-expert-persona.md)
+- [US-017: GTD Expert Persona](../backlog/user-stories/US-017-gtd-expert-persona.md)
 - [15-Minute Quick Capture Prompt](../../gtd-15min-quick-capture-prompt%20(1).md)
 
 **Technical References**:
@@ -72,18 +72,18 @@
 
 **Status**: ⏳ In Progress
 
-**Backlog Reference**: [FR-017](../backlog/features/FR-017-gtd-expert-persona.md)
+**Backlog Reference**: [US-017](../backlog/user-stories/US-017-gtd-expert-persona.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Design GTD Expert LLM Persona & Prompt | `prompts/gtd_expert.txt` | FR-017 Persona | ⭕ | 1.5 | Claude Code |
-| T-002 | Implement `/braindump` command & session start | `telegram_orchestrator.py` | FR-017 Commands | ⭕ | 1 | Claude Code |
-| T-003 | Create session state machine (4 phases) | `state_manager.py` | FR-017 Logic | ⭕ | 2 | Claude Code |
-| T-004 | Implement multi-turn capture handlers | `telegram_orchestrator.py` | FR-017 Flow | ⭕ | 1.5 | Claude Code |
-| T-005 | Implement summary generation & Joplin export | `llm_orchestrator.py` | FR-017 Output | ⭕ | 1 | Claude Code |
-| T-006 | Add Google Tasks integration for action items | `task_service.py` | FR-017 Integration | ⭕ | 1 | Claude Code |
+| T-001 | Design GTD Expert LLM Persona & Prompt | `prompts/gtd_expert.txt` | US-017 Persona | ⭕ | 1.5 | Claude Code |
+| T-002 | Implement `/braindump` command & session start | `telegram_orchestrator.py` | US-017 Commands | ⭕ | 1 | Claude Code |
+| T-003 | Create session state machine (4 phases) | `state_manager.py` | US-017 Logic | ⭕ | 2 | Claude Code |
+| T-004 | Implement multi-turn capture handlers | `telegram_orchestrator.py` | US-017 Flow | ⭕ | 1.5 | Claude Code |
+| T-005 | Implement summary generation & Joplin export | `llm_orchestrator.py` | US-017 Output | ⭕ | 1 | Claude Code |
+| T-006 | Add Google Tasks integration for action items | `task_service.py` | US-017 Integration | ⭕ | 1 | Claude Code |
 
 **Total Task Points**: 8
 

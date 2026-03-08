@@ -12,9 +12,9 @@ This is a generic template for creating feature requests. Copy this template whe
 ## Usage
 
 1. Copy this template
-2. Assign unique ID (e.g., FR-001, FR-042, or use your ID format)
+2. Assign unique ID (e.g., US-001, US-042, or use your ID format)
 3. Fill in all sections
-4. Save to: `backlog/features/[ID]-[feature-name].md`
+4. Save to: `backlog/user-stories/[ID]-[feature-name].md`
 5. Add entry to main product backlog table
 
 ---
@@ -175,7 +175,7 @@ Before submitting, ensure:
 - [ ] Priority is assigned based on business value and urgency
 - [ ] Technical references are included (if applicable)
 - [ ] Links to related documents are correct
-- [ ] File is saved with correct naming convention: `FR-XXX-feature-name.md`
+- [ ] File is saved with correct naming convention: `US-XXX-feature-name.md`
 - [ ] Entry is added to product backlog table
 - [ ] Any charts/diagrams use **Mermaid** (see [documentation-standards.md](../processes/documentation-standards.md))
 - [ ] Mermaid diagrams validate (wrap labels with `/`, `=`, `:`, etc. in double quotes; test at [mermaid.live](https://mermaid.live/))

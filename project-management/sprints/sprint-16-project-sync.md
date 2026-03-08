@@ -14,7 +14,7 @@
 ## Sprint Overview
 
 **Primary Feature** (13 pts):
-- FR-034: Joplin Projects ↔ Google Tasks sync — project folder = parent task, notes → subtasks
+- US-034: Joplin Projects ↔ Google Tasks sync — project folder = parent task, notes → subtasks
 
 **Focus Areas**:
 - Project-to-task mapping: Joplin folder ↔ Google parent task
@@ -30,8 +30,8 @@
 - `/sync_projects` (or equivalent) for initial sync
 
 **Dependencies**:
-- FR-012 (Google Tasks) ✅
-- FR-044 (/project_new) ✅ — project creation exists
+- US-012 (Google Tasks) ✅
+- US-044 (/project_new) ✅ — project creation exists
 - Joplin `get_folders`, folder structure
 
 **Risks & Blockers**:
@@ -44,7 +44,7 @@
 
 - [ ] Documentation-Code Consistency Review run (`./scripts/doc-code-review.sh`)
 - [ ] Sprint 15 completed ✅
-- [ ] FR-034 acceptance criteria refined and understood
+- [ ] US-034 acceptance criteria refined and understood
 
 ---
 
@@ -62,7 +62,7 @@
 - [ ] Parent tasks created on-demand (lazy)
 - [ ] `task_link` preserved (note_id ↔ task_id) for subtasks
 
-**Reference**: [FR-034](../backlog/features/FR-034-joplin-google-tasks-project-sync.md)
+**Reference**: [US-034](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
 
 **Technical References**:
 - `src/task_service.py` — `create_task_with_metadata`, extend for `parent_folder_id`
@@ -76,7 +76,7 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-001 | Add `joplin_project_sync` table/config; CRUD for folder↔task mapping | FR-034 | ⭕ | 2 |
+| T-001 | Add `joplin_project_sync` table/config; CRUD for folder↔task mapping | US-034 | ⭕ | 2 |
 | T-002 | Extend task creation to accept `parent_folder_id`; resolve to parent task | task_service.py | ⭕ | 2 |
 | T-003 | Create parent task on-demand when first subtask for project | task_service.py | ⭕ | 2 |
 | T-004 | Wire routing/note flow: pass folder_id when note is in project | handlers/core.py | ⭕ | 2 |
@@ -96,7 +96,7 @@
 - [ ] Skip prompt when task comes from note already in project folder
 - [ ] Inline/reply keyboard for faster selection (optional)
 
-**Reference**: [FR-034](../backlog/features/FR-034-joplin-google-tasks-project-sync.md)
+**Reference**: [US-034](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
 
 **Technical References**:
 - `src/handlers/core.py` — `_handle_new_request` force_task flow, project selection state
@@ -126,7 +126,7 @@
 - [ ] Command or flow for initial sync (create parent tasks for all projects)
 - [ ] Stalled projects (no subtasks) flagged in daily/weekly/monthly reports
 
-**Reference**: [FR-034](../backlog/features/FR-034-joplin-google-tasks-project-sync.md)
+**Reference**: [US-034](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
 
 **Technical References**:
 - `src/report_generator.py`, `weekly_report_generator.py`, `monthly_report_generator.py` — stalled projects
@@ -171,16 +171,16 @@
 
 ---
 
-## Optional Stretch: FR-051 Bookmark (5 pts)
+## Optional Stretch: US-051 Bookmark (5 pts)
 
-If capacity allows, add [FR-051](/bookmark command) — 5 pts. Well-defined, reuses URL enrichment. Would bring sprint to 18 pts (above velocity).
+If capacity allows, add [US-051](/bookmark command) — 5 pts. Well-defined, reuses URL enrichment. Would bring sprint to 18 pts (above velocity).
 
 ---
 
 ## Related Documents
 
 - [Sprint 15–18 Planning](../docs/sprint-15-18-planning.md)
-- [FR-034: Joplin ↔ Google Tasks Project Sync](../backlog/features/FR-034-joplin-google-tasks-project-sync.md)
+- [US-034: Joplin ↔ Google Tasks Project Sync](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
 - [Definition of Done](../docs/definition-of-done.md)
 - [Product Backlog](../backlog/product-backlog.md)
 

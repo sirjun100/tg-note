@@ -56,7 +56,7 @@
 
 **Status**: ⭕ Not Started
 
-**Backlog Reference**: [FR-003](features/FR-003-update-quick-start-with-setup-script.md)
+**Backlog Reference**: [US-003](user-stories/US-003-update-quick-start-with-setup-script.md)
 
 **Tasks**:
 
@@ -99,7 +99,7 @@
 
 **Status**: ⭕ Not Started
 
-**Backlog Reference**: [FR-010](features/FR-010-database-logging-telegram-llm-decisions.md)
+**Backlog Reference**: [US-010](user-stories/US-010-database-logging-telegram-llm-decisions.md)
 
 **Tasks**:
 
@@ -144,7 +144,7 @@
 
 **Status**: ⭕ Not Started
 
-**Backlog Reference**: [FR-011](features/FR-011-comprehensive-project-documentation.md)
+**Backlog Reference**: [US-011](user-stories/US-011-comprehensive-project-documentation.md)
 
 **Tasks**:
 
@@ -188,6 +188,6 @@
   - Add more automated testing for database operations
   
 - **Action items for next sprint**
-  - Consider Google Tasks integration (FR-012) for future development
+  - Consider Google Tasks integration (US-012) for future development
   - Review and refine logging queries for better debugging</content>
 <parameter name="filePath">project-management/sprints/sprint-03-foundation-enhancements.md

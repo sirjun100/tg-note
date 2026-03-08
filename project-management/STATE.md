@@ -28,8 +28,8 @@ When starting or continuing work, set **Process** and **Step** below. Update as 
 |------|-------------|
 | 1 | Run `python scripts/generate_release_notes_draft.py` |
 | 2 | Add new section to `RELEASE_NOTES.md` with today's date |
-| 3 | Fill in New Features (from completed FR-XXX) |
-| 4 | Fill in Bug Fixes (from completed BF-XXX) |
+| 3 | Fill in New Features (from completed US-XXX) |
+| 4 | Fill in Bug Fixes (from completed DEF-XXX) |
 | 5 | Add Breaking Changes if any |
 | 6 | Add Migration Notes if any |
 | 7 | Commit release notes with sprint/feature commits |
@@ -40,7 +40,7 @@ When starting or continuing work, set **Process** and **Step** below. Update as 
 
 | Step | Description |
 |------|-------------|
-| 1 | Create feature/bug file in `backlog/features/` or `backlog/bugs/` |
+| 1 | Create user story/defect file in `backlog/user-stories/` or `backlog/defects/` |
 | 2 | Add entry to `backlog/product-backlog.md` |
 | 3 | Backlog refinement (clarify, estimate, prioritize) |
 

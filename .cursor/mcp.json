@@ -1,0 +1,9 @@
+{
+    "mcpServers": {
+      "user-project-management": {
+        "command": "/path/to/mcp-project-management/.venv/bin/python",
+        "args": ["-m", "mcp_project_management.server"],
+        "cwd": "/Volumes/T7/src/telegram-joplin"
+      }
+    }
+  }

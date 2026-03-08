@@ -16,7 +16,7 @@ Template files for creating backlog items:
 **Usage:**
 1. Copy the appropriate template
 2. Fill in all sections
-3. Save to the appropriate directory (`backlog/features/` or `backlog/bugs/`)
+3. Save to the appropriate directory (`backlog/user-stories/` or `backlog/defects/`)
 4. Add entry to `backlog/product-backlog.md`
 
 ### Definition of Done (`definition-of-done.md`)
@@ -32,7 +32,7 @@ Process documentation explaining workflows:
 - **backlog-management-process.md** - How to manage the backlog
 - **product-backlog-structure.md** - Backlog structure and conventions
 - **documentation-standards.md** - Use Mermaid for charts and graphs
-- **documentation-code-consistency-problems.md** - Taxonomy of 16 doc/code problem categories (for FR-036)
+- **documentation-code-consistency-problems.md** - Taxonomy of 16 doc/code problem categories (for US-036)
 
 **Usage:**
 - Reference when learning the process
@@ -47,16 +47,16 @@ Run **lint, mypy, and tests** before committing. See [Pre-Commit Checklist](proc
 ### Creating a Feature Request
 
 ```bash
-cp docs/templates/feature-request-template.md backlog/features/FR-001-feature-name.md
-# Edit FR-001-feature-name.md
+cp docs/templates/feature-request-template.md backlog/user-stories/US-001-feature-name.md
+# Edit US-001-feature-name.md
 # Add entry to backlog/product-backlog.md
 ```
 
 ### Creating a Bug Fix
 
 ```bash
-cp docs/templates/bug-fix-template.md backlog/bugs/BF-001-bug-description.md
-# Edit BF-001-bug-description.md
+cp docs/templates/bug-fix-template.md backlog/defects/DEF-001-bug-description.md
+# Edit DEF-001-bug-description.md
 # Add entry to backlog/product-backlog.md
 ```
 
@@ -74,8 +74,8 @@ cp docs/templates/sprint-planning-template.md sprints/sprint-01-sprint-name.md
 
 ## File Naming Conventions
 
-- **Features**: `FR-XXX-feature-name.md` (e.g., `FR-042-user-authentication.md`)
-- **Bugs**: `BF-XXX-bug-description.md` (e.g., `BF-015-email-validation.md`)
+- **User Stories**: `US-XXX-feature-name.md` (e.g., `US-042-user-authentication.md`)
+- **Defects**: `DEF-XXX-bug-description.md` (e.g., `DEF-015-email-validation.md`)
 - **Sprints**: `sprint-XX-sprint-name.md` (e.g., `sprint-05-user-auth.md`)
 
 Use kebab-case (lowercase with hyphens) for names.

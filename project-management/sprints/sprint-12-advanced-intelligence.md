@@ -1,10 +1,10 @@
 # Sprint 12: Advanced Intelligence
 
-**Sprint Goal**: Add semantic search/Q&A over notes. (FR-027 Weekly Planning completed in Sprint 11.)
+**Sprint Goal**: Add semantic search/Q&A over notes. (US-027 Weekly Planning completed in Sprint 11.)
 
 **Duration**: 2026-04-07 - 2026-04-20 (2 weeks)
 **Status**: ⭕ Planned
-**Team Velocity**: 13 points (FR-026 only)
+**Team Velocity**: 13 points (US-026 only)
 **Sprint Planning Date**: 2026-03-05
 **Sprint Review Date**: 2026-04-20
 **Sprint Retrospective Date**: 2026-04-20
@@ -20,15 +20,15 @@
 - `/reindex` for note index rebuild
 - Note index with Gemini embeddings and SQLite storage
 
-**Note**: FR-027 (Weekly Planning) was implemented in Sprint 11.
+**Note**: US-027 (Weekly Planning) was implemented in Sprint 11.
 
 **Dependencies**:
 - Sprint 10 (Quick Search - extends search.py)
 - Sprint 10 (Greeting - command list update)
-- Joplin REST API (Complete - FR-005)
-- Google Tasks (Complete - FR-012)
+- Joplin REST API (Complete - US-005)
+- Google Tasks (Complete - US-012)
 - Gemini API (Complete - for embeddings)
-- Braindump pattern (Complete - FR-017) for planning flow
+- Braindump pattern (Complete - US-017) for planning flow
 
 **Risks & Blockers**:
 - First-time indexing may be slow for large note collections (mitigated by progress indicator)
@@ -53,7 +53,7 @@
 - [ ] `/reindex` rebuilds the note index
 
 **Reference Documents**:
-- [FR-026: Semantic Search and Q&A](../backlog/features/FR-026-semantic-search-qa.md)
+- [US-026: Semantic Search and Q&A](../backlog/user-stories/US-026-semantic-search-qa.md)
 - [API Reference: Gemini Embeddings](../../docs/api-reference.md)
 
 **Technical References**:
@@ -68,19 +68,19 @@
 
 **Status**: ⭕ Not Started
 
-**Backlog Reference**: [FR-026](../backlog/features/FR-026-semantic-search-qa.md)
+**Backlog Reference**: [US-026](../backlog/user-stories/US-026-semantic-search-qa.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create NoteIndex with SQLite embedding storage | `note_index.py:NoteIndex` | FR-026 Indexing | ⭕ | 3 | — |
-| T-002 | Implement chunking and Gemini embedding | `NoteIndex.index_note()` | FR-026 Embeddings | ⭕ | 2 | — |
-| T-003 | Implement cosine similarity search | `NoteIndex.search()` | FR-026 Vector Search | ⭕ | 2 | — |
-| T-004 | Create reindex_all() from Joplin notes | `NoteIndex.reindex_all()` | FR-026 Reindex | ⭕ | 1.5 | — |
-| T-005 | Create QAService with context + DeepSeek synthesis | `qa_service.py` | FR-026 Q&A | ⭕ | 2 | — |
-| T-006 | Add /ask and /reindex to search handler | `handlers/search.py` | FR-026 Commands | ⭕ | 2 | — |
-| T-007 | Add basic unit tests | `tests/test_semantic_search.py` | FR-026 Testing | ⭕ | 0.5 | — |
+| T-001 | Create NoteIndex with SQLite embedding storage | `note_index.py:NoteIndex` | US-026 Indexing | ⭕ | 3 | — |
+| T-002 | Implement chunking and Gemini embedding | `NoteIndex.index_note()` | US-026 Embeddings | ⭕ | 2 | — |
+| T-003 | Implement cosine similarity search | `NoteIndex.search()` | US-026 Vector Search | ⭕ | 2 | — |
+| T-004 | Create reindex_all() from Joplin notes | `NoteIndex.reindex_all()` | US-026 Reindex | ⭕ | 1.5 | — |
+| T-005 | Create QAService with context + DeepSeek synthesis | `qa_service.py` | US-026 Q&A | ⭕ | 2 | — |
+| T-006 | Add /ask and /reindex to search handler | `handlers/search.py` | US-026 Commands | ⭕ | 2 | — |
+| T-007 | Add basic unit tests | `tests/test_semantic_search.py` | US-026 Testing | ⭕ | 0.5 | — |
 
 **Total Task Points**: 13
 
@@ -88,13 +88,13 @@
 
 ### Story 2: Weekly Planning Session — ✅ Completed in Sprint 11
 
-FR-027 was implemented in Sprint 11. See [handlers/planning.py](../../src/handlers/planning.py).
+US-027 was implemented in Sprint 11. See [handlers/planning.py](../../src/handlers/planning.py).
 
 ---
 
 ## Sprint Summary
 
-**Total Story Points**: 13 (FR-026 only)
+**Total Story Points**: 13 (US-026 only)
 **Total Task Points**: 13
 **Estimated Velocity**: 13 points
 

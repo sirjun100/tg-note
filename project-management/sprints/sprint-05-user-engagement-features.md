@@ -26,9 +26,9 @@
 - Comprehensive testing
 
 **Dependencies**:
-- Core note creation (✅ Complete - FR-006)
-- Joplin tagging system (✅ Complete - FR-005)
-- Logging service (✅ Complete - FR-010)
+- Core note creation (✅ Complete - US-006)
+- Joplin tagging system (✅ Complete - US-005)
+- Logging service (✅ Complete - US-010)
 
 **Risks & Blockers**:
 - None identified - low complexity feature
@@ -53,7 +53,7 @@
 - [x] Edge cases handled (long tag names, special characters)
 
 **Reference Documents**:
-- FR-013: Display Tags in AI Response to Telegram
+- US-013: Display Tags in AI Response to Telegram
 - Current note creation response format in telegram_orchestrator.py
 - Joplin tag system documentation
 
@@ -70,17 +70,17 @@
 
 **Status**: ✅ Completed
 
-**Backlog Reference**: [FR-013](../backlog/features/FR-013-display-tags-in-ai-response.md)
+**Backlog Reference**: [US-013](../backlog/user-stories/US-013-display-tags-in-ai-response.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Extract tag information from LLM response | `llm_orchestrator.py:parse_response()` | FR-013 Technical Requirements | ✅ | 1 | Claude Code |
-| T-002 | Differentiate existing vs new tags | `joplin_client.py:get_tags()` + compare logic | FR-013 Technical Requirements | ✅ | 1 | Claude Code |
-| T-003 | Format tag display in response message | `telegram_orchestrator.py:format_success_message()` | FR-013 - Simple format | ✅ | 2 | Claude Code |
-| T-004 | Create database schema for tag history | `database_schema.sql` - new table | FR-013 Database Schema | ✅ | 1 | Claude Code |
-| T-005 | Update logging to track tag creation | `logging_service.py:log_tag_creation()` (new) | FR-013 Technical Requirements | ✅ | 1 | Claude Code |
+| T-001 | Extract tag information from LLM response | `llm_orchestrator.py:parse_response()` | US-013 Technical Requirements | ✅ | 1 | Claude Code |
+| T-002 | Differentiate existing vs new tags | `joplin_client.py:get_tags()` + compare logic | US-013 Technical Requirements | ✅ | 1 | Claude Code |
+| T-003 | Format tag display in response message | `telegram_orchestrator.py:format_success_message()` | US-013 - Simple format | ✅ | 2 | Claude Code |
+| T-004 | Create database schema for tag history | `database_schema.sql` - new table | US-013 Database Schema | ✅ | 1 | Claude Code |
+| T-005 | Update logging to track tag creation | `logging_service.py:log_tag_creation()` (new) | US-013 Technical Requirements | ✅ | 1 | Claude Code |
 
 **Total Task Points**: 5
 
@@ -88,7 +88,7 @@
 
 ## Bug Fixes & Cleanup
 
-In addition to FR-013, Sprint 5 will address:
+In addition to US-013, Sprint 5 will address:
 - Any critical bugs discovered in recent testing
 - Code cleanup and refactoring as needed
 - Documentation updates
@@ -206,7 +206,7 @@ Tags: meetings, project-alpha (new), Q1-planning
 
 ## References
 
-- **Feature FR-013**: [Display Tags in AI Response](../backlog/features/FR-013-display-tags-in-ai-response.md)
+- **Feature US-013**: [Display Tags in AI Response](../backlog/user-stories/US-013-display-tags-in-ai-response.md)
 - **Sprint 4 Completion**: [Sprint 4 Results](sprint-04-google-tasks-integration.md)
 - **Product Backlog**: [Product Backlog](../backlog/product-backlog.md)
 - **Sprint & Backlog Planning**: [Sprint & Backlog Planning](../docs/sprint-and-backlog-planning.md)
@@ -379,7 +379,7 @@ Note: Sprint 5 has much lower velocity due to comprehensive testing and document
 
 **Ready for**: Code review, testing with real instances, and deployment to production
 
-**Recommendation**: Proceed immediately to Sprint 6 (Daily Priority Report - FR-014)
+**Recommendation**: Proceed immediately to Sprint 6 (Daily Priority Report - US-014)
 
 ---
 

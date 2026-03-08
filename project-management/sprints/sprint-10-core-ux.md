@@ -24,10 +24,10 @@
 - Monthly report generation with AI insights
 
 **Dependencies**:
-- Joplin REST API (Complete - FR-005)
-- LLM Integration (Complete - FR-006)
-- Google Tasks Integration (Complete - FR-012)
-- Weekly Report Generator (Complete - FR-015)
+- Joplin REST API (Complete - US-005)
+- LLM Integration (Complete - US-006)
+- Google Tasks Integration (Complete - US-012)
+- Weekly Report Generator (Complete - US-015)
 
 **Risks & Blockers**:
 - Content routing classification accuracy (mitigated by confidence threshold and fallback)
@@ -50,7 +50,7 @@
 - [x] Greeting detection has high confidence (avoid false positives)
 
 **Reference Documents**:
-- [FR-024: Greeting Response and Command Discovery](../backlog/features/FR-024-greeting-and-command-help.md)
+- [US-024: Greeting Response and Command Discovery](../backlog/user-stories/US-024-greeting-and-command-help.md)
 
 **Technical References**:
 - File: `src/handlers/core.py` - `/start` handler, message routing
@@ -62,16 +62,16 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-024](../backlog/features/FR-024-greeting-and-command-help.md)
+**Backlog Reference**: [US-024](../backlog/user-stories/US-024-greeting-and-command-help.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Add greeting detection (regex or pre-classification) | `core.py` | FR-024 Greeting Detection | ✅ | 0.5 | — |
-| T-002 | Create greeting response template with command list | `core.py:_start()` | FR-024 Response Template | ✅ | 1 | — |
-| T-003 | Modify `/start` and add `/help` alias | `core.py` | FR-024 Commands | ✅ | 0.5 | — |
-| T-004 | Integrate greeting into message routing (skip note flow) | `core.py:_message()` | FR-024 Routing | ✅ | 1 | — |
+| T-001 | Add greeting detection (regex or pre-classification) | `core.py` | US-024 Greeting Detection | ✅ | 0.5 | — |
+| T-002 | Create greeting response template with command list | `core.py:_start()` | US-024 Response Template | ✅ | 1 | — |
+| T-003 | Modify `/start` and add `/help` alias | `core.py` | US-024 Commands | ✅ | 0.5 | — |
+| T-004 | Integrate greeting into message routing (skip note flow) | `core.py:_message()` | US-024 Routing | ✅ | 1 | — |
 
 **Total Task Points**: 3
 
@@ -92,7 +92,7 @@
 - [x] `/find` without query shows usage help
 
 **Reference Documents**:
-- [FR-029: Quick Note Search](../backlog/features/FR-029-quick-note-search.md)
+- [US-029: Quick Note Search](../backlog/user-stories/US-029-quick-note-search.md)
 
 **Technical References**:
 - File: `src/joplin_client.py` - Add `search_notes()` method
@@ -104,16 +104,16 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-029](../backlog/features/FR-029-quick-note-search.md)
+**Backlog Reference**: [US-029](../backlog/user-stories/US-029-quick-note-search.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Add `search_notes(query, limit)` to JoplinClient | `JoplinClient.search_notes()` | FR-029 Joplin Search API | ✅ | 1 | — |
-| T-002 | Create search handler with `/find` and `/search` commands | `handlers/search.py` | FR-029 Commands | ✅ | 1 | — |
-| T-003 | Implement snippet extraction and folder resolution | `handlers/search.py` | FR-029 Result Format | ✅ | 0.5 | — |
-| T-004 | Add state for interactive result selection (reply with number) | `state_manager.py` | FR-029 Interactive Results | ✅ | 0.5 | — |
+| T-001 | Add `search_notes(query, limit)` to JoplinClient | `JoplinClient.search_notes()` | US-029 Joplin Search API | ✅ | 1 | — |
+| T-002 | Create search handler with `/find` and `/search` commands | `handlers/search.py` | US-029 Commands | ✅ | 1 | — |
+| T-003 | Implement snippet extraction and folder resolution | `handlers/search.py` | US-029 Result Format | ✅ | 0.5 | — |
+| T-004 | Add state for interactive result selection (reply with number) | `state_manager.py` | US-029 Interactive Results | ✅ | 0.5 | — |
 
 **Total Task Points**: 3
 
@@ -136,7 +136,7 @@
 - [x] Logging captures classification decisions
 
 **Reference Documents**:
-- [FR-023: Intelligent Content Routing](../backlog/features/FR-023-intelligent-content-routing.md)
+- [US-023: Intelligent Content Routing](../backlog/user-stories/US-023-intelligent-content-routing.md)
 
 **Technical References**:
 - File: `src/llm_orchestrator.py` - ContentDecision schema, routing prompt
@@ -148,19 +148,19 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-023](../backlog/features/FR-023-intelligent-content-routing.md)
+**Backlog Reference**: [US-023](../backlog/user-stories/US-023-intelligent-content-routing.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Define ContentDecision schema (note, task, both) | `llm_orchestrator.py` | FR-023 Extended Schema | ✅ | 1 | — |
-| T-002 | Add content type classification to system prompt | `llm_orchestrator.py` | FR-023 Classification | ✅ | 2 | — |
-| T-003 | Modify `_message()` to dispatch based on content_type | `core.py:_message()` | FR-023 Routing Logic | ✅ | 2 | — |
-| T-004 | Implement task-only flow (create Google Task, no note) | `core.py` | FR-023 Task Flow | ✅ | 1 | — |
-| T-005 | Implement both flow (note + task) | `core.py` | FR-023 Both Flow | ✅ | 1 | — |
-| T-006 | Ensure `/task` and `/note` override classification | `core.py` | FR-023 Force Commands | ✅ | 0.5 | — |
-| T-007 | Add classification logging | `logging_service.py` | FR-023 Logging | ✅ | 0.5 | — |
+| T-001 | Define ContentDecision schema (note, task, both) | `llm_orchestrator.py` | US-023 Extended Schema | ✅ | 1 | — |
+| T-002 | Add content type classification to system prompt | `llm_orchestrator.py` | US-023 Classification | ✅ | 2 | — |
+| T-003 | Modify `_message()` to dispatch based on content_type | `core.py:_message()` | US-023 Routing Logic | ✅ | 2 | — |
+| T-004 | Implement task-only flow (create Google Task, no note) | `core.py` | US-023 Task Flow | ✅ | 1 | — |
+| T-005 | Implement both flow (note + task) | `core.py` | US-023 Both Flow | ✅ | 1 | — |
+| T-006 | Ensure `/task` and `/note` override classification | `core.py` | US-023 Force Commands | ✅ | 0.5 | — |
+| T-007 | Add classification logging | `logging_service.py` | US-023 Logging | ✅ | 0.5 | — |
 
 **Total Task Points**: 8
 
@@ -181,8 +181,8 @@
 - [x] Includes AI-generated insights and recommendations
 
 **Reference Documents**:
-- [FR-031: Monthly Review Report](../backlog/features/FR-031-monthly-review-report.md)
-- [FR-015: Weekly Report](../backlog/features/FR-015-weekly-review-report.md) - Pattern reference
+- [US-031: Monthly Review Report](../backlog/user-stories/US-031-monthly-review-report.md)
+- [US-015: Weekly Report](../backlog/user-stories/US-015-weekly-review-report.md) - Pattern reference
 
 **Technical References**:
 - File: `src/monthly_report_generator.py` (new) - Report generation
@@ -195,16 +195,16 @@
 
 **Status**: ✅ Complete
 
-**Backlog Reference**: [FR-031](../backlog/features/FR-031-monthly-review-report.md)
+**Backlog Reference**: [US-031](../backlog/user-stories/US-031-monthly-review-report.md)
 
 **Tasks**:
 
 | Task ID | Task Description | Class/Method Reference | Document Reference | Status | Points | Assignee |
 |---------|------------------|------------------------|---------------------|--------|--------|----------|
-| T-001 | Create MonthlyReportGenerator class | `monthly_report_generator.py` | FR-031 Data Aggregation | ✅ | 2 | — |
-| T-002 | Implement metrics calculation (notes, tasks, trends) | `MonthlyReportGenerator._calculate_metrics()` | FR-031 Metrics | ✅ | 1.5 | — |
-| T-003 | Add AI insight generation via DeepSeek | `MonthlyReportGenerator._generate_insights()` | FR-031 AI Insights | ✅ | 1 | — |
-| T-004 | Add `/monthly_report` command handler | `handlers/reports.py` | FR-031 Command | ✅ | 0.5 | — |
+| T-001 | Create MonthlyReportGenerator class | `monthly_report_generator.py` | US-031 Data Aggregation | ✅ | 2 | — |
+| T-002 | Implement metrics calculation (notes, tasks, trends) | `MonthlyReportGenerator._calculate_metrics()` | US-031 Metrics | ✅ | 1.5 | — |
+| T-003 | Add AI insight generation via DeepSeek | `MonthlyReportGenerator._generate_insights()` | US-031 AI Insights | ✅ | 1 | — |
+| T-004 | Add `/monthly_report` command handler | `handlers/reports.py` | US-031 Command | ✅ | 0.5 | — |
 
 **Total Task Points**: 5
 

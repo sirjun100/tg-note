@@ -80,7 +80,7 @@ This template provides the structure for sprint planning documents. Adapt this t
 
 **Status**: ⭕ Not Started / ⏳ In Progress / ✅ Completed
 
-**Backlog Reference**: [FR-XXX or BF-XXX] - [Link to backlog item]
+**Backlog Reference**: [US-XXX or DEF-XXX] - [Link to backlog item]
 
 **Tasks**:
 

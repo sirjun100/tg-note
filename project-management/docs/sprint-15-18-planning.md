@@ -21,9 +21,9 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 | Sprint | Bug | Description | Pts |
 |--------|-----|-------------|-----|
-| **Sprint 14** | BF-017 | /dream command crashes on invocation — fix parse_mode, welcome message | 1 |
-| **Sprint 15** | BF-022 | /find command error in Fly.io — get_folders try/except, HTML escape | 2 |
-| **Sprint 15** | BF-023 | /ask command crashes on certain prompts — HTML escape, plain-text fallback | 2 |
+| **Sprint 14** | DEF-017 | /dream command crashes on invocation — fix parse_mode, welcome message | 1 |
+| **Sprint 15** | DEF-022 | /find command error in Fly.io — get_folders try/except, HTML escape | 2 |
+| **Sprint 15** | DEF-023 | /ask command crashes on certain prompts — HTML escape, plain-text fallback | 2 |
 
 **Total bug fix points**: 5 pts across Sprints 14–15. All three share the same root cause (Telegram Markdown parse errors); fix pattern: HTML mode + `html.escape()` + plain-text fallback.
 
@@ -33,9 +33,9 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 | Sprint | Status | Contents | Points |
 |--------|--------|----------|--------|
-| **Sprint 13** | ⏳ In Progress | BF-007, FR-036 | 13 |
-| **Sprint 14** | ⏳ Planned | BF-017 (bug), FR-033 | 9 |
-| **Sprint 15** | 📋 Planned | BF-022 (bug), BF-023 (bug), FR-044, FR-039 | 12 |
+| **Sprint 13** | ⏳ In Progress | DEF-007, US-036 | 13 |
+| **Sprint 14** | ⏳ Planned | DEF-017 (bug), US-033 | 9 |
+| **Sprint 15** | 📋 Planned | DEF-022 (bug), DEF-023 (bug), US-044, US-039 | 12 |
 
 **Remaining unassigned bugs**: None (all high-priority bugs assigned to Sprint 14–15)
 
@@ -43,15 +43,15 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 | Order | ID | Title | Pts | Rationale |
 |-------|-----|-------|-----|------------|
-| 1 | FR-044 | /project_new command | 5 | **Enables FR-034** — Users need to create projects before syncing them |
-| 2 | FR-034 | Joplin ↔ Google Tasks project sync | 13 | High value; depends on project creation flow |
-| 3 | FR-039 | Star on task as high priority | 3 | Quick win; improves all reports |
-| 4 | FR-043 | Report speed + async + UI updates | 5 | Improves daily/weekly/monthly report UX |
-| 5 | FR-042 | Stoic "What I Learned Today" | 4 | Builds on FR-019; content pipeline |
-| 6 | FR-040 | Check existing task/note, update/append | 8 | Reduces duplicates; uses FR-026 semantic search |
-| 7 | FR-038 | AI Identity, User Profile, Chat History | 8 | Personalization; standalone |
-| 8 | FR-041 | Project mgmt: Commit style + Doc sync | 5 | Process/documentation; can slot in anytime |
-| 9 | FR-035 | World-class brain dump | 13 | Large enhancement; no blocking deps |
+| 1 | US-044 | /project_new command | 5 | **Enables US-034** — Users need to create projects before syncing them |
+| 2 | US-034 | Joplin ↔ Google Tasks project sync | 13 | High value; depends on project creation flow |
+| 3 | US-039 | Star on task as high priority | 3 | Quick win; improves all reports |
+| 4 | US-043 | Report speed + async + UI updates | 5 | Improves daily/weekly/monthly report UX |
+| 5 | US-042 | Stoic "What I Learned Today" | 4 | Builds on US-019; content pipeline |
+| 6 | US-040 | Check existing task/note, update/append | 8 | Reduces duplicates; uses US-026 semantic search |
+| 7 | US-038 | AI Identity, User Profile, Chat History | 8 | Personalization; standalone |
+| 8 | US-041 | Project mgmt: Commit style + Doc sync | 5 | Process/documentation; can slot in anytime |
+| 9 | US-035 | World-class brain dump | 13 | Large enhancement; no blocking deps |
 
 ---
 
@@ -59,8 +59,8 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 ### Sprint 14: Flashcard & Dream Fix (context)
 **Duration**: 2026-05-05 – 2026-05-18  
-**Bug Fix**: BF-017 (1 pt) — /dream command crash  
-**Feature**: FR-033 (8 pts) — Flashcard practice from notes  
+**Bug Fix**: DEF-017 (1 pt) — /dream command crash  
+**Feature**: US-033 (8 pts) — Flashcard practice from notes  
 **Plan**: [sprint-14-flashcard-and-dream-fix.md](../sprints/sprint-14-flashcard-and-dream-fix.md)  
 **Success Criteria**: /dream shows welcome without crash; /flashcard with SM-2, card extraction, session flow.
 
@@ -75,14 +75,14 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 **Bug Fixes** (4 pts):
 | Item | Points | Rationale |
 |------|--------|-----------|
-| BF-022 | 2 | /find fix — in progress; complete for production stability |
-| BF-023 | 2 | /ask fix — same Markdown parse pattern as BF-022, BF-017 |
+| DEF-022 | 2 | /find fix — in progress; complete for production stability |
+| DEF-023 | 2 | /ask fix — same Markdown parse pattern as DEF-022, DEF-017 |
 
 **Features** (8 pts):
 | Item | Points | Rationale |
 |------|--------|-----------|
-| FR-044 | 5 | /project_new — creates projects with default folders; prerequisite for FR-034 |
-| FR-039 | 3 | Star on task — quick win; improves reports immediately |
+| US-044 | 5 | /project_new — creates projects with default folders; prerequisite for US-034 |
+| US-039 | 3 | Star on task — quick win; improves reports immediately |
 
 **Total**: 12 pts (4 bug fix + 8 feature)
 
@@ -90,7 +90,7 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 **Success Criteria**: All 4 stories done; /find and /ask work in production; /project_new creates projects; star priority in reports. See [Definition of Done](definition-of-done.md).
 
-**Scope Reduction** (if needed): Drop FR-039 → 9 pts; or drop FR-044 → 7 pts (bugs + FR-039 only).
+**Scope Reduction** (if needed): Drop US-039 → 9 pts; or drop US-044 → 7 pts (bugs + US-039 only).
 
 ---
 
@@ -100,15 +100,15 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 | Item | Points | Rationale |
 |------|--------|-----------|
-| FR-034 | 13 | Joplin Projects ↔ Google Tasks sync — project = parent task, notes → subtasks |
+| US-034 | 13 | Joplin Projects ↔ Google Tasks sync — project = parent task, notes → subtasks |
 
 **Total**: 13 pts
 
-**Theme**: Unify Joplin project structure with Google Tasks. FR-044 (project creation) done in Sprint 15.
+**Theme**: Unify Joplin project structure with Google Tasks. US-044 (project creation) done in Sprint 15.
 
 **Success Criteria**: Project folders map to parent tasks; action items from project notes become subtasks; stalled projects flagged in reports.
 
-**Scope Reduction**: FR-034 is a single 13-pt feature; consider splitting into Phase 1 (basic sync) + Phase 2 (rename/delete, stalled detection) if needed.
+**Scope Reduction**: US-034 is a single 13-pt feature; consider splitting into Phase 1 (basic sync) + Phase 2 (rename/delete, stalled detection) if needed.
 
 ---
 
@@ -118,16 +118,16 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 | Item | Points | Rationale |
 |------|--------|-----------|
-| FR-043 | 5 | Report speed + async + progress UI — improves perceived and actual performance |
-| FR-042 | 4 | Stoic "What I Learned Today" — content pipeline for weekly creation |
+| US-043 | 5 | Report speed + async + progress UI — improves perceived and actual performance |
+| US-042 | 4 | Stoic "What I Learned Today" — content pipeline for weekly creation |
 
 **Total**: 9 pts
 
-**Theme**: Report UX and Stoic journal enhancement. Under velocity; buffer for spillover or FR-016/FR-018.
+**Theme**: Report UX and Stoic journal enhancement. Under velocity; buffer for spillover or US-016/US-018.
 
 **Success Criteria**: Reports generate faster (measurable); progress messages in chat; Stoic "What I Learned" + /learnings command.
 
-**Scope Reduction**: Drop FR-042 → 5 pts (report speed only); or drop FR-043 → 4 pts (Stoic only).
+**Scope Reduction**: Drop US-042 → 5 pts (report speed only); or drop US-043 → 4 pts (Stoic only).
 
 ---
 
@@ -137,8 +137,8 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 | Item | Points | Rationale |
 |------|--------|-----------|
-| FR-040 | 8 | Check existing task/note, offer update/append — reduces duplicates across all flows |
-| FR-041 | 5 | Commit style + Document sync — process docs; complements FR-036 |
+| US-040 | 8 | Check existing task/note, offer update/append — reduces duplicates across all flows |
+| US-041 | 5 | Commit style + Document sync — process docs; complements US-036 |
 
 **Total**: 13 pts
 
@@ -146,7 +146,7 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 **Success Criteria**: Duplicate check before note/task creation; Update/Append/New flow; commit-style and document-sync process docs.
 
-**Scope Reduction**: Drop FR-041 → 8 pts (duplicate check only); or drop FR-040 → 5 pts (process docs only).
+**Scope Reduction**: Drop US-041 → 8 pts (duplicate check only); or drop US-040 → 5 pts (process docs only).
 
 ---
 
@@ -156,27 +156,27 @@ This document proposes sprint ordering for Sprints 15–18 based on:
 
 | Sprint | Items | Points |
 |--------|-------|--------|
-| 19 | FR-038 (AI Identity, User Profile, Chat History) | 8 |
-| 20 | FR-035 (World-class brain dump) | 13 |
+| 19 | US-038 (AI Identity, User Profile, Chat History) | 8 |
+| 20 | US-035 (World-class brain dump) | 13 |
 
 ---
 
 ## Dependency Graph
 
 ```
-BF-022, BF-023 (bugs)     → Sprint 15 (stability)
+DEF-022, DEF-023 (bugs)     → Sprint 15 (stability)
         ↓
-FR-044 (/project_new)     → Sprint 15 (enables FR-034)
+US-044 (/project_new)     → Sprint 15 (enables US-034)
         ↓
-FR-034 (Project sync)     → Sprint 16
+US-034 (Project sync)     → Sprint 16
         ↓
-FR-039 (Star)             → Sprint 15 (independent)
-FR-043 (Report speed)     → Sprint 17 (independent)
-FR-042 (Stoic learnings)  → Sprint 17 (FR-019 ✅)
-FR-040 (Duplicate check)  → Sprint 18 (FR-026 ✅)
-FR-038 (AI identity)     → Sprint 19 (independent)
-FR-041 (Process docs)     → Sprint 18 (FR-036 ✅)
-FR-035 (Brain dump)       → Sprint 20 (independent)
+US-039 (Star)             → Sprint 15 (independent)
+US-043 (Report speed)     → Sprint 17 (independent)
+US-042 (Stoic learnings)  → Sprint 17 (US-019 ✅)
+US-040 (Duplicate check)  → Sprint 18 (US-026 ✅)
+US-038 (AI identity)     → Sprint 19 (independent)
+US-041 (Process docs)     → Sprint 18 (US-036 ✅)
+US-035 (Brain dump)       → Sprint 20 (independent)
 ```
 
 ---
@@ -187,24 +187,24 @@ If production stability is **critical** and features must wait, Sprint 15 could 
 
 | Item | Points |
 |------|--------|
-| BF-022 | 2 |
-| BF-023 | 2 |
+| DEF-022 | 2 |
+| DEF-023 | 2 |
 
-**Total**: 4 pts. FR-044 and FR-039 would move to Sprint 16 (alongside FR-034, or Sprint 17). Use when /find and /ask are blocking users and must be fixed immediately with no feature work.
+**Total**: 4 pts. US-044 and US-039 would move to Sprint 16 (alongside US-034, or Sprint 17). Use when /find and /ask are blocking users and must be fixed immediately with no feature work.
 
 ---
 
 ## Recommendation
 
-1. **Sprint 15**: BF-022, BF-023, FR-044, FR-039 — stability + project foundation
-2. **Sprint 16**: FR-034 — project sync (single large feature)
-3. **Sprint 17**: FR-043, FR-042 — reports + Stoic
-4. **Sprint 18**: FR-040, FR-041 — duplicate check + process docs
+1. **Sprint 15**: DEF-022, DEF-023, US-044, US-039 — stability + project foundation
+2. **Sprint 16**: US-034 — project sync (single large feature)
+3. **Sprint 17**: US-043, US-042 — reports + Stoic
+4. **Sprint 18**: US-040, US-041 — duplicate check + process docs
 
 This order ensures:
 - Broken commands are fixed before new features
 - Project creation exists before project sync
-- Quick wins (FR-039) ship early
+- Quick wins (US-039) ship early
 - Report improvements and Stoic enhancement are grouped
 - Duplicate detection improves data quality before AI personalization
 
@@ -214,7 +214,7 @@ This order ensures:
 
 - [x] **Clear sprint goals** — Each sprint has a measurable, outcome-focused goal
 - [x] **Bug fixes prioritized** — Stability before features (Sprints 14–15)
-- [x] **Dependency order** — FR-044 before FR-034; dependencies explicit
+- [x] **Dependency order** — US-044 before US-034; dependencies explicit
 - [x] **Task breakdowns** — Sprint 15 has tasks per story (T-001–T-014)
 - [x] **Definition of Done** — Referenced; success criteria per sprint
 - [x] **Scope reduction options** — Fallback plans if velocity or capacity changes
