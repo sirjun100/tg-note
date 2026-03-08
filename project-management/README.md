@@ -6,7 +6,8 @@ This directory contains the backlog management structure for this project.
 
 ```
 project-management/
-├── backlog/              # Active backlog items
+├── STATE.md             # Process state — where the AI is in the workflow (read/update when helping)
+├── backlog/             # Active backlog items
 │   ├── product-backlog.md    # Main backlog overview
 │   ├── features/            # Feature requests (FR-XXX-*.md)
 │   └── bugs/                # Bug fixes (BF-XXX-*.md)
@@ -16,6 +17,10 @@ project-management/
     ├── templates/       # Template files
     └── processes/       # Process documentation
 ```
+
+### Process State (STATE.md)
+
+[STATE.md](STATE.md) tracks which process the AI/user is in (release notes, backlog, sprint planning, pre-commit) and the current step. The AI reads this to provide contextually relevant guidance and updates it when moving between steps.
 
 ## Strict Structure Rules
 

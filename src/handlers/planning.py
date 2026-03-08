@@ -156,12 +156,16 @@ def _create_priority_tasks(orch: TelegramOrchestrator, user_id: int, state: dict
             continue
         is_top = p == top_priority
         title = f"⭐ {p}" if is_top else p
-        result = orch.task_service.create_task_with_metadata(
-            title=title,
-            user_id=str(user_id),
-            notes="Weekly priority from /plan session",
-            due_date=due,
-        )
+        try:
+            result = orch.task_service.create_task_with_metadata(
+                title=title,
+                user_id=str(user_id),
+                notes="Weekly priority from /plan session",
+                due_date=due,
+            )
+        except Exception as exc:
+            logger.warning("Failed to create planning task '%s': %s", title[:50], exc)
+            continue
         if result:
             created += 1
     return created

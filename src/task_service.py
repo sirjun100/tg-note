@@ -215,9 +215,20 @@ class TaskService:
             return []
         except Exception as e:
             logger.warning("User %s: Error creating task: %s", user_id, e)
+            self.logging_service.log_task_sync(
+                user_id=int(user_id),
+                task_link_id=None,
+                google_task_id="",
+                action="created",
+                old_status=None,
+                new_status=None,
+                sync_direction="joplin_to_google",
+                sync_result="failed",
+                error_message=str(e),
+            )
             if self.tasks_client.token and self.tasks_client.token != token:
                 self.logging_service.save_google_token(user_id, self.tasks_client.token)
-            return []
+            raise
 
     def create_task_directly(self, title: str, user_id: str) -> list[dict[str, Any]]:
         """Create a single Google Task directly from user text (used by /task command).

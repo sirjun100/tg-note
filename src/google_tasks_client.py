@@ -200,14 +200,14 @@ class GoogleTasksClient:
                         response.raise_for_status()
                         return response.json()
                     except Exception as retry_error:
-                        logger.debug(f"Failed to create task after refresh: {retry_error}")
-                        return None
+                        logger.debug("Failed to create task after refresh: %s", retry_error)
+                        raise retry_error
                 else:
                     logger.debug("Token refresh failed")
-                    return None
+                    raise
             else:
-                logger.debug(f"Failed to create task: {e}")
-                return None
+                logger.debug("Failed to create task: %s", e)
+                raise
 
     def update_task(self, task_id: str, task_list_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
         """Update an existing task"""

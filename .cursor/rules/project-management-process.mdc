@@ -1,0 +1,22 @@
+---
+description: Project management process awareness — read STATE.md and track process steps
+globs: project-management/**/*
+alwaysApply: false
+---
+
+# Project Management Process State
+
+When working in `project-management/` or when the user mentions release notes, backlog, sprint planning, or pre-commit:
+
+1. **Read** `project-management/STATE.md` to see current process and step.
+2. **Use** that context to provide relevant guidance (e.g. if in release_notes step 2, suggest adding a section to RELEASE_NOTES.md).
+3. **Update** STATE.md when:
+   - User starts a process → set Process and Step
+   - User completes a step → increment Step
+   - User finishes a process → set Process and Step to `(none)`
+
+## Process References
+
+- **Release notes**: `project-management/docs/processes/release-notes-process.md`
+- **Backlog**: `project-management/docs/processes/backlog-management-process.md`
+- **Pre-commit**: `project-management/docs/processes/pre-commit-checklist.md`

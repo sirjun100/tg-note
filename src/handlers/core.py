@@ -709,12 +709,27 @@ async def _route_plain_message(
     # Task only
     if routing.content_type == "task" and routing.task and orch.task_service:
         task = routing.task
-        created = orch.task_service.create_task_with_metadata(
-            title=task.title,
-            user_id=str(user_id),
-            notes=task.notes or "",
-            due_date=task.due_date,
-        )
+        try:
+            created = orch.task_service.create_task_with_metadata(
+                title=task.title,
+                user_id=str(user_id),
+                notes=task.notes or "",
+                due_date=task.due_date,
+            )
+        except Exception as exc:
+            logger.warning("Failed to create task from routing: %s", exc)
+            has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+            if has_token:
+                await message.reply_text(
+                    format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status.")
+                )
+            else:
+                await message.reply_text(
+                    format_error_message(
+                        f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /authorize_google_tasks first."
+                    )
+                )
+            return True
         if created:
             orch.logging_service.log_decision(
                 Decision(
@@ -785,14 +800,29 @@ async def _route_plain_message(
                 )
                 if proj:
                     parent_folder_id, parent_folder_title = proj
-            created = orch.task_service.create_task_with_metadata(
-                title=task.title,
-                user_id=str(user_id),
-                notes=task_notes,
-                due_date=task.due_date,
-                parent_folder_id=parent_folder_id,
-                parent_folder_title=parent_folder_title,
-            )
+            try:
+                created = orch.task_service.create_task_with_metadata(
+                    title=task.title,
+                    user_id=str(user_id),
+                    notes=task_notes,
+                    due_date=task.due_date,
+                    parent_folder_id=parent_folder_id,
+                    parent_folder_title=parent_folder_title,
+                )
+            except Exception as exc:
+                logger.warning("Failed to create task (both flow): %s", exc)
+                has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+                if has_token:
+                    await message.reply_text(
+                        format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status.")
+                    )
+                else:
+                    await message.reply_text(
+                        format_error_message(
+                            f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /authorize_google_tasks first."
+                        )
+                    )
+                return
             if created:
                 orch.logging_service.log_decision(
                     Decision(
@@ -974,23 +1004,36 @@ async def _handle_project_selection_reply(
         return
 
     text_lower = text.strip().lower()
-    if text_lower in ("no", "n", "skip", "top-level", "top level"):
-        created = orch.task_service.create_task_directly(task_text, str(user_id))
-    else:
-        try:
-            idx = int(text.strip())
-            if 1 <= idx <= len(projects):
-                fid, title = projects[idx - 1]
-                created = orch.task_service.create_task_with_metadata(
-                    title=task_text,
-                    user_id=str(user_id),
-                    parent_folder_id=fid,
-                    parent_folder_title=title,
-                )
-            else:
-                created = orch.task_service.create_task_directly(task_text, str(user_id))
-        except ValueError:
+    try:
+        if text_lower in ("no", "n", "skip", "top-level", "top level"):
             created = orch.task_service.create_task_directly(task_text, str(user_id))
+        else:
+            try:
+                idx = int(text.strip())
+                if 1 <= idx <= len(projects):
+                    fid, title = projects[idx - 1]
+                    created = orch.task_service.create_task_with_metadata(
+                        title=task_text,
+                        user_id=str(user_id),
+                        parent_folder_id=fid,
+                        parent_folder_title=title,
+                    )
+                else:
+                    created = orch.task_service.create_task_directly(task_text, str(user_id))
+            except ValueError:
+                created = orch.task_service.create_task_directly(task_text, str(user_id))
+    except Exception as exc:
+        logger.warning("Failed to create task (project selection reply): %s", exc)
+        has_token = orch.logging_service.load_google_token(str(user_id)) is not None
+        if has_token:
+            await message.reply_text(format_error_message(
+                f"Failed to create Google Task: {exc}\n\nCheck /google_tasks_status for details."
+            ))
+        else:
+            await message.reply_text(format_error_message(
+                f"Failed to create Google Task: {exc}\n\nUse /authorize_google_tasks first."
+            ))
+        return
 
     if created:
         status_line = _task_sync_status_line(orch, user_id)
@@ -1064,23 +1107,30 @@ def _project_selection_callback(orch: TelegramOrchestrator):
             return
 
         data = query.data
-        if data == "project_sel_no":
-            created = orch.task_service.create_task_directly(task_text, str(user.id))
-        else:
-            try:
-                idx = int(data.replace("project_sel_", ""))
-                if 0 <= idx < len(projects):
-                    fid, title = projects[idx]
-                    created = orch.task_service.create_task_with_metadata(
-                        title=task_text,
-                        user_id=str(user.id),
-                        parent_folder_id=fid,
-                        parent_folder_title=title,
-                    )
-                else:
-                    created = orch.task_service.create_task_directly(task_text, str(user.id))
-            except (ValueError, IndexError):
+        try:
+            if data == "project_sel_no":
                 created = orch.task_service.create_task_directly(task_text, str(user.id))
+            else:
+                try:
+                    idx = int(data.replace("project_sel_", ""))
+                    if 0 <= idx < len(projects):
+                        fid, title = projects[idx]
+                        created = orch.task_service.create_task_with_metadata(
+                            title=task_text,
+                            user_id=str(user.id),
+                            parent_folder_id=fid,
+                            parent_folder_title=title,
+                        )
+                    else:
+                        created = orch.task_service.create_task_directly(task_text, str(user.id))
+                except (ValueError, IndexError):
+                    created = orch.task_service.create_task_directly(task_text, str(user.id))
+        except Exception as exc:
+            logger.warning("Failed to create task (project selection callback): %s", exc)
+            has_token = orch.logging_service.load_google_token(str(user.id)) is not None
+            msg = f"Failed to create Google Task: {exc}\n\nCheck /google_tasks_status." if has_token else f"Failed to create Google Task: {exc}\n\nUse /authorize_google_tasks first."
+            await query.edit_message_text(format_error_message(msg))
+            return
 
         if created:
             status_line = _task_sync_status_line(orch, user.id)
