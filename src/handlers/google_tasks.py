@@ -19,17 +19,32 @@ logger = logging.getLogger(__name__)
 
 
 def register_google_tasks_handlers(application: Any, orch: TelegramOrchestrator) -> None:
+    # New names (tasks_* prefix); old names kept as aliases for backward compatibility
+    application.add_handler(CommandHandler("tasks_connect", _authorize(orch)))
     application.add_handler(CommandHandler("authorize_google_tasks", _authorize(orch)))
+    application.add_handler(CommandHandler("tasks_verify", _verify(orch)))
     application.add_handler(CommandHandler("verify_google", _verify(orch)))
+    application.add_handler(CommandHandler("tasks_config", _config(orch)))
     application.add_handler(CommandHandler("google_tasks_config", _config(orch)))
-    application.add_handler(CommandHandler("set_task_list", _set_task_list(orch)))
-    application.add_handler(CommandHandler("toggle_auto_tasks", _toggle_auto_tasks(orch)))
-    application.add_handler(CommandHandler("toggle_privacy", _toggle_privacy(orch)))
-    application.add_handler(CommandHandler("toggle_project_sync", _toggle_project_sync(orch)))
-    application.add_handler(CommandHandler("sync_projects", _sync_projects(orch)))
-    application.add_handler(CommandHandler("set_projects_folder", _set_projects_folder(orch)))
+    application.add_handler(CommandHandler("tasks_status", _tasks_status(orch)))
     application.add_handler(CommandHandler("google_tasks_status", _tasks_status(orch)))
+    application.add_handler(CommandHandler("tasks_set_list", _set_task_list(orch)))
+    application.add_handler(CommandHandler("set_task_list", _set_task_list(orch)))
+    application.add_handler(CommandHandler("tasks_list", _list_inbox_tasks(orch)))
     application.add_handler(CommandHandler("list_inbox_tasks", _list_inbox_tasks(orch)))
+    application.add_handler(CommandHandler("tasks_toggle_auto", _toggle_auto_tasks(orch)))
+    application.add_handler(CommandHandler("toggle_auto_tasks", _toggle_auto_tasks(orch)))
+    application.add_handler(CommandHandler("tasks_toggle_privacy", _toggle_privacy(orch)))
+    application.add_handler(CommandHandler("toggle_privacy", _toggle_privacy(orch)))
+    application.add_handler(CommandHandler("tasks_toggle_project_sync", _toggle_project_sync(orch)))
+    application.add_handler(CommandHandler("toggle_project_sync", _toggle_project_sync(orch)))
+    application.add_handler(CommandHandler("tasks_sync_projects", _sync_projects(orch)))
+    application.add_handler(CommandHandler("sync_projects", _sync_projects(orch)))
+    application.add_handler(CommandHandler("tasks_reset_project_sync", _reset_project_sync(orch)))
+    application.add_handler(CommandHandler("reset_project_sync", _reset_project_sync(orch)))
+    application.add_handler(CommandHandler("tasks_set_projects_folder", _set_projects_folder(orch)))
+    application.add_handler(CommandHandler("set_projects_folder", _set_projects_folder(orch)))
+    application.add_handler(CommandHandler("tasks_cleanup", _cleanup_completed_tasks(orch)))
     application.add_handler(CommandHandler("cleanup_completed_tasks", _cleanup_completed_tasks(orch)))
 
 
@@ -54,8 +69,8 @@ def _authorize(orch: TelegramOrchestrator):
                 "After clicking the link and authorizing:\n"
                 "1. You'll see an authorization code\n"
                 "2. Copy the code\n"
-                "3. Send it back to me with: /verify_google [code]\n\n"
-                "Example: `/verify_google 4/0AY0e-g7X...`"
+                "3. Send it back to me with: /tasks_verify [code]\n\n"
+                "Example: `/tasks_verify 4/0AY0e-g7X...`"
             )
             await update.message.reply_text(msg)
             logger.info("Google Tasks authorization initiated for user %d", user.id)
@@ -80,8 +95,8 @@ def _verify(orch: TelegramOrchestrator):
 
         if not context.args:
             await update.message.reply_text(
-                "Usage: `/verify_google [authorization_code]`\n\n"
-                "Example: `/verify_google 4/0AY0e-g7X...`"
+                "Usage: `/tasks_verify [authorization_code]`\n\n"
+                "Example: `/tasks_verify 4/0AY0e-g7X...`"
             )
             return
 
@@ -118,8 +133,8 @@ def _verify(orch: TelegramOrchestrator):
                 "• Read your Google Tasks\n"
                 "• Include tasks in daily/weekly reports\n\n"
                 "Configure with:\n"
-                "/google_tasks_config - Manage settings\n"
-                "/google_tasks_status - View sync status\n\n"
+                "/tasks_config - Manage settings\n"
+                "/tasks_status - View sync status\n\n"
                 "Use /status to verify the connection."
             )
             logger.info("Google Tasks authorized for user %d", user.id)
@@ -128,7 +143,7 @@ def _verify(orch: TelegramOrchestrator):
             logger.error("Google Tasks verification failed: %s", exc)
         except Exception as exc:
             await update.message.reply_text(
-                f"❌ Authorization failed: {exc}\n\nPlease try again with: `/authorize_google_tasks`"
+                f"❌ Authorization failed: {exc}\n\nPlease try again with: `/tasks_connect`"
             )
             logger.error("Error in Google Tasks verification: %s", exc)
 
@@ -149,7 +164,7 @@ def _config(orch: TelegramOrchestrator):
             cfg = orch.logging_service.get_google_tasks_config(user.id)
             if not cfg:
                 await update.message.reply_text(
-                    "❌ Google Tasks not authorized yet.\nUse /authorize_google_tasks first."
+                    "❌ Google Tasks not authorized yet.\nUse /tasks_connect first."
                 )
                 return
 
@@ -166,17 +181,18 @@ def _config(orch: TelegramOrchestrator):
                 msg += "Available task lists:\n"
                 for idx, tl in enumerate(task_lists, 1):
                     msg += f"{idx}. {tl.get('title')} (ID: {tl.get('id')[:10]}...)\n"
-                msg += "\nReply with: /set_task_list [number]\n"
+                msg += "\nReply with: /tasks_set_list [number]\n"
             else:
                 msg += "No task lists found\n"
 
             msg += "\nOther commands:\n"
-            msg += "/toggle_auto_tasks - Turn auto task creation on/off\n"
-            msg += "/toggle_privacy - Turn privacy mode on/off\n"
-            msg += "/toggle_project_sync - Joplin projects as parent tasks (FR-034)\n"
-            msg += "/sync_projects - Create parent tasks for all project folders\n"
-            msg += "/set_projects_folder - Choose which folder = Projects root\n"
-            msg += "/google_tasks_status - View synchronization status\n"
+            msg += "/tasks_toggle_auto - Turn auto task creation on/off\n"
+            msg += "/tasks_toggle_privacy - Turn privacy mode on/off\n"
+            msg += "/tasks_toggle_project_sync - Joplin projects as parent tasks (FR-034)\n"
+            msg += "/tasks_sync_projects - Create parent tasks for all project folders\n"
+            msg += "/tasks_reset_project_sync - Clear mappings (use before re-syncing to a different list)\n"
+            msg += "/tasks_set_projects_folder - Choose which folder = Projects root\n"
+            msg += "/tasks_status - View synchronization status\n"
             await update.message.reply_text(msg)
         except Exception as exc:
             await update.message.reply_text(f"❌ Error loading configuration: {exc}")
@@ -191,7 +207,7 @@ def _set_task_list(orch: TelegramOrchestrator):
         if not user or not check_whitelist(user.id):
             return
         if not context.args:
-            await update.message.reply_text("Usage: /set_task_list [number]")
+            await update.message.reply_text("Usage: /tasks_set_list [number]")
             return
         try:
             list_num = int(context.args[0]) - 1
@@ -265,7 +281,7 @@ def _set_projects_folder(orch: TelegramOrchestrator):
             cfg = orch.logging_service.get_google_tasks_config(user.id)
             if not cfg:
                 await update.message.reply_text(
-                    "❌ Google Tasks not configured\n\nUse /authorize_google_tasks first"
+                    "❌ Google Tasks not configured\n\nUse /tasks_connect first"
                 )
                 return
             if not context.args:
@@ -308,7 +324,7 @@ def _set_projects_folder(orch: TelegramOrchestrator):
                 orch.logging_service.save_google_tasks_config(user.id, cfg)
                 await update.message.reply_text(f"✅ Projects root set to folder ID: {folder_id[:12]}...")
             else:
-                await update.message.reply_text("❌ Unknown folder ID. Use /set_projects_folder without args to pick from list.")
+                await update.message.reply_text("❌ Unknown folder ID. Use /tasks_set_projects_folder without args to pick from list.")
         except Exception as exc:
             await update.message.reply_text(f"❌ Error: {exc}")
             logger.error("Error in set_projects_folder: %s", exc)
@@ -329,13 +345,13 @@ def _sync_projects(orch: TelegramOrchestrator):
             token = orch.logging_service.load_google_token(str(user.id))
             if not token:
                 await update.message.reply_text(
-                    "❌ Google Tasks not authorized\n\nUse /authorize_google_tasks first"
+                    "❌ Google Tasks not authorized\n\nUse /tasks_connect first"
                 )
                 return
             cfg = orch.logging_service.get_google_tasks_config(user.id)
             if not cfg or not cfg.get("project_sync_enabled"):
                 await update.message.reply_text(
-                    "❌ Project sync is disabled\n\nUse /toggle_project_sync to enable first"
+                    "❌ Project sync is disabled\n\nUse /tasks_toggle_project_sync to enable first"
                 )
                 return
             if not orch.reorg_orchestrator:
@@ -376,6 +392,33 @@ def _sync_projects(orch: TelegramOrchestrator):
     return handler
 
 
+def _reset_project_sync(orch: TelegramOrchestrator):
+    """Clear all project sync mappings so the next /sync_projects creates fresh parent tasks."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not orch.task_service:
+            await update.message.reply_text("❌ Google Tasks integration not available")
+            return
+        try:
+            count = orch.task_service.reset_project_sync(user.id)
+            msg = (
+                f"✅ Cleared {count} project sync mapping(s).\n\n"
+                "Next steps:\n"
+                "1. Delete the old project parent tasks from the wrong list in Google Tasks (if any)\n"
+                "2. Run /tasks_set_list [number] to choose the right list (e.g. Projects)\n"
+                "3. Run /tasks_sync_projects to create fresh parent tasks in the correct list"
+            )
+            await update.message.reply_text(msg)
+            logger.info("Reset project sync for user %d: cleared %d mappings", user.id, count)
+        except Exception as exc:
+            await update.message.reply_text(f"❌ Error: {exc}")
+            logger.error("Error in reset_project_sync: %s", exc)
+
+    return handler
+
+
 def _toggle_privacy(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
@@ -404,7 +447,15 @@ def _tasks_status(orch: TelegramOrchestrator):
             token = orch.logging_service.load_google_token(str(user.id))
             if not token:
                 await update.message.reply_text(
-                    "❌ Google Tasks not authorized\n\nUse /authorize_google_tasks to set up access"
+                    "❌ Google Tasks not authorized\n\nUse /tasks_connect to set up access"
+                )
+                return
+
+            # Validate token by making a lightweight API call (refreshes if expired)
+            valid, err = orch.task_service.validate_google_token(user.id)
+            if not valid:
+                await update.message.reply_text(
+                    f"❌ {err}\n\nUse /tasks_connect to re-connect."
                 )
                 return
 
@@ -445,7 +496,7 @@ def _list_inbox_tasks(orch: TelegramOrchestrator):
             token = orch.logging_service.load_google_token(str(user.id))
             if not token:
                 await update.message.reply_text(
-                    "❌ Google Tasks not authorized\n\nUse /authorize_google_tasks to set up access"
+                    "❌ Google Tasks not authorized\n\nUse /tasks_connect to set up access"
                 )
                 return
 
@@ -456,7 +507,10 @@ def _list_inbox_tasks(orch: TelegramOrchestrator):
 
             task_list_id = cfg.get("task_list_id")
             tasks_client = orch.task_service.tasks_client
-            tasks_client.set_token(token)
+            tasks_client.set_token(
+                token,
+                token_updater=lambda t: orch.logging_service.save_google_token(str(user.id), t),
+            )
 
             if not task_list_id:
                 try:
@@ -526,9 +580,9 @@ def _cleanup_completed_tasks(orch: TelegramOrchestrator):
                     raise ValueError("Days must be 1–365")
             except ValueError:
                 await update.message.reply_text(
-                    "Usage: /cleanup_completed_tasks [days]\n"
+                    "Usage: /tasks_cleanup [days]\n"
                     "Deletes completed tasks older than N days (default: 30).\n"
-                    "Example: /cleanup_completed_tasks 30"
+                    "Example: /tasks_cleanup 30"
                 )
                 return
 

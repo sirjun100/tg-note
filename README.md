@@ -80,11 +80,11 @@ No manual filing. No decision fatigue. The AI reads your note and puts it where 
 
 ### Distill
 
-The `/enrich_notes` command adds AI-generated metadata to your notes — summaries, key takeaways, priority levels, and suggested tags. Your future self finds things faster.
+The `/reorg_enrich` command adds AI-generated metadata to your notes — summaries, key takeaways, priority levels, and suggested tags. Your future self finds things faster.
 
 ### Express
 
-Your organized knowledge feeds into action. The `/daily_report` aggregates your highest-priority items from both Joplin and Google Tasks into a single morning briefing. You always know what matters today.
+Your organized knowledge feeds into action. The `/report_daily` aggregates your highest-priority items from both Joplin and Google Tasks into a single morning briefing. You always know what matters today.
 
 ---
 

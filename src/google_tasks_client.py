@@ -22,9 +22,12 @@ Usage:
 
 import logging
 import os
+from collections.abc import Callable
 from typing import Any
 
 from requests_oauthlib import OAuth2Session
+
+from src.exceptions import GoogleAuthError
 
 logger = logging.getLogger(__name__)
 
@@ -89,13 +92,42 @@ class GoogleTasksClient:
 
         return token
 
-    def set_token(self, token: dict[str, Any]):
-        """Set access token for authenticated requests"""
-        self.token = token
-        self.session = OAuth2Session(
-            client_id=self.client_id,
-            token=token
-        )
+    def set_token(
+        self,
+        token: dict[str, Any],
+        *,
+        token_updater: Callable[[dict[str, Any]], None] | None = None,
+    ):
+        """Set access token for authenticated requests.
+        If token_updater is provided, enables auto-refresh so expired tokens
+        are refreshed automatically and the callback is invoked with the new token."""
+        self.token = token.copy()
+        # Ensure expires_in exists for auto-refresh (Google returns it; default 1h if missing)
+        if "expires_in" not in self.token and "expires_at" not in self.token:
+            self.token["expires_in"] = 3600
+        if token_updater:
+
+            def _updater(new_token: dict[str, Any]) -> None:
+                if new_token and self.token and self.token.get("refresh_token") and not new_token.get("refresh_token"):
+                    new_token = {**new_token, "refresh_token": self.token["refresh_token"]}
+                self.token = new_token
+                token_updater(new_token)
+
+            self.session = OAuth2Session(
+                client_id=self.client_id,
+                token=self.token,
+                auto_refresh_url=self.TOKEN_URL,
+                auto_refresh_kwargs={
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                },
+                token_updater=_updater,
+            )
+        else:
+            self.session = OAuth2Session(
+                client_id=self.client_id,
+                token=self.token,
+            )
 
     def refresh_token(self) -> dict[str, Any] | None:
         """Refresh expired access token. Preserves refresh_token from the previous token
@@ -204,7 +236,7 @@ class GoogleTasksClient:
                         raise retry_error
                 else:
                     logger.debug("Token refresh failed")
-                    raise
+                    raise GoogleAuthError("Token expired and refresh failed") from e
             else:
                 logger.debug("Failed to create task: %s", e)
                 raise

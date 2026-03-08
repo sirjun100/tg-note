@@ -46,13 +46,22 @@ _DEFAULT_CONFIG = {
 
 
 def register_report_handlers(application: Any, orch: TelegramOrchestrator) -> None:
+    # New names (report_* prefix); old names kept as aliases
+    application.add_handler(CommandHandler("report_daily", _daily_report(orch)))
     application.add_handler(CommandHandler("daily_report", _daily_report(orch)))
+    application.add_handler(CommandHandler("report_weekly", _weekly_report(orch)))
     application.add_handler(CommandHandler("weekly_report", _weekly_report(orch)))
+    application.add_handler(CommandHandler("report_monthly", _monthly_report(orch)))
     application.add_handler(CommandHandler("monthly_report", _monthly_report(orch)))
+    application.add_handler(CommandHandler("report_set_time", _configure_time(orch)))
     application.add_handler(CommandHandler("configure_report_time", _configure_time(orch)))
+    application.add_handler(CommandHandler("report_set_timezone", _configure_tz(orch)))
     application.add_handler(CommandHandler("configure_report_timezone", _configure_tz(orch)))
+    application.add_handler(CommandHandler("report_toggle_schedule", _toggle(orch)))
     application.add_handler(CommandHandler("toggle_daily_report", _toggle(orch)))
+    application.add_handler(CommandHandler("report_config", _show_config(orch)))
     application.add_handler(CommandHandler("show_report_config", _show_config(orch)))
+    application.add_handler(CommandHandler("report_set_content", _configure_content(orch)))
     application.add_handler(CommandHandler("configure_report_content", _configure_content(orch)))
     application.add_handler(CommandHandler("report_help", _help(orch)))
 
@@ -234,7 +243,7 @@ def _monthly_report(orch: TelegramOrchestrator):
                         year, month = int(parts[0]), int(parts[1])
                         if not (1 <= month <= 12):
                             await update.message.reply_text(
-                                "Usage: `/monthly_report` or `/monthly_report 2026-02` or `/monthly_report last`",
+                                "Usage: `/report_monthly` or `/report_monthly 2026-02` or `/report_monthly last`",
                                 parse_mode="Markdown",
                             )
                             return
@@ -321,7 +330,7 @@ def _configure_time(orch: TelegramOrchestrator):
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "❌ Usage: /configure_report_time HH:MM\nExample: /configure_report_time 08:00"
+                    "❌ Usage: /report_set_time HH:MM\nExample: /report_set_time 08:00"
                 )
                 return
 
@@ -371,7 +380,7 @@ def _configure_tz(orch: TelegramOrchestrator):
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "❌ Usage: /configure_report_timezone TIMEZONE\n"
+                    "❌ Usage: /report_set_timezone TIMEZONE\n"
                     "Examples: US/Eastern, Europe/London, Asia/Tokyo, UTC"
                 )
                 return
@@ -420,7 +429,7 @@ def _toggle(orch: TelegramOrchestrator):
 
         try:
             if not context.args:
-                await update.message.reply_text("❌ Usage: /toggle_daily_report on|off")
+                await update.message.reply_text("❌ Usage: /report_toggle_schedule on|off")
                 return
 
             action = context.args[0].lower()
@@ -502,7 +511,7 @@ def _configure_content(orch: TelegramOrchestrator):
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "❌ Usage: /configure_report_content LEVEL\n"
+                    "❌ Usage: /report_set_content LEVEL\n"
                     "Options: critical, high, medium, all\n"
                     "  • critical: Only critical items\n"
                     "  • high: Critical and high priority\n"
@@ -548,26 +557,26 @@ def _help(orch: TelegramOrchestrator):
         await update.message.reply_text(
             "📊 Report Commands\n\n"
             "Generate Reports:\n"
-            "  /daily_report - Generate daily priority report\n"
-            "  /weekly_report - Generate weekly review\n"
-            "  /weekly_report last - Review last week\n"
-            "  /monthly_report - Generate monthly review\n"
-            "  /monthly_report 2026-02 - Specific month\n"
-            "  /monthly_report last - Previous month\n\n"
+            "  /report_daily - Generate daily priority report\n"
+            "  /report_weekly - Generate weekly review\n"
+            "  /report_weekly last - Review last week\n"
+            "  /report_monthly - Generate monthly review\n"
+            "  /report_monthly 2026-02 - Specific month\n"
+            "  /report_monthly last - Previous month\n\n"
             "Configure Delivery:\n"
-            "  /configure_report_time <HH:MM> - Set daily delivery time\n"
-            "    Example: /configure_report_time 08:00\n\n"
-            "  /configure_report_timezone <timezone> - Set your timezone\n"
-            "    Example: /configure_report_timezone US/Eastern\n"
+            "  /report_set_time <HH:MM> - Set daily delivery time\n"
+            "    Example: /report_set_time 08:00\n\n"
+            "  /report_set_timezone <timezone> - Set your timezone\n"
+            "    Example: /report_set_timezone US/Eastern\n"
             "    Common: US/Eastern, US/Central, US/Pacific, Europe/London, Asia/Tokyo\n\n"
-            "  /toggle_daily_report on|off - Enable/disable automatic reports\n"
-            "    Example: /toggle_daily_report on\n\n"
+            "  /report_toggle_schedule on|off - Enable/disable automatic reports\n"
+            "    Example: /report_toggle_schedule on\n\n"
             "Customize Content:\n"
-            "  /configure_report_content <level> - Set minimum priority level\n"
+            "  /report_set_content <level> - Set minimum priority level\n"
             "    Options: critical, high, medium, all\n"
-            "    Example: /configure_report_content high\n\n"
+            "    Example: /report_set_content high\n\n"
             "View Settings:\n"
-            "  /show_report_config - View your current configuration\n\n"
+            "  /report_config - View your current configuration\n\n"
             "Help:\n"
             "  /report_help - Show this help message\n\n"
             "Daily Report Includes:\n"

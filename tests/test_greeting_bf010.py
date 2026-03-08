@@ -27,9 +27,9 @@ class TestGreetingContent(unittest.TestCase):
         self.assertIn("<b>🔍 Search</b>", greeting)
         self.assertIn("<b>📊 Review</b>", greeting)
         # Underscores in commands should be present (no Markdown italic)
-        self.assertIn("/daily_report", greeting)
-        self.assertIn("/weekly_report", greeting)
-        self.assertIn("/monthly_report", greeting)
+        self.assertIn("/report_daily", greeting)
+        self.assertIn("/report_weekly", greeting)
+        self.assertIn("/report_monthly", greeting)
         # Angle brackets should be escaped for HTML
         self.assertIn("&lt;text&gt;", greeting)
         self.assertIn("&lt;query&gt;", greeting)

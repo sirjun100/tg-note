@@ -472,6 +472,18 @@ class LoggingService:
             )
             conn.commit()
 
+    def delete_all_project_sync_mappings(self, user_id: int) -> int:
+        """Remove all project sync mappings for a user. Returns count deleted."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM joplin_project_sync WHERE user_id = ?",
+                (user_id,),
+            )
+            deleted = cursor.rowcount
+            conn.commit()
+            return deleted
+
     # Task Sync History Methods
 
     def log_task_sync(self, user_id: int, task_link_id: int | None, google_task_id: str,

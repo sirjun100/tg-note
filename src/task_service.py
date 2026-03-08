@@ -10,6 +10,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Any
 
+from src.exceptions import GoogleTasksConfigError
 from src.google_tasks_client import GoogleTasksClient
 from src.logging_service import Decision, LoggingService
 
@@ -151,6 +152,13 @@ class TaskService:
         else:
             return "normal"
 
+    def _set_client_token(self, user_id: str, token: dict[str, Any]) -> None:
+        """Set token on client with auto-refresh and persist callback."""
+        def _save(new_token: dict[str, Any]) -> None:
+            self.logging_service.save_google_token(user_id, new_token)
+
+        self.tasks_client.set_token(token, token_updater=_save)
+
     def create_task_with_metadata(
         self,
         title: str,
@@ -170,18 +178,29 @@ class TaskService:
 
         config = self.logging_service.get_google_tasks_config(int(user_id))
         if not config or not config.get("enabled"):
-            logger.warning("Google Tasks disabled for user %s", user_id)
-            return []
+            msg = (
+                f"Google Tasks disabled for user {user_id} "
+                f"(config={'present' if config else 'missing'}, enabled={config.get('enabled') if config else 'N/A'})"
+            )
+            logger.warning(msg)
+            raise GoogleTasksConfigError(
+                msg,
+                user_message="Google Tasks is disabled. Enable it in Settings or use /tasks_connect.",
+            )
 
-        self.tasks_client.set_token(token)
+        self._set_client_token(user_id, token)
 
         task_list_id = config.get("task_list_id")
         if not task_list_id:
             try:
                 task_list_id = self.tasks_client.get_default_task_list()
+                logger.info("User %s: Using default task list %s", user_id, task_list_id)
             except Exception as e:
                 logger.warning("User %s: Failed to get task list: %s", user_id, e)
-                return []
+                raise GoogleTasksConfigError(
+                    str(e),
+                    user_message=f"Could not get your Google Tasks list: {e}. Try /tasks_connect to re-connect.",
+                ) from e
 
         parent_task_id: str | None = None
         if parent_folder_id and parent_folder_title and config.get("project_sync_enabled"):
@@ -252,7 +271,7 @@ class TaskService:
                 # Rename detection: folder was renamed in Joplin, update Google Task
                 token = self.logging_service.load_google_token(user_id)
                 if token:
-                    self.tasks_client.set_token(token)
+                    self._set_client_token(user_id, token)
                     try:
                         updated = self.tasks_client.update_task(
                             google_task_id, task_list_id, {"title": folder_title}
@@ -275,7 +294,7 @@ class TaskService:
         if not token:
             return None
 
-        self.tasks_client.set_token(token)
+        self._set_client_token(user_id, token)
         try:
             parent_task = self.tasks_client.create_task(
                 title=folder_title,
@@ -312,7 +331,7 @@ class TaskService:
                 if google_task_id and task_list_id:
                     token = self.logging_service.load_google_token(user_id)
                     if token:
-                        self.tasks_client.set_token(token)
+                        self._set_client_token(user_id, token)
                         try:
                             self.tasks_client.delete_task(google_task_id, task_list_id)
                             logger.info(
@@ -326,6 +345,11 @@ class TaskService:
                 self.logging_service.delete_project_sync_mapping(int(user_id), folder_id)
                 removed += 1
         return removed
+
+    def reset_project_sync(self, user_id: int) -> int:
+        """Clear all project sync mappings for a user. Returns count cleared.
+        Use before /tasks_sync_projects when you want to re-create parent tasks in a different list."""
+        return self.logging_service.delete_all_project_sync_mappings(user_id)
 
     def sync_project_parent_tasks(
         self, user_id: str, project_folders: list[tuple[str, str]]
@@ -405,7 +429,7 @@ class TaskService:
                         return []
 
             # Set token on client
-            self.tasks_client.set_token(token)
+            self._set_client_token(user_id, token)
 
             # FR-034: Resolve parent task for project sync
             parent_task_id: str | None = None
@@ -530,7 +554,7 @@ class TaskService:
         if not token:
             return []
 
-        self.tasks_client.set_token(token)
+        self._set_client_token(user_id, token)
 
         try:
             if not task_list_id:
@@ -566,7 +590,7 @@ class TaskService:
         if not token:
             return []
 
-        self.tasks_client.set_token(token)
+        self._set_client_token(user_id, token)
         try:
             all_tasks = self.tasks_client.get_all_tasks(task_list_id, show_completed=False)
             if self.tasks_client.token and self.tasks_client.token != token:
@@ -597,7 +621,7 @@ class TaskService:
         token = self.logging_service.load_google_token(user_id)
         if not token:
             return None
-        self.tasks_client.set_token(token)
+        self._set_client_token(user_id, token)
         try:
             return self.tasks_client.get_default_task_list()
         except Exception:
@@ -609,7 +633,7 @@ class TaskService:
         if not token:
             return []
 
-        self.tasks_client.set_token(token)
+        self._set_client_token(user_id, token)
 
         try:
             result = self.tasks_client.get_task_lists()
@@ -633,7 +657,7 @@ class TaskService:
         token = self.logging_service.load_google_token(user_id)
         if not token:
             return 0, 0
-        self.tasks_client.set_token(token)
+        self._set_client_token(user_id, token)
 
         task_lists = self.get_available_task_lists(user_id)
         if not task_lists:
@@ -757,6 +781,25 @@ class TaskService:
         except Exception as e:
             print(f"❌ Error setting task creation tags: {e}")
             return False
+
+    def validate_google_token(self, user_id: int) -> tuple[bool, str]:
+        """Validate token by making a lightweight API call. Refreshes if expired.
+        Returns (valid, error_message). error_message is empty when valid."""
+        token = self.logging_service.load_google_token(str(user_id))
+        if not token:
+            return False, "Google Tasks not authorized"
+        self._set_client_token(str(user_id), token)
+        try:
+            # Lightweight API call; with auto_refresh, token is refreshed if expired
+            url = f"{self.tasks_client.BASE_URL}/users/@me/lists"
+            resp = self.tasks_client.session.get(url)
+            resp.raise_for_status()
+            return True, ""
+        except Exception as e:
+            err_str = str(e).lower()
+            if "token_expired" in err_str or "401" in err_str or "refresh" in err_str:
+                return False, "Token expired or revoked. Re-authorization required."
+            return False, str(e)
 
     def get_task_sync_status(self, user_id: int) -> dict[str, Any]:
         """Get task synchronization status for a user"""

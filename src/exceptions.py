@@ -75,4 +75,15 @@ class GoogleAuthError(GoogleTasksError):
 
     def __init__(self, message: str = "Google authentication failed"):
         super().__init__(message)
-        self.user_message = "Google authentication failed. Please re-authorize with /authorize_google_tasks."
+        self.user_message = (
+            "Your Google token expired and could not be refreshed. "
+            "Use /tasks_connect to re-connect."
+        )
+
+
+class GoogleTasksConfigError(GoogleTasksError):
+    """Google Tasks not configured or disabled for user."""
+
+    def __init__(self, message: str, user_message: str | None = None):
+        super().__init__(message)
+        self.user_message = user_message or "Google Tasks is not set up. Use /tasks_connect first."

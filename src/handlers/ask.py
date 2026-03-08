@@ -55,6 +55,7 @@ async def _send_ask_response_safe(message: Any, msg_html: str) -> None:
 def register_ask_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     """Register /ask, /reindex, /search_status handlers."""
     application.add_handler(CommandHandler("ask", _ask(orch)))
+    application.add_handler(CommandHandler("search_reindex", _reindex(orch)))
     application.add_handler(CommandHandler("reindex", _reindex(orch)))
     application.add_handler(CommandHandler("search_status", _search_status(orch)))
 

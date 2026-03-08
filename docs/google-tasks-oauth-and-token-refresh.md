@@ -7,6 +7,7 @@ This document describes how the bot stores and refreshes Google OAuth tokens for
 - **Access token**: Short-lived (~1 hour). Used for API requests.
 - **Refresh token**: Long-lived. Used to obtain new access tokens without user interaction.
 - We request **offline access** (`access_type=offline`, `prompt=consent`) so Google issues a refresh token at authorization time.
+- **Auto-refresh**: `OAuth2Session` is configured with `auto_refresh_url` and `token_updater` so expired tokens are refreshed automatically before API calls. The refreshed token is persisted via the callback.
 
 ## Why Re-authorization Was Needed Often (Fixed)
 
@@ -34,11 +35,15 @@ Users need to run `/authorize_google_tasks` again only if:
 - **Refresh**: Any code path that uses `GoogleTasksClient` may trigger a refresh on 401. After a successful refresh, the client’s `token` is updated; callers that have a reference to the original token should persist the client’s token when `client.token != original_token` so the DB gets the new access token and the preserved refresh token.
 - **Scopes**: We use `https://www.googleapis.com/auth/tasks` only.
 
+## Token Validation
+
+- **`/google_tasks_status`** validates the token by making a lightweight API call before showing sync status. If the token is expired, it is refreshed automatically. If refresh fails, the user is prompted to re-authorize.
+
 ## Related Code
 
 | File | Responsibility |
 |------|----------------|
-| `src/google_tasks_client.py` | OAuth session, `refresh_token()` (merge to preserve `refresh_token`), Tasks API calls |
+| `src/google_tasks_client.py` | OAuth session with auto_refresh, `set_token(..., token_updater=)`, Tasks API calls |
 | `src/auth_service.py` | Authorization URL and code exchange (initial auth) |
 | `src/logging_service.py` | `save_google_token`, `load_google_token` |
 | `src/task_service.py` | Load token, set on client, call API, save token if refreshed |

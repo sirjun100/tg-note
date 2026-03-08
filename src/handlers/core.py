@@ -19,6 +19,7 @@ from telegram.constants import ChatAction
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.constants import is_action_item
+from src.exceptions import AppError
 from src.handlers.profile import get_user_profile_context
 from src.logging_service import Decision, TelegramMessage
 from src.security_utils import (
@@ -64,10 +65,12 @@ def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None
     application.add_handler(CommandHandler("start", _start(orch)))
     application.add_handler(CommandHandler("help", _start(orch)))  # Alias for /start
     application.add_handler(CommandHandler("status", _status(orch)))
+    application.add_handler(CommandHandler("status_projects", _project_status(orch)))
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
     application.add_handler(CommandHandler("sync", _sync(orch)))
     application.add_handler(CommandHandler("note", _note(orch)))
     application.add_handler(CommandHandler("task", _task(orch)))
+    application.add_handler(CommandHandler("help_commands", _helpme(orch)))
     application.add_handler(CommandHandler("helpme", _helpme(orch)))
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, _message(orch))
@@ -117,9 +120,9 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /recipe → Save and organize recipes\n"
         "• /project_new &lt;name&gt; or /pn &lt;name&gt; → Create project with default folders\n\n"
         "<b>📊 Review</b>\n"
-        "• /daily_report → Today's priorities\n"
-        "• /weekly_report → Weekly productivity review\n"
-        "• /monthly_report → Monthly review with insights\n\n"
+        "• /report_daily → Today's priorities\n"
+        "• /report_weekly → Weekly productivity review\n"
+        "• /report_monthly → Monthly review with insights\n\n"
         "<b>👤 Personalization</b>\n"
         "• /profile → Your about-me (AI uses this for context)\n"
         "• /identity → AI identity (bot persona)\n\n"
@@ -390,21 +393,21 @@ def _helpme(orch: TelegramOrchestrator):
             "/status - Check if Joplin & Google Tasks are connected\n"
             "/sync - Force Joplin sync with Dropbox (or configured sync target)\n"
             "/project_status - Show counts by project status tags\n"
-            "/helpme - Show this detailed help message\n\n"
+            "/help_commands - Show this detailed help message\n\n"
             "📌 **Project status tags**\n"
             "Notes in Projects can use tags: status/planning, status/building, status/blocked, status/done. "
             "Use /project_status to see the summary.\n\n"
             "📅 **Google Tasks Management**\n"
-            "/authorize_google_tasks - Connect your Google account\n"
-            "/list_inbox_tasks - View your pending Google Tasks\n"
-            "/google_tasks_status - See sync history & stats\n"
-            "/cleanup_completed_tasks [days] - Delete completed tasks older than N days (default: 30)\n\n"
+            "/tasks_connect - Connect your Google account\n"
+            "/tasks_list - View your pending Google Tasks\n"
+            "/tasks_status - See sync history & stats\n"
+            "/tasks_cleanup [days] - Delete completed tasks older than N days (default: 30)\n\n"
             "📊 **Reports**\n"
-            "/daily_report - Get on-demand priority report\n"
-            "/weekly_report - Weekly review with trends & metrics\n"
-            "/monthly_report - Monthly review with insights\n"
-            "/configure_report_time HH:MM - Set delivery time\n"
-            "/toggle_daily_report on|off - Enable/disable scheduled reports\n"
+            "/report_daily - Get on-demand priority report\n"
+            "/report_weekly - Weekly review with trends & metrics\n"
+            "/report_monthly - Monthly review with insights\n"
+            "/report_set_time HH:MM - Set delivery time\n"
+            "/report_toggle_schedule on|off - Enable/disable scheduled reports\n"
             "/report_help - Show all report commands\n\n"
             "🧠 **Productivity**\n"
             "/braindump - 15-min GTD mind sweep; /braindump_stop to end\n"
@@ -418,7 +421,7 @@ def _helpme(orch: TelegramOrchestrator):
             "/reorg_init status|roles - Initialize PARA structure\n"
             "/reorg_preview - See migration plan without changes\n"
             "/reorg_execute - Apply reorganization\n"
-            "/enrich_notes [limit] - Add metadata to notes\n"
+            "/reorg_enrich [limit] - Add metadata to notes\n"
             "/reorg_help - Show all reorganization commands\n\n"
             "❓ **Questions?**\n"
             "Just send /status to check connectivity."
@@ -648,7 +651,7 @@ def _task_sync_status_line(orch: TelegramOrchestrator, user_id: int) -> str:
         status = orch.task_service.get_task_sync_status(user_id)
         s = status.get("success_count", 0)
         f = status.get("failed_count", 0)
-        return f"\n\n📊 Sync: ✅ {s} successful, ❌ {f} failed — /google_tasks_status"
+        return f"\n\n📊 Sync: ✅ {s} successful, ❌ {f} failed — /tasks_status"
     except Exception:
         return ""
 
@@ -716,17 +719,21 @@ async def _route_plain_message(
                 notes=task.notes or "",
                 due_date=task.due_date,
             )
+        except AppError as exc:
+            logger.warning("Failed to create task from routing: %s", exc)
+            await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
+            return True
         except Exception as exc:
             logger.warning("Failed to create task from routing: %s", exc)
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:
                 await message.reply_text(
-                    format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status.")
+                    format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status.")
                 )
             else:
                 await message.reply_text(
                     format_error_message(
-                        f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /authorize_google_tasks first."
+                        f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /tasks_connect first."
                     )
                 )
             return True
@@ -751,12 +758,12 @@ async def _route_plain_message(
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:
                 await message.reply_text(
-                    format_error_message("Failed to create task. Check /google_tasks_status.")
+                    format_error_message("Failed to create task. Check /tasks_status.")
                 )
             else:
                 await message.reply_text(
                     format_error_message(
-                        "Google Tasks not connected. Use /authorize_google_tasks first."
+                        "Google Tasks not connected. Use /tasks_connect first."
                     )
                 )
         return True
@@ -809,17 +816,21 @@ async def _route_plain_message(
                     parent_folder_id=parent_folder_id,
                     parent_folder_title=parent_folder_title,
                 )
+            except AppError as exc:
+                logger.warning("Failed to create task (both flow): %s", exc)
+                await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
+                return
             except Exception as exc:
                 logger.warning("Failed to create task (both flow): %s", exc)
                 has_token = orch.logging_service.load_google_token(str(user_id)) is not None
                 if has_token:
                     await message.reply_text(
-                        format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status.")
+                        format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status.")
                     )
                 else:
                     await message.reply_text(
                         format_error_message(
-                            f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /authorize_google_tasks first."
+                            f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /tasks_connect first."
                         )
                     )
                 return
@@ -875,7 +886,7 @@ async def _handle_new_request(
         if not orch.task_service:
             await message.reply_text(
                 "⚠️ Google Tasks integration is not available. "
-                "Use /authorize_google_tasks first."
+                "Use /tasks_connect first."
             )
             return
         try:
@@ -917,17 +928,20 @@ async def _handle_new_request(
             else:
                 has_token = orch.logging_service.load_google_token(str(user_id)) is not None
                 if has_token:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
+                    await message.reply_text(format_error_message("Failed to create Google Task. Check /tasks_status for details."))
                 else:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks to connect your Google account first."))
+                    await message.reply_text(format_error_message("Failed to create Google Task. Use /tasks_connect to connect your Google account first."))
+        except AppError as exc:
+            logger.warning("Task creation failed (config/auth): %s", exc)
+            await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
         except Exception as exc:
             logger.error("Error creating Google Task: %s", exc, exc_info=True)
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:
-                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status for details."))
+                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status for details."))
             else:
                 await message.reply_text(format_error_message(
-                    f"Failed to create task: {exc}\n\nUse /authorize_google_tasks to connect your Google account first."
+                    f"Failed to create task: {exc}\n\nUse /tasks_connect to connect your Google account first."
                 ))
         return
 
@@ -1022,16 +1036,20 @@ async def _handle_project_selection_reply(
                     created = orch.task_service.create_task_directly(task_text, str(user_id))
             except ValueError:
                 created = orch.task_service.create_task_directly(task_text, str(user_id))
+    except AppError as exc:
+        logger.warning("Failed to create task (project selection reply): %s", exc)
+        await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
+        return
     except Exception as exc:
         logger.warning("Failed to create task (project selection reply): %s", exc)
         has_token = orch.logging_service.load_google_token(str(user_id)) is not None
         if has_token:
             await message.reply_text(format_error_message(
-                f"Failed to create Google Task: {exc}\n\nCheck /google_tasks_status for details."
+                f"Failed to create Google Task: {exc}\n\nCheck /tasks_status for details."
             ))
         else:
             await message.reply_text(format_error_message(
-                f"Failed to create Google Task: {exc}\n\nUse /authorize_google_tasks first."
+                f"Failed to create Google Task: {exc}\n\nUse /tasks_connect first."
             ))
         return
 
@@ -1043,9 +1061,9 @@ async def _handle_project_selection_reply(
     else:
         has_token = orch.logging_service.load_google_token(str(user_id)) is not None
         if has_token:
-            await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
+            await message.reply_text(format_error_message("Failed to create Google Task. Check /tasks_status for details."))
         else:
-            await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks first."))
+            await message.reply_text(format_error_message("Failed to create Google Task. Use /tasks_connect first."))
 
 
 async def _handle_projects_folder_reply(
@@ -1054,7 +1072,7 @@ async def _handle_projects_folder_reply(
     """FR-034: Handle reply to set_projects_folder picker (number or 'default')."""
     state = orch.state_manager.get_state(user_id)
     if not state or not state.get("awaiting_projects_folder"):
-        await message.reply_text("❌ No pending selection. Use /set_projects_folder to try again.")
+        await message.reply_text("❌ No pending selection. Use /tasks_set_projects_folder to try again.")
         return
 
     root_folders = state.get("root_folders", [])
@@ -1077,9 +1095,9 @@ async def _handle_projects_folder_reply(
             orch.logging_service.save_google_tasks_config(user_id, cfg)
             await message.reply_text(f"✅ Projects root set to: {title}")
         else:
-            await message.reply_text("❌ Invalid number. Use /set_projects_folder to try again.")
+            await message.reply_text("❌ Invalid number. Use /tasks_set_projects_folder to try again.")
     except ValueError:
-        await message.reply_text("❌ Reply with a number or 'default'. Use /set_projects_folder to try again.")
+        await message.reply_text("❌ Reply with a number or 'default'. Use /tasks_set_projects_folder to try again.")
 
 
 def _project_selection_callback(orch: TelegramOrchestrator):
@@ -1125,10 +1143,14 @@ def _project_selection_callback(orch: TelegramOrchestrator):
                         created = orch.task_service.create_task_directly(task_text, str(user.id))
                 except (ValueError, IndexError):
                     created = orch.task_service.create_task_directly(task_text, str(user.id))
+        except AppError as exc:
+            logger.warning("Failed to create task (project selection callback): %s", exc)
+            await query.edit_message_text(format_error_message(getattr(exc, "user_message", str(exc))))
+            return
         except Exception as exc:
             logger.warning("Failed to create task (project selection callback): %s", exc)
             has_token = orch.logging_service.load_google_token(str(user.id)) is not None
-            msg = f"Failed to create Google Task: {exc}\n\nCheck /google_tasks_status." if has_token else f"Failed to create Google Task: {exc}\n\nUse /authorize_google_tasks first."
+            msg = f"Failed to create Google Task: {exc}\n\nCheck /tasks_status." if has_token else f"Failed to create Google Task: {exc}\n\nUse /tasks_connect first."
             await query.edit_message_text(format_error_message(msg))
             return
 
@@ -1139,7 +1161,7 @@ def _project_selection_callback(orch: TelegramOrchestrator):
             ))
         else:
             has_token = orch.logging_service.load_google_token(str(user.id)) is not None
-            msg = "Failed to create Google Task. Check /google_tasks_status." if has_token else "Failed to create Google Task. Use /authorize_google_tasks first."
+            msg = "Failed to create Google Task. Check /tasks_status." if has_token else "Failed to create Google Task. Use /tasks_connect first."
             await query.edit_message_text(format_error_message(msg))
 
     return handler
@@ -1179,16 +1201,16 @@ async def _handle_clarification_reply(
             else:
                 has_token = orch.logging_service.load_google_token(str(user_id)) is not None
                 if has_token:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Check /google_tasks_status for details."))
+                    await message.reply_text(format_error_message("Failed to create Google Task. Check /tasks_status for details."))
                 else:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Use /authorize_google_tasks to connect your Google account first."))
+                    await message.reply_text(format_error_message("Failed to create Google Task. Use /tasks_connect to connect your Google account first."))
         except Exception as exc:
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:
-                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /google_tasks_status for details."))
+                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status for details."))
             else:
                 await message.reply_text(format_error_message(
-                    f"Failed to create task: {exc}\n\nUse /authorize_google_tasks to connect your Google account first."
+                    f"Failed to create task: {exc}\n\nUse /tasks_connect to connect your Google account first."
                 ))
         return
 
