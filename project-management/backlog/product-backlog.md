@@ -94,6 +94,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [FR-048](features/FR-048-photo-albums.md) | Photo OCR: Photo Albums Support | 🟢 Low | 5 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
 | [FR-049](features/FR-049-photo-ocr-cost-logging.md) | Photo OCR: Cost Logging | 🟢 Low | 2 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
 | [FR-050](features/FR-050-photo-send-as-file-hint.md) | Photo OCR: "Send as File" Hint in Help | 🟢 Low | 1 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
+| [FR-051](features/FR-051-bookmark-command.md) | /bookmark Command to Save URLs to Joplin | 🟡 Medium | 5 | ⭕ | Backlog | 2026-03-08 | 2026-03-08 |
 
 ## Bug Fixes
 

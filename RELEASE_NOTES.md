@@ -6,6 +6,28 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ---
 
+## 2026-03-08
+
+### New Features
+- **Command naming** — New canonical names: `tasks_*` (tasks_connect, tasks_status, tasks_config, etc.), `report_*` (report_daily, report_weekly, report_config). Old names kept as aliases.
+- **Starred tasks first in reports** — Daily and weekly reports sort tasks with * at start to the top.
+- **Report footer commands** — Footers now show `/report_daily`, `/report_weekly`, `/report_config` (updated from deprecated names).
+- **Pre-commit hook** — `scripts/pre-commit` runs ruff and mypy before each commit. Install: `cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`
+- **"Who am I" profile query** — Plain messages like "who am i" or "what is my profile" now return your stored profile without routing through the LLM.
+- **/bookmark feature request** — FR-051 added for saving URLs to Joplin with metadata and tags. [FR-051](project-management/backlog/features/FR-051-bookmark-command.md)
+
+### Bug Fixes
+- **Mypy return-value errors** — Fixed `_route_plain_message` exception handlers to return `True` instead of bare `return`.
+- **Ruff lint** — Auto-fixed unused imports, import order, and other lint issues across tests.
+
+### Breaking Changes
+- (none this release)
+
+### Migration Notes
+- Old command names still work as aliases. New names preferred: `/report_daily` instead of `/daily_report`, `/report_config` instead of `/show_report_config`, etc.
+
+---
+
 ## 2026-03-06
 
 ### New Features
