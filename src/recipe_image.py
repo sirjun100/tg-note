@@ -22,18 +22,19 @@ _MAX_RETRIES_429 = 2
 _RETRY_DELAY_SEC = 3.0
 
 
-async def generate_recipe_image(recipe_title: str) -> str | None:
+async def generate_recipe_image(recipe_title: str) -> tuple[str | None, str | None]:
     """
     Generate an appetizing food image for a recipe using Gemini image generation.
 
-    Returns a data URL (data:image/png;base64,...) or None if key is missing or generation fails.
+    Returns (data_url, error_reason). On success: (data_url, None).
+    On failure: (None, human_readable_reason) for logging and user feedback.
     On 429 (rate limit), retries briefly then skips image so the note is still created.
     """
     settings = get_settings()
     api_key = settings.google.gemini_api_key
     if not api_key or not api_key.strip():
-        logger.info("GEMINI_API_KEY not set; skipping recipe image generation")
-        return None
+        logger.info("GEMINI_API_KEY not set; skipping recipe image generation for '%s'", recipe_title[:50])
+        return None, "API key not set"
 
     prompt = (
         f"Appetizing, professional food photography of: {recipe_title}. "
@@ -66,7 +67,7 @@ async def generate_recipe_image(recipe_title: str) -> str | None:
                         "Gemini rate limit (429); recipe image skipped for '%s'",
                         recipe_title[:50],
                     )
-                    return None
+                    return None, "rate limit (429)"
                 resp.raise_for_status()
                 data = resp.json()
                 break
@@ -81,19 +82,21 @@ async def generate_recipe_image(recipe_title: str) -> str | None:
                     "Gemini rate limit (429); recipe image skipped for '%s'",
                     recipe_title[:50],
                 )
-                return None
-            logger.warning("Gemini recipe image generation failed: %s", exc)
-            return None
+                return None, "rate limit (429)"
+            logger.warning("Gemini recipe image generation failed for '%s': %s", recipe_title[:50], exc)
+            exc_str = str(exc)
+            return None, f"request failed: {exc_str[:60]}{'...' if len(exc_str) > 60 else ''}"
     else:
         if last_exc:
-            logger.warning("Gemini recipe image generation failed: %s", last_exc)
-        return None
+            logger.warning("Gemini recipe image generation failed for '%s': %s", recipe_title[:50], last_exc)
+        exc_str = str(last_exc) if last_exc else "unknown error"
+        return None, f"request failed: {exc_str[:60]}{'...' if len(exc_str) > 60 else ''}"
 
     # Response: candidates[0].content.parts[] with inline_data.mime_type and inline_data.data (base64)
     candidates = data.get("candidates") or []
     if not candidates:
-        logger.warning("Gemini image response had no candidates")
-        return None
+        logger.warning("Gemini image response had no candidates for '%s'", recipe_title[:50])
+        return None, "no image in response"
     parts = candidates[0].get("content", {}).get("parts") or []
     for part in parts:
         inline = part.get("inlineData") or part.get("inline_data")
@@ -104,7 +107,7 @@ async def generate_recipe_image(recipe_title: str) -> str | None:
         if raw:
             data_url = f"data:{mime};base64,{raw}"
             logger.info("Generated recipe image for '%s'", recipe_title[:50])
-            return data_url
+            return data_url, None
 
-    logger.warning("Gemini image response had no image part")
-    return None
+    logger.warning("Gemini image response had no image part for '%s'", recipe_title[:50])
+    return None, "no image in response"

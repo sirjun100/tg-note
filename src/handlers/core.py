@@ -1430,6 +1430,11 @@ async def _process_llm_response(
             success_msg = f"✅ Note created: '{llm_response.note['title']}' in folder '{folder_name}'"
             if tag_info.get("all_tags"):
                 success_msg += f"\nTags: {_format_tag_display(tag_info)}"
+            if note_result.get("image_skipped"):
+                reason = note_result.get("image_skipped_reason") or "unknown"
+                if len(reason) > 80:
+                    reason = reason[:77] + "..."
+                success_msg += f"\n\n⚠️ No image could be added ({reason})."
             await message.reply_text(format_success_message(success_msg))
             return note_result
         else:
@@ -1506,6 +1511,9 @@ async def create_note_in_joplin(
             return None
 
         final_image_data_url: str | None = image_data_url
+        image_skipped = False
+        image_skipped_reason: str | None = None
+        image_failure_reasons: list[str] = []
         if final_image_data_url is None:
             needs_image = (
                 (url_context and url_context.get("content_type") == "recipe")
@@ -1532,12 +1540,26 @@ async def create_note_in_joplin(
                 ):
                     from src.url_screenshot import capture_url_screenshot
                     final_image_data_url = await capture_url_screenshot(url_context["url"])
-                    if final_image_data_url is None and message:
-                        await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
+                    if final_image_data_url is None:
+                        image_failure_reasons.append("screenshot failed")
+                        logger.info(
+                            "Recipe screenshot failed for '%s'",
+                            normalized_note.get("title", "")[:60],
+                        )
+                        if message:
+                            await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
                 # Fallback: LLM-generated image when screenshot fails or no URL (pasted)
                 if final_image_data_url is None:
                     from src.recipe_image import generate_recipe_image
-                    final_image_data_url = await generate_recipe_image(normalized_note["title"])
+                    img_url, gemini_reason = await generate_recipe_image(normalized_note["title"])
+                    final_image_data_url = img_url
+                    if gemini_reason:
+                        image_failure_reasons.append(f"AI generation ({gemini_reason})")
+                        logger.info(
+                            "Recipe AI image generation failed for '%s': %s",
+                            normalized_note.get("title", "")[:60],
+                            gemini_reason,
+                        )
             elif (
                 final_image_data_url is None
                 and url_context
@@ -1547,10 +1569,31 @@ async def create_note_in_joplin(
             ):
                 from src.url_screenshot import capture_url_screenshot
                 final_image_data_url = await capture_url_screenshot(url_context["url"])
-                if final_image_data_url is None and message:
-                    await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
+                if final_image_data_url is None:
+                    image_failure_reasons.append("screenshot failed")
+                    logger.info(
+                        "URL screenshot failed for note '%s'",
+                        normalized_note.get("title", "")[:60],
+                    )
+                    if message:
+                        await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
             if final_image_data_url is None and url_context and url_context.get("content_type") == "recipe" and url_context.get("image_url"):
                 final_image_data_url = await _fetch_image_as_data_url(url_context["image_url"])
+                if final_image_data_url is None:
+                    image_failure_reasons.append("recipe image URL fetch failed")
+                    logger.info(
+                        "Recipe image URL fetch failed for '%s'",
+                        normalized_note.get("title", "")[:60],
+                    )
+
+            if needs_image and final_image_data_url is None:
+                image_skipped = True
+                image_skipped_reason = "; ".join(image_failure_reasons) if image_failure_reasons else "unknown"
+                logger.warning(
+                    "Recipe/image not generated for note '%s'. Reasons: %s",
+                    normalized_note.get("title", "")[:60],
+                    image_skipped_reason,
+                )
 
         note_id = await orch.joplin_client.create_note(
             folder_id=resolved_folder_id,
@@ -1564,7 +1607,13 @@ async def create_note_in_joplin(
         if tags:
             tag_info = await orch.joplin_client.apply_tags_and_track_new(note_id, tags)
 
-        return {"note_id": note_id, "tag_info": tag_info, "folder_id": resolved_folder_id}
+        return {
+            "note_id": note_id,
+            "tag_info": tag_info,
+            "folder_id": resolved_folder_id,
+            "image_skipped": image_skipped,
+            "image_skipped_reason": image_skipped_reason,
+        }
     except Exception as exc:
         logger.error("Error creating note: %s", exc, exc_info=True)
         return None
