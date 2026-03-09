@@ -8,6 +8,12 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ## 2026-03-09
 
+### New Features
+- **Joplin folder ↔ Google Tasks project sync** — Sync Joplin project folders with Google Tasks: each project folder becomes a parent task; tasks created for that project appear as subtasks. [US-034](project-management/backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
+  - **Commands**: `/tasks_toggle_project_sync`, `/tasks_sync_projects`, `/tasks_reset_project_sync`, `/tasks_set_projects_folder`
+  - **Docs**: [Project Sync](docs/for-users/project-sync.md), [Project Sync Troubleshooting](docs/for-users/project-sync-troubleshooting.md)
+  - Stalled projects (no next actions) surfaced in daily/weekly reports
+
 ### Bug Fixes
 - **Recipe image failure feedback** — When image generation fails (screenshot, Gemini, or URL fetch), the bot now logs the reason and alerts the user with the specific cause (e.g. rate limit, API key not set).
 - **Recipe folder** — Recipes now save to Resources/🍽️ Recipe first (Ressources fallback for French setups). Previously tried Ressources first.

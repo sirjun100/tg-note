@@ -167,13 +167,15 @@ Enable Google Tasks integration to get automatic task extraction:
 2. Add OAuth credentials to your `.env`
 3. Run `/authorize_google_tasks` in the bot
 
+**Project sync** (optional): Map Joplin project folders to parent tasks in Google Tasks. Tasks created for a project appear as subtasks under the parent. Enable with `/tasks_toggle_project_sync`; see [Project Sync](docs/for-users/project-sync.md) for details.
+
 ---
 
 ## Documentation
 
 | Audience | Guide |
 |----------|-------|
-| **Users** | [User Guide](docs/for-users/README.md) — setup, configuration, daily usage |
+| **Users** | [User Guide](docs/for-users/README.md) — setup, configuration, daily usage, [project sync](docs/for-users/project-sync.md) |
 | **GTD + Second Brain** | [Complete Workflow Guide](docs/for-users/gtd-second-brain-workflow.md) — when to create a task vs a note, project walkthroughs, weekly reviews |
 | **PARA Decisions** | [Where Things Go](docs/para-where-to-put.md) — Projects vs Areas vs Resources vs Archive |
 | **Developers** | [Developer Guide](docs/for-developers/README.md) — architecture, codebase, contributing |

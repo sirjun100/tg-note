@@ -167,6 +167,15 @@ Switch between:
 - **OpenAI**: GPT models, requires API key
 - **Ollama**: Local models, no API costs
 
+## Project Sync (Joplin ↔ Google Tasks)
+
+When enabled, project sync maps Joplin project folders to parent tasks in Google Tasks. Tasks you create for a project appear as subtasks under the correct parent. See [Project Sync](project-sync.md) for:
+
+- What project sync does and how to enable it
+- Folder naming and configuration
+- Commands: `/tasks_toggle_project_sync`, `/tasks_sync_projects`, `/tasks_reset_project_sync`
+- [Troubleshooting](project-sync-troubleshooting.md) for common issues
+
 ## Workflow Guide
 
 See [GTD + Second Brain Workflow](gtd-second-brain-workflow.md) for a complete guide on using Google Tasks and Joplin together, including:
@@ -176,6 +185,10 @@ See [GTD + Second Brain Workflow](gtd-second-brain-workflow.md) for a complete g
 - Decision framework for where things go
 - Weekly review process
 - Quick reference for common scenarios
+
+## Testing
+
+- **Project sync smoke test** — Run `./scripts/smoke_project_sync.sh` for automated tests. See [scripts/smoke_project_sync.md](../../scripts/smoke_project_sync.md) for manual production verification steps.
 
 ## Support
 

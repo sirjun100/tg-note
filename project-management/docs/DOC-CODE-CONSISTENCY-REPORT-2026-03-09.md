@@ -26,3 +26,9 @@
 - [x] docs/for-users/gtd-second-brain-workflow.md — Recipe folder path
 - [x] DEF-007 — Line references; added DEF-025 cross-ref
 - [x] docs/api-reference.md — Recipe image return type and failure handling
+
+## Project Sync (Sprint 16) — 2026-03-09
+
+**Scope**: US-034 project sync feature, docs, backlog, RELEASE_NOTES
+
+**Verification**: Ran `lint_project_management` (MCP) — passed. Manual check: README, docs/for-users/project-sync.md, project-sync-troubleshooting.md, product-backlog, sprint-16, RELEASE_NOTES all consistent. No mismatches.
