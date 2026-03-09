@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING, Any
 from telegram import Message, Update
 from telegram.ext import CommandHandler, ContextTypes
 
-from src.security_utils import check_whitelist
+from src.exceptions import GoogleAuthError
+from src.security_utils import check_whitelist, format_error_message
 from src.timezone_utils import get_current_date_str, get_user_timezone_aware_now
 
 if TYPE_CHECKING:
@@ -474,6 +475,11 @@ async def _create_tomorrow_task_from_stoic(
         if created:
             await message.reply_text("📋 Task created for tomorrow in Google Tasks.")
             return True
+    except GoogleAuthError:
+        await message.reply_text(format_error_message(
+            "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+        ))
+        return False
     except Exception as exc:
         logger.debug("Could not create Stoic tomorrow task: %s", exc)
     return False

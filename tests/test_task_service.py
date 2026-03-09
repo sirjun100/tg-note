@@ -470,3 +470,25 @@ class TestCreateTasksFromDecisionWithParentFolder:
         assert len(result) == 1
         call_kwargs = tasks_client.create_task.call_args[1]
         assert call_kwargs.get("parent_task_id") is None
+
+    def test_create_tasks_from_decision_re_raises_google_auth_error(
+        self, task_service, tasks_client, logging_service
+    ):
+        """DEF-027: When token refresh fails, GoogleAuthError propagates to handler."""
+        from src.exceptions import GoogleAuthError
+        from src.logging_service import Decision
+
+        user_id = "123"
+        task_service._set_client_token(user_id, logging_service.load_google_token.return_value)
+        tasks_client.get_default_task_list = MagicMock(side_effect=GoogleAuthError("Token expired"))
+        tasks_client.get_task_lists = MagicMock(return_value=[{"id": "list_1", "title": "My Tasks"}])
+
+        decision = Decision(
+            user_id=int(user_id),
+            status="SUCCESS",
+            note_title="Test",
+            note_body="todo: call mom",
+        )
+
+        with pytest.raises(GoogleAuthError):
+            task_service.create_tasks_from_decision(decision, user_id)

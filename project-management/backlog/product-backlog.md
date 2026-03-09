@@ -127,6 +127,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [DEF-024](defects/DEF-024-photo-image-not-displaying.md) | Photo OCR: Image Not Displaying in Joplin Note | 🟠 High | 2 | ✅ | Backlog | 2026-03-07 | 2026-03-07 |
 | [DEF-025](defects/DEF-025-recipe-pasted-text-shows-screenshot-skipped.md) | Recipe Pasted as Text Shows "Screenshot skipped" Incorrectly | 🟡 Medium | 2 | ✅ | Backlog | 2026-03-09 | 2026-03-09 |
 | [DEF-026](defects/DEF-026-braindump-and-image-ocr-cannot-save-to-joplin.md) | Braindump and Image OCR Cannot Save to Joplin | 🟠 High | 1 | ✅ | Backlog | 2026-03-09 | 2026-03-09 |
+| [DEF-027](defects/DEF-027-braindump-google-tasks-token-expired.md) | Braindump: Google Tasks Creation Fails with token_expired | 🟠 High | 2 | ✅ | Backlog | 2026-03-09 | 2026-03-09 |
 
 ---
 

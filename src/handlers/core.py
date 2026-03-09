@@ -19,7 +19,7 @@ from telegram.constants import ChatAction
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.constants import is_action_item
-from src.exceptions import AppError
+from src.exceptions import AppError, GoogleAuthError
 from src.handlers.profile import get_user_profile_context
 from src.logging_service import Decision, TelegramMessage
 from src.security_utils import (
@@ -928,6 +928,11 @@ async def _route_plain_message(
             logger.warning("Failed to create task from routing: %s", exc)
             await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
             return True
+        except GoogleAuthError:
+            await message.reply_text(format_error_message(
+                "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+            ))
+            return True
         except Exception as exc:
             logger.warning("Failed to create task from routing: %s", exc)
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
@@ -1024,6 +1029,11 @@ async def _route_plain_message(
             except AppError as exc:
                 logger.warning("Failed to create task (both flow): %s", exc)
                 await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
+                return True
+            except GoogleAuthError:
+                await message.reply_text(format_error_message(
+                    "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+                ))
                 return True
             except Exception as exc:
                 logger.warning("Failed to create task (both flow): %s", exc)
@@ -1294,6 +1304,11 @@ async def _handle_project_selection_reply(
         logger.warning("Failed to create task (project selection reply): %s", exc)
         await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
         return
+    except GoogleAuthError:
+        await message.reply_text(format_error_message(
+            "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+        ))
+        return
     except Exception as exc:
         logger.warning("Failed to create task (project selection reply): %s", exc)
         has_token = orch.logging_service.load_google_token(str(user_id)) is not None
@@ -1401,6 +1416,11 @@ def _project_selection_callback(orch: TelegramOrchestrator):
             logger.warning("Failed to create task (project selection callback): %s", exc)
             await query.edit_message_text(format_error_message(getattr(exc, "user_message", str(exc))))
             return
+        except GoogleAuthError:
+            await query.edit_message_text(format_error_message(
+                "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+            ))
+            return
         except Exception as exc:
             logger.warning("Failed to create task (project selection callback): %s", exc)
             has_token = orch.logging_service.load_google_token(str(user.id)) is not None
@@ -1458,6 +1478,10 @@ async def _handle_clarification_reply(
                     await message.reply_text(format_error_message("Failed to create Google Task. Check /tasks_status for details."))
                 else:
                     await message.reply_text(format_error_message("Failed to create Google Task. Use /tasks_connect to connect your Google account first."))
+        except GoogleAuthError:
+            await message.reply_text(format_error_message(
+                "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+            ))
         except Exception as exc:
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:

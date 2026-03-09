@@ -35,6 +35,7 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 - **Recipe folder** — Recipes now save to Resources/🍽️ Recipe first (Ressources fallback for French setups). Previously tried Ressources first.
 - **DEF-025: Recipe pasted text** — No longer shows "Screenshot skipped: Security verification required" when user pastes recipe text (URL incidental). Message only shown when user explicitly sent a link. [DEF-025](project-management/backlog/defects/DEF-025-recipe-pasted-text-shows-screenshot-skipped.md)
 - **DEF-026: Braindump and photo OCR save failure** — Fixed `'NoneType' object has no attribute 'get'` when saving braindump summaries or photo OCR notes to Joplin. Root cause: `url_context.get()` was called when `url_context` is None (braindump and photo flows). [DEF-026](project-management/backlog/defects/DEF-026-braindump-and-image-ocr-cannot-save-to-joplin.md)
+- **DEF-027: Google token expired — clear re-auth message** — When Google OAuth token is expired or revoked, braindump, planning, stoic, and task creation flows now show "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate." instead of the generic "Check /tasks_status for details." [DEF-027](project-management/backlog/defects/DEF-027-braindump-google-tasks-token-expired.md)
 
 ---
 

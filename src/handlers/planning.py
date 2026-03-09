@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
+from src.exceptions import GoogleAuthError
 from src.security_utils import check_whitelist, format_error_message, format_success_message
 from src.timezone_utils import get_user_timezone_aware_now
 
@@ -163,6 +164,8 @@ def _create_priority_tasks(orch: TelegramOrchestrator, user_id: int, state: dict
                 notes="Weekly priority from /plan session",
                 due_date=due,
             )
+        except GoogleAuthError:
+            raise
         except Exception as exc:
             logger.warning("Failed to create planning task '%s': %s", title[:50], exc)
             continue
@@ -251,6 +254,11 @@ async def _finish_planning(orch: TelegramOrchestrator, user_id: int, state: dict
         if task_count > 0:
             msg += f"\n✅ {task_count} priority task(s) added to Google Tasks."
         await message.reply_text(msg)
+    except GoogleAuthError:
+        orch.state_manager.clear_state(user_id)
+        await message.reply_text(format_error_message(
+            "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+        ))
     except Exception as exc:
         logger.error("Planning save failed: %s", exc)
         await message.reply_text(format_error_message("Failed to save plan. Please try again."))

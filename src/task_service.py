@@ -10,7 +10,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Any
 
-from src.exceptions import GoogleTasksConfigError
+from src.exceptions import GoogleAuthError, GoogleTasksConfigError
 from src.google_tasks_client import GoogleTasksClient
 from src.logging_service import Decision, LoggingService
 
@@ -458,6 +458,8 @@ class TaskService:
                         config['task_list_id'] = task_list_id
                         config['task_list_name'] = task_list_name
                         self.logging_service.save_google_tasks_config(int(user_id), config)
+                except GoogleAuthError:
+                    raise  # DEF-027: propagate so handler can show re-auth message
                 except Exception as e:
                     error_msg = f"Failed to get task list: {e}"
                     logger.warning("User %s: %s", user_id, error_msg)
@@ -519,6 +521,8 @@ class TaskService:
                             "joplin_to_google", "failed", error_msg
                         )
 
+                except GoogleAuthError:
+                    raise  # DEF-027: propagate so handler can show re-auth message
                 except Exception as e:
                     error_msg = f"Error creating task '{task_data['title']}': {str(e)}"
                     logger.warning("User %s: %s", user_id, error_msg)
@@ -527,6 +531,8 @@ class TaskService:
                         "joplin_to_google", "failed", error_msg
                     )
 
+        except GoogleAuthError:
+            raise  # DEF-027: propagate so handler can show re-auth message
         except Exception as e:
             error_msg = f"Unexpected error in task creation: {str(e)}"
             logger.warning("User %s: %s", user_id, error_msg)

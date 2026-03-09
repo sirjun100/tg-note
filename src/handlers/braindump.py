@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from telegram import Message, Update
 from telegram.ext import CommandHandler, ContextTypes
 
+from src.exceptions import GoogleAuthError
 from src.logging_service import Decision
 from src.security_utils import check_whitelist
 from src.timezone_utils import get_current_date_str, get_user_timezone_aware_now
@@ -325,12 +326,18 @@ async def _finish_session(
                         )
                         if proj:
                             parent_folder_id, parent_folder_title = proj
-                    created = orch.task_service.create_tasks_from_decision(
-                        decision,
-                        str(user_id),
-                        parent_folder_id=parent_folder_id,
-                        parent_folder_title=parent_folder_title,
-                    )
+                    try:
+                        created = orch.task_service.create_tasks_from_decision(
+                            decision,
+                            str(user_id),
+                            parent_folder_id=parent_folder_id,
+                            parent_folder_title=parent_folder_title,
+                        )
+                    except GoogleAuthError:
+                        await message.reply_text(
+                            "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+                        )
+                        created = []
                     if created:
                         try:
                             status = orch.task_service.get_task_sync_status(user_id)

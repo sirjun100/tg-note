@@ -10,7 +10,6 @@ import pytest
 from src.handlers import braindump as bd
 from src.state_manager import InMemoryStateManager
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -331,3 +330,38 @@ async def test_create_note_in_joplin_with_url_context_none():
 
     assert result is not None
     assert result.get("note_id") == "note456"
+
+
+# ---------------------------------------------------------------------------
+# DEF-027: GoogleAuthError shows re-auth message
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_finish_session_shows_reauth_on_google_auth_error():
+    """DEF-027: When create_tasks_from_decision raises GoogleAuthError, user sees re-auth message."""
+    from src.exceptions import GoogleAuthError
+    from src.handlers.braindump import _finish_session
+
+    orch = MagicMock()
+    orch.state_manager = InMemoryStateManager()
+    orch.state_manager.update_state(12345, {"session_mode": "standard", "conversation_history": []})
+    orch.logging_service = MagicMock()
+    orch.logging_service.load_google_token = MagicMock(return_value={"access_token": "x"})
+    orch.logging_service.get_google_tasks_config = MagicMock(return_value={"task_list_id": "list_1"})
+    orch.logging_service.log_decision = MagicMock()
+    orch.task_service = MagicMock()
+    orch.task_service.create_tasks_from_decision = MagicMock(side_effect=GoogleAuthError("Token expired"))
+    orch.reorg_orchestrator = MagicMock()
+    orch.reorg_orchestrator.get_project_folder_for_sync = AsyncMock(return_value=None)
+
+    message = AsyncMock()
+    message.reply_text = AsyncMock()
+
+    final_note = {"title": "Test", "body": "todo: x", "parent_id": "inbox", "tags": ["brain-dump"]}
+
+    with patch("src.handlers.core.create_note_in_joplin", new_callable=AsyncMock) as mock_create:
+        mock_create.return_value = {"note_id": "note123"}
+        await _finish_session(orch, 12345, message, note_data=final_note)
+
+    reply_calls = [c[0][0] for c in message.reply_text.call_args_list]
+    assert any("tasks_connect" in t and "re-authenticate" in t for t in reply_calls)
