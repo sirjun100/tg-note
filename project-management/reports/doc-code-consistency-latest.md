@@ -1,24 +1,29 @@
 # Documentation-Code Consistency Report
-**Date**: 2026-03-08
-**Trigger**: Sprint 17 completion
+**Date**: 2026-03-09
+**Trigger**: Pre-sprint planning
 
 ## Summary
-- Total flagged: 6
-- Open: 0 | Resolved: 1 | False Positive: 5
+- Total flagged: 9
+- Open: 9 | Resolved: 0 | False Positive: 0
 
 ## Items
 
 | # | Doc | Code | Category | Description | Severity | Status |
 |---|-----|------|----------|-------------|----------|--------|
-| 1 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/conversation_state.py | 2/9 File Reference | Doc references 'src/conversation_state.py' which does not exist in codebase | High | False Positive — Sprint planning doc; actual implementation uses `src/state_manager.py`. Historical planning reference, not a live code ref. |
-| 2 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | False Positive — Sprint planning doc; actual implementation uses `src/llm_orchestrator.py`. Historical planning reference. |
-| 3 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Duplicate of #2 | High | False Positive — same as #2 |
-| 4 | project-management/backlog/user-stories/US-033-flashcard.md | src/flashcard_scheduler.py | 2/9 File Reference | Doc references 'src/flashcard_scheduler.py' which does not exist in codebase | High | False Positive — Pre-existing issue unrelated to Sprint 17; to be addressed when US-033 is scheduled. |
-| 5 | project-management/backlog/user-stories/US-051-bookmark-command.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | Resolved — Updated US-051 key files table to reference `src/handlers/core.py` (where /bookmark was actually implemented). |
-| 6 | src/handlers/core.py (greeting) | Registered commands | 1.1 Conflicting Counts/Options | Commands registered but possibly not in greeting | Medium | False Positive — Intentional design: greeting/help shows main user-facing commands; internal/alias commands (stoic_append, tasks_toggle_*, etc.) are intentionally omitted from greeting to avoid noise. |
+| 1 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/conversation_state.py | 2/9 File Reference | Doc references 'src/conversation_state.py' which does not exist in codebase | High | Open |
+| 2 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | Open |
+| 3 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | Open |
+| 4 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | Open |
+| 5 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | Open |
+| 6 | project-management/sprints/sprint-18-world-class-stoic-journal.md | src/report_service.py | 2/9 File Reference | Doc references 'src/report_service.py' which does not exist in codebase | High | Open |
+| 7 | project-management/backlog/user-stories/US-033-flashcard.md | src/flashcard_scheduler.py | 2/9 File Reference | Doc references 'src/flashcard_scheduler.py' which does not exist in codebase | High | Open |
+| 8 | project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | Open |
+| 9 | src/handlers/core.py (greeting) | Registered commands: ['about_me', 'ask', 'bookmark', 'braindump', 'braindump_stop', 'cleanup_completed_tasks', 'daily_report', 'dream', 'dream_cancel', 'dream_done', 'find', 'flashcard', 'flashcard_done', 'habits', 'help', 'help_commands', 'helpme', 'identity', 'learnings', 'monthly_report', 'note', 'photo_cancel', 'plan', 'plan_cancel', 'plan_done', 'pn', 'profile', 'project_new', 'project_status', 'reading', 'readlater', 'recipe', 'reindex', 'report_config', 'report_daily', 'report_monthly', 'report_set_content', 'report_set_time', 'report_set_timezone', 'report_toggle_schedule', 'report_weekly', 'reset_project_sync', 'rl', 'search', 'search_reindex', 'search_status', 'set_projects_folder', 'start', 'status', 'status_projects', 'stoic', 'stoic_append', 'stoic_cancel', 'stoic_done', 'stoic_quick', 'stoic_replace', 'stoic_review', 'sync', 'sync_projects', 'task', 'tasks_cleanup', 'tasks_config', 'tasks_connect', 'tasks_list', 'tasks_reset_project_sync', 'tasks_set_list', 'tasks_set_projects_folder', 'tasks_status', 'tasks_sync_projects', 'tasks_toggle_auto', 'tasks_toggle_privacy', 'tasks_toggle_project_sync', 'tasks_verify', 'toggle_project_sync', 'weekly_report'] | 1.1 Conflicting Counts/Options | Commands registered but possibly not in greeting: ['about_me', 'bookmark', 'cleanup_completed_tasks', 'flashcard', 'flashcard_done', 'help_commands', 'identity', 'learnings', 'photo_cancel', 'pn', 'profile', 'project_new', 'recipe', 'report_config', 'report_daily', 'report_monthly', 'report_set_content', 'report_set_time', 'report_set_timezone', 'report_toggle_schedule', 'report_weekly', 'reset_project_sync', 'search_reindex', 'search_status', 'set_projects_folder', 'status_projects', 'stoic', 'stoic_append', 'stoic_cancel', 'stoic_done', 'stoic_quick', 'stoic_replace', 'stoic_review', 'sync_projects', 'tasks_cleanup', 'tasks_config', 'tasks_connect', 'tasks_list', 'tasks_reset_project_sync', 'tasks_set_list', 'tasks_set_projects_folder', 'tasks_status', 'tasks_sync_projects', 'tasks_toggle_auto', 'tasks_toggle_privacy', 'tasks_toggle_project_sync', 'tasks_verify', 'toggle_project_sync'] | Medium | Open |
 
 ## Next Steps
-- No open items. Sprint 17 DoD consistency check complete.
+1. Human review: For each Open item, decide: fix docs, fix code, or mark False Positive.
+2. Update status in this report.
+3. Create backlog items for fixes if needed.
 
 ---
 *Generated by scripts/doc_code_review.py (FR-036)*

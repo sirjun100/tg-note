@@ -1682,7 +1682,8 @@ async def create_note_in_joplin(
             if needs_image and message:
                 await message.reply_text("🖼️ Adding image...")
             # DEF-025: Only show screenshot-skipped when URL was primary input (user sent link, not pasted text)
-            url_was_primary = url_context.get("url_was_primary", True)
+            # DEF-026: Guard when url_context is None (braindump, photo OCR)
+            url_was_primary = url_context.get("url_was_primary", True) if url_context else True
             if (
                 url_context
                 and url_context.get("url")
