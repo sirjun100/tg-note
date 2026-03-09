@@ -65,6 +65,18 @@ class TestIsErrorPage(unittest.TestCase):
         self.assertTrue(is_error)
         self.assertIn("paywall", reason.lower())
 
+    def test_recipe_page_with_newsletter_subscribe_not_paywall(self):
+        """Recipe sites with 'Subscribe to our newsletter' should not be flagged as paywall."""
+        html = """<html><body>
+        <h1>Gâteau aux carottes</h1>
+        <ul><li>2 tasses farine</li><li>4 œufs</li></ul>
+        <p>Préchauffer le four à 350°F...</p>
+        <footer>Subscribe to our newsletter for more recipes!</footer>
+        </body></html>"""
+        title = "Recette - Gâteau aux carottes"
+        is_error, reason = _is_error_page(html, title, "https://recettes.qc.ca/recette/carrot-cake")
+        self.assertFalse(is_error, f"Should not flag recipe with newsletter CTA: {reason}")
+
     def test_detect_video_not_available(self):
         """Detect YouTube video not available."""
         html = "<html><body>Video not available</body></html>"

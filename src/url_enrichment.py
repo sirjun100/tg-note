@@ -89,7 +89,7 @@ def _classify_url_type(url: str, title: str, extracted_text: str) -> str:
     return "knowledge"
 
 
-def _template_for_url_type(url_type: str) -> dict[str, str]:
+def template_for_url_type(url_type: str) -> dict[str, str]:
     if url_type == "media":
         return {
             "template_id": "1",
@@ -303,7 +303,15 @@ def _is_error_page(html_text: str, title: str, url: str) -> tuple[bool, str]:
         (["geo-restricted", "geo-blocked", "blocked", "restricted"], "Geo-blocked or restricted"),
         (["sign in required", "login required"], "Login required"),
         (
-            ["paywall", "subscription required", "subscribe", "premium only", "members only"],
+            [
+                "paywall",
+                "subscription required",
+                "subscribe to read",
+                "subscribe to continue",
+                "subscribe to unlock",
+                "premium only",
+                "members only",
+            ],
             "Subscription/paywall",
         ),
         (["error occurred", "error loading", "something went wrong"], "Error page"),
@@ -445,7 +453,7 @@ async def fetch_url_context(url: str) -> dict[str, Any]:
         recipe_data = _parse_recipe_jsonld(html_text)
         content_type = "recipe" if recipe_data is not None else _classify_url_type(final_url, title, extracted_text)
 
-        template = _template_for_url_type(content_type)
+        template = template_for_url_type(content_type)
 
         result.update(
             {

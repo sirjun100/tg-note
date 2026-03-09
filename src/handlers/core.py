@@ -32,7 +32,7 @@ from src.security_utils import (
     validate_note_data,
 )
 from src.timezone_utils import get_user_timezone_aware_now
-from src.url_enrichment import extract_urls, fetch_url_context
+from src.url_enrichment import extract_urls, fetch_url_context, template_for_url_type
 
 if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
@@ -84,6 +84,7 @@ def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
     application.add_handler(CommandHandler("sync", _sync(orch)))
     application.add_handler(CommandHandler("note", _note(orch)))
+    application.add_handler(CommandHandler("recipe", _recipe(orch)))
     application.add_handler(CommandHandler("task", _task(orch)))
     application.add_handler(CommandHandler("help_commands", _helpme(orch)))
     application.add_handler(CommandHandler("helpme", _helpme(orch)))
@@ -309,6 +310,39 @@ def _note(orch: TelegramOrchestrator):
         await _handle_new_request(
             orch, user.id, validated, update.message, telegram_message_id, context,
             force_note=True,
+        )
+
+    return handler
+
+
+def _recipe(orch: TelegramOrchestrator):
+    """Save as a recipe note. Usage: /recipe <pasted recipe or URL>."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        parts = (update.message.text or "").strip().split(maxsplit=1)
+        payload = parts[1].strip() if len(parts) > 1 else ""
+        if not payload:
+            await update.message.reply_text(
+                "🍳 *Use /recipe to save a recipe*\n\n"
+                "Paste the recipe text or send a URL:\n"
+                "  /recipe Gâteau aux carottes...\n"
+                "  /recipe https://recettes.qc.ca/recette/...\n\n"
+                "The bot will format it as a recipe note with ingredients, steps, and nutrition.",
+                parse_mode="Markdown",
+            )
+            return
+        validated = validate_message_text(payload)
+        if not validated:
+            await update.message.reply_text(format_error_message("Content too long or empty."))
+            return
+        telegram_msg = TelegramMessage(user_id=user.id, message_text=validated)
+        telegram_message_id = orch.logging_service.log_telegram_message(telegram_msg)
+        await _handle_new_request(
+            orch, user.id, validated, update.message, telegram_message_id, context,
+            force_note=True,
+            force_recipe=True,
         )
 
     return handler
@@ -899,6 +933,7 @@ async def _handle_new_request(
     *,
     force_note: bool = False,
     force_task: bool = False,
+    force_recipe: bool = False,
 ) -> None:
     if force_task:
         # Explicit /task: create exactly one Google Task from the user's text
@@ -1011,6 +1046,33 @@ async def _handle_new_request(
         await _send_typing(message, context)
         await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=text)
+
+    # /recipe: ensure recipe template is used (pasted text or URL)
+    if force_recipe:
+        if not url_context or not url_context.get("url"):
+            # Pasted recipe text — build synthetic recipe context
+            template = template_for_url_type("recipe")
+            url_context = {
+                "url": "(pasted)",
+                "content_type": "recipe",
+                "extracted_text": text,
+                "template_name": template["template_name"],
+                "template_id": template["template_id"],
+                "template_instructions": (
+                    "Use Template 4 - Recipe. Extract ingredients, preparation, cooking steps, "
+                    "and nutrition from the pasted text. Sections: Source (say 'Pasted by user'), "
+                    "Ingredients, Preparation, Cooking, Nutrition (estimate if not given), Notes."
+                ),
+            }
+        else:
+            # URL was fetched — force recipe format (e.g. paywall fallback)
+            url_context = dict(url_context)
+            url_context["content_type"] = "recipe"
+            if not url_context.get("template_name"):
+                template = template_for_url_type("recipe")
+                url_context["template_name"] = template["template_name"]
+                url_context["template_id"] = template["template_id"]
+                url_context["template_instructions"] = template["instructions"]
 
     if url_context and url_context.get("content_type") == "recipe":
         await message.reply_text("🍳 Recipe detected — saving to Resources and adding an image.")

@@ -1,6 +1,6 @@
 # Sprint 16: Joplin ↔ Google Tasks Project Sync
 
-**Sprint Goal**: Unify Joplin project structure with Google Tasks so each project folder maps to a parent task and action items from project notes become subtasks.
+**Sprint Goal**: Verify, test, and polish US-034 (Project Sync). Implementation exists in main; focus on verification, unit tests, and production validation.
 
 **Duration**: 2026-06-02 – 2026-06-15 (2 weeks)
 **Status**: ⏳ Planned
@@ -11,32 +11,50 @@
 
 ---
 
+## Implementation Status (as of 2026-03-08)
+
+**US-034 is implemented in main.** Per [US-034-GAP-ANALYSIS](../backlog/user-stories/US-034-GAP-ANALYSIS.md):
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Task Creation UX | ✅ Done | "Is this for a project?" flow, inline keyboard |
+| Core Sync | ✅ Done | Parent on-demand, subtasks, mapping |
+| Sync Triggers | ✅ Done | `/tasks_sync_projects`, rename detection, delete cleanup |
+| Configuration | ✅ Done | `/tasks_toggle_project_sync`, `/tasks_set_projects_folder` |
+| Stalled Projects | ✅ Done | Daily, weekly, monthly reports |
+
+**Commands**: `/tasks_toggle_project_sync`, `/tasks_sync_projects`, `/tasks_reset_project_sync`, `/tasks_set_projects_folder` — all in help.
+
+**Sprint 16 focus**: Verification, unit/integration tests, production smoke test, documentation, mark US-034 complete.
+
+---
+
 ## Sprint Overview
 
 **Primary Feature** (13 pts):
-- US-034: Joplin Projects ↔ Google Tasks sync — project folder = parent task, notes → subtasks
+- US-034: Joplin Projects ↔ Google Tasks sync — **verify implementation, add tests, polish**
 
 **Focus Areas**:
-- Project-to-task mapping: Joplin folder ↔ Google parent task
-- Subtask creation: Action items from project notes → subtasks under parent
-- Configuration: Opt-in, projects folder selection, task list
-- Stalled projects: Flag in reports when project has no next actions
+- Verification: All acceptance criteria met in production
+- Testing: Unit tests for mapping, task creation with parent, stalled detection
+- Documentation: User guide, troubleshooting
+- Polish: Edge cases, error messages, help text
 
 **Key Deliverables**:
-- Project sync enabled via config; "Is this for a project?" flow when creating tasks
-- Parent tasks created on-demand; subtasks linked to project
-- `joplin_project_sync` mapping (folder_id ↔ google_task_id)
-- Stalled projects in daily/weekly/monthly reports
-- `/sync_projects` (or equivalent) for initial sync
+- [ ] Verification checklist completed
+- [ ] Unit tests for `get_or_create_project_parent_task`, `sync_project_parent_tasks`, `get_stalled_project_titles`
+- [ ] Integration test: project note → subtask flow
+- [ ] Production smoke test: enable sync, run `/tasks_sync_projects`, create task for project
+- [ ] US-034 marked ✅ in product backlog
+- [ ] RELEASE_NOTES.md updated
 
 **Dependencies**:
 - US-012 (Google Tasks) ✅
-- US-044 (/project_new) ✅ — project creation exists
-- Joplin `get_folders`, folder structure
+- US-044 (/project_new) ✅
+- Implementation in main ✅
 
 **Risks & Blockers**:
-- Google Tasks API subtask handling; parent parameter
-- Mapping persistence across restarts
+- None identified; implementation exists.
 
 ---
 
@@ -44,30 +62,29 @@
 
 - [ ] Documentation-Code Consistency Review run (`./scripts/doc-code-review.sh`)
 - [ ] Sprint 15 completed ✅
-- [ ] US-034 acceptance criteria refined and understood
+- [ ] Confirm US-034 implementation in main (grep `project_sync_enabled`, `get_or_create_project_parent_task`)
 
 ---
 
 ## User Stories
 
-### Story 1: Project Sync Core — 8 Points
+### Story 1: Verification & Unit Tests — 8 Points
 
-**User Story**: As a user with Joplin projects, I want each project folder to map to a parent task in Google Tasks, and action items from project notes to become subtasks, so that my structure stays aligned.
+**User Story**: As a developer, I want US-034 verified and covered by tests, so that we can confidently mark it complete and prevent regressions.
 
 **Acceptance Criteria**:
-- [ ] Folder under Projects → parent task in Google Tasks (same name)
-- [ ] Note in project + action item → subtask under that project's parent
-- [ ] Note in Inbox/non-project → top-level task
-- [ ] Mapping stored: `joplin_folder_id` ↔ `google_task_id`
-- [ ] Parent tasks created on-demand (lazy)
-- [ ] `task_link` preserved (note_id ↔ task_id) for subtasks
+- [ ] All US-034 acceptance criteria verified in code (see GAP-ANALYSIS)
+- [ ] Unit tests: `get_or_create_project_parent_task`, `sync_project_parent_tasks`, `get_stalled_project_titles`
+- [ ] Unit test: `create_tasks_from_decision` with `parent_folder_id` creates subtask
+- [ ] Unit test: `cleanup_orphaned_project_mappings` removes deleted folder mappings
+- [ ] Integration test: braindump/routing with project note → subtask under parent
 
-**Reference**: [US-034](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
+**Reference**: [US-034](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md), [US-034-GAP-ANALYSIS](../backlog/user-stories/US-034-GAP-ANALYSIS.md)
 
 **Technical References**:
-- `src/task_service.py` — `create_task_with_metadata`, extend for `parent_folder_id`
-- `src/logging_service.py` — new table/config for `joplin_project_sync`
-- Google Tasks API: `tasks.insert` with `parent` parameter
+- `src/task_service.py` — `get_or_create_project_parent_task`, `sync_project_parent_tasks`, `get_stalled_project_titles`
+- `tests/test_task_service.py` — add project sync tests
+- `tests/test_report_generator.py` — stalled projects in report
 
 **Priority**: 🟠 High  
 **Story Points**: 8
@@ -76,31 +93,31 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-001 | Add `joplin_project_sync` table/config; CRUD for folder↔task mapping | US-034 | ⭕ | 2 |
-| T-002 | Extend task creation to accept `parent_folder_id`; resolve to parent task | task_service.py | ⭕ | 2 |
-| T-003 | Create parent task on-demand when first subtask for project | task_service.py | ⭕ | 2 |
-| T-004 | Wire routing/note flow: pass folder_id when note is in project | handlers/core.py | ⭕ | 2 |
+| T-001 | Verify `joplin_project_sync` table, CRUD, migration | logging_service.py | ⭕ | 1 |
+| T-002 | Unit test: `get_or_create_project_parent_task` (create, reuse, rename detection) | task_service.py | ⭕ | 2 |
+| T-003 | Unit test: `sync_project_parent_tasks` (create new, skip existing) | task_service.py | ⭕ | 2 |
+| T-004 | Unit test: `get_stalled_project_titles` (empty, with subtasks) | task_service.py | ⭕ | 1 |
+| T-005 | Unit test: `create_tasks_from_decision` with parent_folder_id → subtask | task_service.py | ⭕ | 1 |
+| T-006 | Integration test: project note + action → subtask under parent | handlers, braindump | ⭕ | 1 |
 
 **Total Task Points**: 8
 
 ---
 
-### Story 2: Project Selection UX — 3 Points
+### Story 2: Production Smoke Test & Documentation — 3 Points
 
-**User Story**: As a user creating a task, I want to be asked "Is this for a project?" and pick from my projects, so that I can assign tasks to the right project.
+**User Story**: As a user, I want project sync to work reliably in production and have clear documentation.
 
 **Acceptance Criteria**:
-- [ ] When creating task (without note context): "Is this for a project?" with numbered list
-- [ ] User replies with number → create as subtask under that project
-- [ ] User replies "no" → create as top-level task
-- [ ] Skip prompt when task comes from note already in project folder
-- [ ] Inline/reply keyboard for faster selection (optional)
+- [ ] Production smoke test: enable sync, `/tasks_sync_projects`, create task for project
+- [ ] User-facing docs: how to enable, use `/tasks_sync_projects`, stalled projects in reports
+- [ ] Troubleshooting: reset mappings, wrong list, no projects found
 
 **Reference**: [US-034](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
 
 **Technical References**:
-- `src/handlers/core.py` — `_handle_new_request` force_task flow, project selection state
-- `src/reorg_orchestrator.py` — `get_project_folders`
+- `docs/for-users/` — add project sync section
+- `src/handlers/core.py` — help text (already includes project sync commands)
 
 **Priority**: 🟠 High  
 **Story Points**: 3
@@ -109,29 +126,30 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-005 | Add "Is this for a project?" flow; state for project selection | handlers/core.py | ⭕ | 1.5 |
-| T-006 | Fetch project list; show numbered list; parse reply | handlers/core.py | ⭕ | 1 |
-| T-007 | Create subtask with parent when project selected | task_service.py | ⭕ | 0.5 |
+| T-007 | Production smoke test: full flow (enable, sync, task, report) | Manual | ⭕ | 1 |
+| T-008 | Add project sync to user docs (enable, commands, stalled projects) | docs/ | ⭕ | 1 |
+| T-009 | Troubleshooting section: reset, wrong list, no projects | docs/ | ⭕ | 1 |
 
 **Total Task Points**: 3
 
 ---
 
-### Story 3: Config, Sync, Stalled — 2 Points
+### Story 3: Polish & Completion — 2 Points
 
-**User Story**: As a user, I want to enable/disable project sync, run initial sync, and see stalled projects in reports, so that I control the feature and get visibility.
+**User Story**: As a product owner, I want US-034 formally complete with backlog updated and release notes.
 
 **Acceptance Criteria**:
-- [ ] Config: enable/disable project sync; choose projects folder
-- [ ] Command or flow for initial sync (create parent tasks for all projects)
-- [ ] Stalled projects (no subtasks) flagged in daily/weekly/monthly reports
+- [ ] US-034 marked ✅ in product backlog
+- [ ] RELEASE_NOTES.md updated with project sync
+- [ ] Doc-code consistency review run; no high-priority gaps
+- [ ] Edge cases reviewed: duplicate names, empty projects, rename/delete
 
 **Reference**: [US-034](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
 
 **Technical References**:
-- `src/report_generator.py`, `weekly_report_generator.py`, `monthly_report_generator.py` — stalled projects
-- `src/task_service.py` — `get_stalled_project_titles` (may exist)
-- `src/handlers/google_tasks.py` — config, sync command
+- `project-management/backlog/product-backlog.md`
+- `RELEASE_NOTES.md`
+- `scripts/doc-code-review.sh`
 
 **Priority**: 🟡 Medium  
 **Story Points**: 2
@@ -140,9 +158,9 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-008 | Add project sync config (enabled, projects_folder_id) | logging_service, handlers | ⭕ | 0.5 |
-| T-009 | Implement initial sync: create parent tasks for all projects | task_service, handlers | ⭕ | 0.5 |
-| T-010 | Add stalled projects to reports (daily, weekly, monthly) | report_generator, etc. | ⭕ | 1 |
+| T-010 | Update product backlog: US-034 → ✅ | product-backlog.md | ⭕ | 0.5 |
+| T-011 | RELEASE_NOTES.md: project sync section | RELEASE_NOTES.md | ⭕ | 0.5 |
+| T-012 | Run doc-code review; fix any project sync gaps | scripts/ | ⭕ | 1 |
 
 **Total Task Points**: 2
 
@@ -155,25 +173,58 @@
 **Estimated Velocity**: 13 points
 
 **Sprint Burndown Plan**:
-- **Week 1**: Story 1 (T-001–T-004) — core sync, mapping, parent/subtask creation
-- **Week 2**: Story 2 (T-005–T-007) — project selection UX; Story 3 (T-008–T-010) — config, sync, stalled
+- **Week 1**: Story 1 (T-001–T-006) — verification, unit tests, integration test
+- **Week 2**: Story 2 (T-007–T-009) — production smoke test, docs; Story 3 (T-010–T-012) — polish, backlog, release notes
 
 **Scope Reduction** (if needed):
-- Phase 1: Stories 1 + 2 only (11 pts) — core + UX
-- Phase 2: Story 3 (2 pts) — config, sync, stalled (next sprint)
+- Phase 1: Story 1 only (8 pts) — verification + tests
+- Phase 2: Stories 2 + 3 (5 pts) — docs, polish (next sprint)
 
 **Success Criteria** (Definition of Done):
 - [ ] All 3 stories completed; acceptance criteria met
-- [ ] Unit tests for mapping, task creation with parent
-- [ ] No new linter errors
+- [ ] Unit tests for project sync (mapping, parent creation, stalled)
+- [ ] Production smoke test passed
+- [ ] US-034 marked ✅ in product backlog
 - [ ] RELEASE_NOTES.md updated
 - [ ] Doc-code consistency review run
+- [ ] No new linter errors
+
+---
+
+## Manual Testing Checklist
+
+Before marking US-034 complete, run:
+
+1. **Enable project sync**
+   - [ ] `/tasks_toggle_project_sync` → "Project sync: ✅ On"
+   - [ ] `/tasks_config` shows project sync status
+
+2. **Initial sync**
+   - [ ] Create 2+ project folders in Joplin (e.g. `/project_new Test1`, `/project_new Test2`)
+   - [ ] `/tasks_sync_projects` → "Created: 2 parent task(s)"
+   - [ ] Check Google Tasks: parent tasks "Test1", "Test2" exist
+
+3. **Task for project**
+   - [ ] `/task Call client` → "Is this for a project?" → select 1 (Test1)
+   - [ ] Check Google Tasks: "Call client" is subtask under "Test1"
+
+4. **Note in project → subtask**
+   - [ ] Create note in Projects/Test1 with action "Review proposal"
+   - [ ] Check Google Tasks: "Review proposal" is subtask under "Test1"
+
+5. **Stalled projects**
+   - [ ] Create parent with no subtasks (or complete all subtasks)
+   - [ ] `/report_daily` or `/report_weekly` → "⚠️ Projects with no next actions: ..."
+
+6. **Reset**
+   - [ ] `/tasks_reset_project_sync` → mappings cleared
+   - [ ] `/tasks_sync_projects` → fresh parent tasks created
 
 ---
 
 ## Optional Stretch: US-051 Bookmark (5 pts)
 
-If capacity allows, add [US-051](/bookmark command) — 5 pts. Well-defined, reuses URL enrichment. Would bring sprint to 18 pts (above velocity).
+If capacity allows, add [US-051](../backlog/user-stories/US-051-bookmark-command.md) — 5 pts. Well-defined, reuses URL enrichment. Would bring sprint to 18 pts (above velocity).
 
 ---
 
@@ -181,7 +232,8 @@ If capacity allows, add [US-051](/bookmark command) — 5 pts. Well-defined, reu
 
 - [Sprint 15–18 Planning](../docs/sprint-15-18-planning.md)
 - [US-034: Joplin ↔ Google Tasks Project Sync](../backlog/user-stories/US-034-joplin-google-tasks-project-sync.md)
-- [Definition of Done](../docs/definition-of-done.md)
+- [US-034 Gap Analysis](../backlog/user-stories/US-034-GAP-ANALYSIS.md)
+- [Definition of Done](../criteria/definition-of-done.md)
 - [Product Backlog](../backlog/product-backlog.md)
 
 ---
