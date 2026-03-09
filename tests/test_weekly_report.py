@@ -32,13 +32,12 @@ class TestWeekBounds:
         assert end.date() == sunday.date()
 
     def test_none_uses_now(self):
+        from src.timezone_utils import get_user_timezone_aware_now
+
+        # Use same "now" as _week_bounds (user timezone) to avoid TZ mismatch
+        now = get_user_timezone_aware_now(123, None)
         start, end = _week_bounds(123, None, None)
-        # _week_bounds returns timezone-aware datetimes, so use naive comparison
-        now = datetime.now()
-        # Convert to naive for comparison (strip tzinfo)
-        start_naive = start.replace(tzinfo=None)
-        end_naive = end.replace(tzinfo=None)
-        assert start_naive <= now <= end_naive
+        assert start <= now <= end
 
 
 class TestRecommendations:
@@ -206,7 +205,10 @@ class TestGenerateWeeklyReport:
 
     async def test_generate_with_mocked_google_tasks(self):
         """Verify Google Tasks split into completed/pending/overdue."""
-        yesterday = (datetime.now() - timedelta(days=1)).isoformat() + "Z"
+        # Fixed reference: Sunday 2026-03-08 (week Mon 2 Mar - Sun 8 Mar)
+        ref = datetime(2026, 3, 8, 18, 0)
+        mid_week = datetime(2026, 3, 5, 12, 0)  # Wednesday
+        yesterday = (ref - timedelta(days=1)).isoformat() + "Z"
 
         mock_task_service = MagicMock()
         mock_task_service.get_available_task_lists.return_value = [
@@ -214,14 +216,14 @@ class TestGenerateWeeklyReport:
         ]
         mock_task_service.get_user_tasks.return_value = [
             {"id": "t1", "title": "Done Task", "status": "completed",
-             "completed": datetime.now().isoformat() + "Z"},
+             "completed": mid_week.isoformat() + "Z"},
             {"id": "t2", "title": "Pending Task", "status": "needsAction"},
             {"id": "t3", "title": "Overdue Task", "status": "needsAction",
              "due": yesterday},
         ]
 
         gen = WeeklyReportGenerator(task_service=mock_task_service)
-        report = await gen.generate_weekly_report(user_id=123)
+        report = await gen.generate_weekly_report(user_id=123, reference_date=ref)
 
         assert report.current.tasks_completed == 1
         assert report.current.tasks_pending == 1
@@ -237,6 +239,10 @@ class TestGenerateWeeklyReport:
 
         db_path = os.path.join(tempfile.mkdtemp(), "test_logs.db")
 
+        # Fixed reference: Sunday 2026-03-08 (week Mon 2 Mar - Sun 8 Mar)
+        ref = datetime(2026, 3, 8, 18, 0)
+        mid_week = datetime(2026, 3, 5, 12, 0)  # Wednesday in week
+
         with sqlite3.connect(db_path) as conn:
             conn.execute("""CREATE TABLE telegram_messages (
                 id INTEGER PRIMARY KEY, user_id INTEGER, message_text TEXT,
@@ -244,16 +250,15 @@ class TestGenerateWeeklyReport:
             conn.execute("""CREATE TABLE decisions (
                 id INTEGER PRIMARY KEY, user_id INTEGER, status TEXT,
                 timestamp DATETIME)""")
-            now = datetime.now()
             for i in range(5):
                 conn.execute(
                     "INSERT INTO telegram_messages (user_id, message_text, timestamp, message_type) VALUES (?, ?, ?, ?)",
-                    (123, f"msg {i}", now.isoformat(), "user"),
+                    (123, f"msg {i}", mid_week.isoformat(), "user"),
                 )
             for i in range(3):
                 conn.execute(
                     "INSERT INTO decisions (user_id, status, timestamp) VALUES (?, ?, ?)",
-                    (123, "SUCCESS", now.isoformat()),
+                    (123, "SUCCESS", mid_week.isoformat()),
                 )
             conn.commit()
 
@@ -261,7 +266,7 @@ class TestGenerateWeeklyReport:
         mock_logging.db_path = db_path
 
         gen = WeeklyReportGenerator(logging_service=mock_logging)
-        report = await gen.generate_weekly_report(user_id=123)
+        report = await gen.generate_weekly_report(user_id=123, reference_date=ref)
 
         assert report.current.messages_sent == 5
         assert report.current.decisions_made == 3

@@ -13,7 +13,11 @@
 
 set -e
 
+# Run from git root (or PROJECT_ROOT when MCP runs from different cwd)
 GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [ -z "$GIT_ROOT" ] && [ -n "$PROJECT_ROOT" ]; then
+    GIT_ROOT="$PROJECT_ROOT"
+fi
 if [ -z "$GIT_ROOT" ]; then
     echo "Not a git repository. Run from project root."
     exit 1

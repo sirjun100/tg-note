@@ -17,6 +17,10 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 - **/bookmark feature request** — FR-051 added for saving URLs to Joplin with metadata and tags. [FR-051](project-management/backlog/features/FR-051-bookmark-command.md)
 
 ### Bug Fixes
+- **Recipe folder** — All recipes now save to Resources/🍽️ Recipe (or Ressources/🍽️ Recipe). Folder created automatically if missing.
+- **Recipe image fallback** — When URL screenshot fails, fall back to LLM-generated image (Gemini) for recipe notes.
+- **MCP prepare_gap_check / generate_release_notes** — Scripts now use PROJECT_ROOT when git cwd differs. MCP tools pass env to subprocesses.
+- **Weekly report tests** — Fixed timezone-dependent failures: use fixed reference dates and user timezone for assertions.
 - **Recipe paywall false positive** — Narrowed paywall detection: "subscribe" alone no longer flags recipe sites with newsletter CTAs. Now requires "subscribe to read/continue/unlock".
 - **/recipe command** — New command to explicitly save recipes: paste text or send URL. Forces recipe template for pasted content and paywall fallbacks.
 - **Recipe note truncation** — Fixed LLM response truncation when saving long recipes (e.g. carrot cake) that caused JSON parse failure on Fly. Increased max_tokens to 2500 for note generation.

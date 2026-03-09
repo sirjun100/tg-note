@@ -1,5 +1,6 @@
 """MCP tools: script wrappers and file-writing tools."""
 
+import os
 import re
 import subprocess
 from datetime import date
@@ -24,10 +25,14 @@ def _run_script(script_name: str, *args: str, cwd: Path | None = None) -> str:
         if not script.exists():
             return f"Error: Script not found: {script}"
 
+    # Pass PROJECT_ROOT so git-based scripts work when MCP cwd differs from project root
+    env = {**os.environ, "PROJECT_ROOT": str(root.resolve())}
+
     try:
         result = subprocess.run(
             [str(script), *args],
             cwd=root,
+            env=env,
             capture_output=True,
             text=True,
             timeout=120,

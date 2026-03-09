@@ -46,6 +46,9 @@ PROJECT_STATUS_TAGS = {
     "status/done",
 }
 
+# Recipe notes go in Resources/🍽️ Recipe (try Ressources first for French setups)
+RECIPE_FOLDER_PATHS = (["Ressources", "🍽️ Recipe"], ["Resources", "🍽️ Recipe"])
+
 GREETING_PATTERNS = [
     r"^(hi|hello|hey|howdy|greetings|yo)[\s!?.]*$",
     r"^good\s+(morning|afternoon|evening|day|night)[\s!?.]*$",
@@ -1075,7 +1078,7 @@ async def _handle_new_request(
                 url_context["template_instructions"] = template["instructions"]
 
     if url_context and url_context.get("content_type") == "recipe":
-        await message.reply_text("🍳 Recipe detected — saving to Resources and adding an image.")
+        await message.reply_text("🍳 Recipe detected — saving to Resources/🍽️ Recipe and adding an image.")
 
     await _send_typing(message, context)
     await message.reply_text("🤖 Analyzing...")
@@ -1319,7 +1322,7 @@ async def _handle_clarification_reply(
         await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=combined)
     if url_context and url_context.get("content_type") == "recipe":
-        await message.reply_text("🍳 Recipe detected — saving to Resources and adding an image.")
+        await message.reply_text("🍳 Recipe detected — saving to Resources/🍽️ Recipe and adding an image.")
     await _send_typing(message, context)
     await message.reply_text("🤖 Analyzing...")
     folders = await orch.joplin_client.get_folders()
@@ -1466,17 +1469,19 @@ async def create_note_in_joplin(
             note_title=note_data.get("title", ""),
             note_body=note_data.get("body", ""),
         )
-        # For recipe notes, fall back to default recipe folder when resolution fails
-        if not resolved_folder_id and url_context and url_context.get("content_type") == "recipe":
-            for fallback_name in ("Resources", "Recipes"):
+        # Recipe notes always go in Resources/🍽️ Recipe (or Ressources/🍽️ Recipe)
+        if url_context and url_context.get("content_type") == "recipe":
+            for path in RECIPE_FOLDER_PATHS:
+                try:
+                    resolved_folder_id = await orch.joplin_client.get_or_create_folder_by_path(path)
+                    if resolved_folder_id:
+                        break
+                except Exception as exc:
+                    logger.warning("Recipe folder path %s failed: %s", path, exc)
+            if not resolved_folder_id:
                 resolved_folder_id, _ = await _resolve_folder_id_or_suggestions(
-                    orch,
-                    fallback_name,
-                    note_title=note_data.get("title", ""),
-                    note_body=note_data.get("body", ""),
+                    orch, "Resources", note_title=note_data.get("title", ""), note_body=note_data.get("body", ""),
                 )
-                if resolved_folder_id:
-                    break
         if not resolved_folder_id:
             return {
                 "error": "folder_not_found",
@@ -1518,13 +1523,26 @@ async def create_note_in_joplin(
                     await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")
                 else:
                     await message.reply_text("⚠️ Screenshot skipped (site uses security verification).")
+            # For recipe with URL: try screenshot first, fall back to LLM when it fails
             if url_context and url_context.get("content_type") == "recipe":
-                from src.recipe_image import generate_recipe_image
-                final_image_data_url = await generate_recipe_image(normalized_note["title"])
-            if (
+                has_url = url_context.get("url") and url_context.get("url") != "(pasted)"
+                if (
+                    has_url
+                    and not url_context.get("skip_screenshot")
+                ):
+                    from src.url_screenshot import capture_url_screenshot
+                    final_image_data_url = await capture_url_screenshot(url_context["url"])
+                    if final_image_data_url is None and message:
+                        await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
+                # Fallback: LLM-generated image when screenshot fails or no URL (pasted)
+                if final_image_data_url is None:
+                    from src.recipe_image import generate_recipe_image
+                    final_image_data_url = await generate_recipe_image(normalized_note["title"])
+            elif (
                 final_image_data_url is None
                 and url_context
                 and url_context.get("url")
+                and url_context.get("url") != "(pasted)"
                 and not url_context.get("skip_screenshot")
             ):
                 from src.url_screenshot import capture_url_screenshot
