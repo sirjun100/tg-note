@@ -124,6 +124,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [DEF-022](defects/DEF-022-find-command-flyio-error.md) | /find Command Error in Fly.io Logs | 🟠 High | 2 | ✅ | Sprint 15 | 2026-03-06 | 2026-03-06 |
 | [DEF-023](defects/DEF-023-ask-command-crash.md) | /ask Command Crashes on Certain Prompts | 🟠 High | 2 | ✅ | Sprint 15 | 2026-03-06 | 2026-03-06 |
 | [DEF-024](defects/DEF-024-photo-image-not-displaying.md) | Photo OCR: Image Not Displaying in Joplin Note | 🟠 High | 2 | ✅ | Backlog | 2026-03-07 | 2026-03-07 |
+| [DEF-025](defects/DEF-025-recipe-pasted-text-shows-screenshot-skipped.md) | Recipe Pasted as Text Shows "Screenshot skipped" Incorrectly | 🟡 Medium | 2 | ✅ | Backlog | 2026-03-09 | 2026-03-09 |
 
 ---
 

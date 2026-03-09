@@ -1077,6 +1077,10 @@ async def _handle_new_request(
                 url_context["template_id"] = template["template_id"]
                 url_context["template_instructions"] = template["instructions"]
 
+    # DEF-025: Only show "Screenshot skipped" when URL was primary input (user sent link, not pasted text)
+    if url_context and url_context.get("url") and url_context.get("url") != "(pasted)":
+        url_context["url_was_primary"] = len(text.strip()) < 200
+
     if url_context and url_context.get("content_type") == "recipe":
         await message.reply_text("🍳 Recipe detected — saving to Resources/🍽️ Recipe and adding an image.")
 
@@ -1321,6 +1325,9 @@ async def _handle_clarification_reply(
         await _send_typing(message, context)
         await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=combined)
+    # DEF-025: Only show "Screenshot skipped" when URL was primary input
+    if url_context and url_context.get("url") and url_context.get("url") != "(pasted)":
+        url_context["url_was_primary"] = len(combined.strip()) < 200
     if url_context and url_context.get("content_type") == "recipe":
         await message.reply_text("🍳 Recipe detected — saving to Resources/🍽️ Recipe and adding an image.")
     await _send_typing(message, context)
@@ -1525,7 +1532,15 @@ async def create_note_in_joplin(
             )
             if needs_image and message:
                 await message.reply_text("🖼️ Adding image...")
-            if url_context and url_context.get("url") and url_context.get("skip_screenshot") and message:
+            # DEF-025: Only show screenshot-skipped when URL was primary input (user sent link, not pasted text)
+            url_was_primary = url_context.get("url_was_primary", True)
+            if (
+                url_context
+                and url_context.get("url")
+                and url_context.get("skip_screenshot")
+                and url_was_primary
+                and message
+            ):
                 error_msg = url_context.get("error", "")
                 if error_msg:
                     await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")

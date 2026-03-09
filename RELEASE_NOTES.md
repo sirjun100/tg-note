@@ -11,6 +11,7 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 ### Bug Fixes
 - **Recipe image failure feedback** — When image generation fails (screenshot, Gemini, or URL fetch), the bot now logs the reason and alerts the user with the specific cause (e.g. rate limit, API key not set).
 - **Recipe folder** — Recipes now save to Resources/🍽️ Recipe first (Ressources fallback for French setups). Previously tried Ressources first.
+- **DEF-025: Recipe pasted text** — No longer shows "Screenshot skipped: Security verification required" when user pastes recipe text (URL incidental). Message only shown when user explicitly sent a link. [DEF-025](project-management/backlog/defects/DEF-025-recipe-pasted-text-shows-screenshot-skipped.md)
 
 ---
 
