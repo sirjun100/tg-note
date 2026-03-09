@@ -74,9 +74,9 @@ def _daily_report(orch: TelegramOrchestrator):
             return
 
         try:
-            await update.message.chat.send_action("typing")
             _cleanup_completed_tasks_before_report(orch, user.id)
             logger.info("Generating on-demand daily report for user %d", user.id)
+            progress_msg = await update.message.reply_text("📊 Fetching notes and tasks…")
 
             state = orch.state_manager.get_state(user.id)
             pending = state.get("pending_clarifications", []) if state else []
@@ -90,6 +90,7 @@ def _daily_report(orch: TelegramOrchestrator):
 
             include = report.total_items > 0 or bool(pending)
             message = orch.report_generator.format_report_message(report, include_details=include)
+            await progress_msg.delete()
             await update.message.reply_text(message, parse_mode="HTML")
 
             orch.logging_service.log_system_event(
@@ -178,9 +179,9 @@ def _weekly_report(orch: TelegramOrchestrator):
             return
 
         try:
-            await update.message.chat.send_action("typing")
             _cleanup_completed_tasks_before_report(orch, user.id)
             logger.info("Generating on-demand weekly report for user %d", user.id)
+            progress_msg = await update.message.reply_text("📊 Building weekly report…")
 
             ref_date: datetime | None = None
             if context.args:
@@ -195,6 +196,7 @@ def _weekly_report(orch: TelegramOrchestrator):
             )
             report = await generator.generate_weekly_report(user.id, ref_date)
             message = generator.format_weekly_report(report)
+            await progress_msg.delete()
             await update.message.reply_text(message, parse_mode="HTML")
 
             orch.logging_service.log_system_event(
@@ -223,7 +225,6 @@ def _monthly_report(orch: TelegramOrchestrator):
             return
 
         try:
-            await update.message.chat.send_action("typing")
             _cleanup_completed_tasks_before_report(orch, user.id)
 
             now = get_user_timezone_aware_now(user.id, orch.logging_service)
@@ -255,6 +256,9 @@ def _monthly_report(orch: TelegramOrchestrator):
                         return
 
             logger.info("Generating monthly report for user %d: %d-%02d", user.id, year, month)
+            progress_msg = await update.message.reply_text(
+                f"📊 Building monthly report for {year}-{month:02d}…"
+            )
 
             generator = MonthlyReportGenerator(
                 joplin_client=orch.joplin_client,
@@ -264,6 +268,7 @@ def _monthly_report(orch: TelegramOrchestrator):
             )
             report = await generator.generate(user.id, year, month)
             message = generator.format_report(report)
+            await progress_msg.delete()
             await update.message.reply_text(message, parse_mode="HTML")
 
             orch.logging_service.log_system_event(

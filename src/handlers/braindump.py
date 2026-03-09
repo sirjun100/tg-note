@@ -5,6 +5,8 @@ GTD Brain Dump handlers: /braindump, /braindump_stop, in-session messages.
 from __future__ import annotations
 
 import logging
+from datetime import UTC
+from datetime import datetime as _dt
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -15,8 +17,35 @@ from src.logging_service import Decision
 from src.security_utils import check_whitelist
 from src.timezone_utils import get_current_date_str, get_user_timezone_aware_now
 
+# ---------------------------------------------------------------------------
+# Session modes
+# ---------------------------------------------------------------------------
+
+_MODES: dict[str, dict[str, Any]] = {
+    "quick":    {"label": "Quick",    "target_minutes": 5,  "emoji": "⚡"},
+    "standard": {"label": "Standard", "target_minutes": 15, "emoji": "🧠"},
+    "thorough": {"label": "Thorough", "target_minutes": 25, "emoji": "🔍"},
+}
+_DEFAULT_MODE = "standard"
+_IDLE_TIMEOUT_MINUTES = 30
+_PREF_KEY_MODE = "default_braindump_mode"
+
 if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
+
+
+def _parse_mode(args: list[str] | None) -> str:
+    if args and args[0].lower() in _MODES:
+        return args[0].lower()
+    return _DEFAULT_MODE
+
+
+def _day_phase(hour: int) -> str:
+    if hour < 12:
+        return "morning"
+    if hour < 17:
+        return "afternoon"
+    return "evening"
 
 logger = logging.getLogger(__name__)
 
@@ -42,20 +71,36 @@ def _braindump(orch: TelegramOrchestrator):
             return
 
         user_id = user.id
-        logger.info("User %d starting /braindump session", user_id)
 
         state = orch.state_manager.get_state(user_id)
         if state and state.get("active_persona") == "GTD_EXPERT":
+            mode = state.get("session_mode", "standard")
+            target = state.get("target_minutes", 15)
             await update.message.reply_text(
-                "💡 You already have an active brain dump session! "
+                f"💡 You already have an active {mode} brain dump session ({target} min). "
                 "Just keep typing, or use /braindump_stop to finish."
             )
             return
 
+        mode = _parse_mode(context.args)
+        # T-004: use saved preference when no mode arg supplied
+        if not context.args:
+            saved = orch.state_manager.get_user_pref(user_id, _PREF_KEY_MODE)
+            if saved and saved in _MODES:
+                mode = saved
+        mode_cfg = _MODES[mode]
+        target_minutes = mode_cfg["target_minutes"]
+        emoji = mode_cfg["emoji"]
+        label = mode_cfg["label"]
+
         session_start = get_user_timezone_aware_now(user_id, orch.logging_service)
+        logger.info("User %d starting /braindump session (mode=%s, target=%dmin)", user_id, mode, target_minutes)
+
         new_state: dict[str, Any] = {
             "active_persona": "GTD_EXPERT",
             "session_start": session_start.isoformat(),
+            "session_mode": mode,
+            "target_minutes": target_minutes,
             "captured_items": [],
             "conversation_history": [],
         }
@@ -77,7 +122,7 @@ def _braindump(orch: TelegramOrchestrator):
 
         orch.state_manager.update_state(user_id, new_state)
         await update.message.reply_text(
-            f"🧠 *GTD MIND SWEEP SESSION STARTED*\n\n{first_question}",
+            f"{emoji} *{label.upper()} MIND SWEEP ({target_minutes} min)*\n\n{first_question}",
             parse_mode="Markdown",
         )
 
@@ -117,14 +162,53 @@ async def handle_braindump_message(
         return
 
     history = state.get("conversation_history", [])
+    session_mode = state.get("session_mode", "standard")
+    target_minutes = state.get("target_minutes", 15)
+    item_count = len(state.get("captured_items", []))
+
+    # T-003: Idle timeout detection — notify user if session was paused
+    now_aware = get_user_timezone_aware_now(user_id, orch.logging_service)
+    updated_at_str = orch.state_manager.get_state_updated_at(user_id)
+    if updated_at_str:
+        try:
+            updated_dt = _dt.strptime(updated_at_str.replace("Z", ""), "%Y-%m-%d %H:%M:%S")
+            if updated_dt.tzinfo is None:
+                updated_dt = updated_dt.replace(tzinfo=UTC)
+            idle_minutes = (now_aware - updated_dt).total_seconds() / 60
+            if idle_minutes >= _IDLE_TIMEOUT_MINUTES:
+                await message.reply_text(
+                    "⏸️ Your session was paused after inactivity. Resuming where we left off..."
+                )
+        except Exception:
+            pass
+
+    # Compute elapsed time and day phase for LLM pacing context
+    elapsed_minutes = 0
+    session_start_str = state.get("session_start", "")
+    if session_start_str:
+        try:
+            start_dt = _dt.fromisoformat(session_start_str)
+            if start_dt.tzinfo is None:
+                start_dt = start_dt.replace(tzinfo=UTC)
+            elapsed_minutes = max(0, int((now_aware - start_dt).total_seconds() / 60))
+        except Exception:
+            pass
+
+    phase = _day_phase(now_aware.hour)
+    context_line = (
+        f"[Session: {session_mode}, {elapsed_minutes}min elapsed / {target_minutes}min target, "
+        f"{item_count} items captured, {phase}]"
+    )
+    augmented_message = f"{context_line}\n{text}"
+
     ctx = {
-        "session_start": state.get("session_start"),
-        "item_count": len(state.get("captured_items", [])),
+        "session_start": session_start_str,
+        "item_count": item_count,
     }
 
     try:
         llm_response = await orch.llm_orchestrator.process_message(
-            user_message=text, context=ctx, persona="gtd_expert", history=history
+            user_message=augmented_message, context=ctx, persona="gtd_expert", history=history
         )
 
         history.append({"role": "user", "content": text})
@@ -163,6 +247,10 @@ async def _finish_session(
     state = orch.state_manager.get_state(user_id)
     if not state:
         return
+
+    # T-004: persist mode preference for next session
+    mode = state.get("session_mode", _DEFAULT_MODE)
+    orch.state_manager.set_user_pref(user_id, _PREF_KEY_MODE, mode)
 
     await message.reply_text("🏁 *FINISHING BRAIN DUMP SESSION...*", parse_mode="Markdown")
 

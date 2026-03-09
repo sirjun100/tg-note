@@ -9,13 +9,13 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-09 (Sprint 15 ✅, Sprint 16 ✅)
+**Last Updated**: 2026-03-08 (Sprint 17 ✅, Sprint 18 ✅)
 
 ## Project Overview
 
 **Project Name**: Intelligent Telegram-Joplin Bot
-**Current Sprint**: Sprint 17 (TBD)
-**Status**: ✅ Sprint 16 Complete - 92% Complete (240/248 story points)
+**Current Sprint**: Sprint 18 (✅ Complete)
+**Status**: ✅ Sprint 18 Complete — 23 pts delivered (18 committed + 5 stretch)
 **Timeline**: Sprint 10–16 ✅; Sprint 9 (US-016) ~55%
 **Quality**: Production Ready ✅
 
@@ -44,6 +44,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
+| [US-052](user-stories/US-052-world-class-stoic-journaling-experience.md) | World-Class Stoic Journaling Experience | 🟠 High | 13 | ✅ | Sprint 18 | 2026-03-08 | 2026-03-08 |
 | [US-001](user-stories/US-001-git-commit-template.md) | Add Git Commit Message Template | 🟠 High | 5 | ✅ | Sprint 1 | 2026-01-01 | 2026-01-01 |
 | [US-002](user-stories/US-002-mermaid-workflow-diagrams.md) | Add Mermaid Workflow Diagrams for Backlog Management | 🟠 High | 5 | ✅ | Sprint 1 | 2026-01-01 | 2026-01-01 |
 | [US-003](user-stories/US-003-update-quick-start-with-setup-script.md) | Update Quick Start Guide to Use Setup Script | 🟠 High | 3 | ✅ | Sprint 3 | 2026-01-01 | 2025-01-27 |
@@ -59,9 +60,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [US-013](user-stories/US-013-display-tags-in-ai-response.md) | Display Tags in AI Response to Telegram | 🟡 Medium | 5 | ✅ | Sprint 5 | 2025-01-23 | 2025-01-24 |
 | [US-014](user-stories/US-014-daily-priority-report.md) | Daily Priority Report for Review and Action Items | 🟠 High | 8 | ✅ | Sprint 6 | 2025-01-23 | 2026-01-24 |
 | [US-015](user-stories/US-015-weekly-review-report.md) | Weekly Review and Report | 🟠 High | 13 | ✅ | Sprint 8 | 2025-01-23 | 2026-03-03 |
-| [US-016](user-stories/US-016-joplin-database-reorganization.md) | Joplin Database Reorganization, Tag Management, and Entry Enrichment | 🟠 High | 21 | ⏳ | Sprint 9 | 2025-01-23 | 2026-01-24 |
+| [US-016](user-stories/US-016-joplin-database-reorganization.md) | Joplin Database Reorganization, Tag Management, and Entry Enrichment | 🟢 Low | 21 | ⭕ | Backlog | 2025-01-23 | 2026-03-08 |
 | [US-017](user-stories/US-017-gtd-expert-persona.md) | GTD Expert Persona for 15-Minute Brain Dumping | 🟠 High | 8 | ✅ | Sprint 7 | 2026-01-24 | 2026-01-24 |
-| [US-018](user-stories/US-018-docker-compose-setup.md) | Docker Compose Setup for Bot and Joplin Server | 🟠 High | 8 | ⏳ | Backlog | 2026-01-24 | 2026-03-01 |
+| [US-018](user-stories/US-018-docker-compose-setup.md) | Docker Compose Setup for Bot and Joplin Server | 🟢 Low | 8 | ⭕ | Backlog | 2026-01-24 | 2026-03-08 |
 | [US-019](user-stories/US-019-stoic-journal.md) | Stoic Journal with Morning/Evening Guided Reflection | 🟠 High | 5 | ✅ | Sprint 7 | 2026-02-15 | 2026-03-01 |
 | [US-020](user-stories/US-020-marketing-readme.md) | Marketing-Focused README with GTD + Second Brain Pitch | 🟠 High | 3 | ✅ | Backlog | 2026-03-03 | 2026-03-03 |
 | [US-021](user-stories/US-021-remove-ci-docker-build-step.md) | Remove Redundant Docker Build Step from CI | 🟡 Medium | 1 | ✅ | Backlog | 2026-03-03 | 2026-03-03 |
@@ -78,23 +79,23 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [US-032](user-stories/US-032-habit-tracking.md) | Habit Check-ins and Tracking | 🟢 Low | 5 | ✅ | Sprint 11 | 2026-03-05 | 2026-03-05 |
 | [US-033](user-stories/US-033-flashcard.md) | Flashcard Practice from Notes | 🟠 High | 8 | ✅ | Sprint 14 | 2026-03-05 | 2026-03-06 |
 | [US-034](user-stories/US-034-joplin-google-tasks-project-sync.md) | Joplin Projects ↔ Google Tasks Sync (Project = Task, Tasks = Subtasks) | 🟠 High | 13 | ✅ | Sprint 16 | 2026-03-05 | 2026-03-09 |
-| [US-035](user-stories/US-035-world-class-brain-dump.md) | World-Class Brain Dump Experience (modes, time awareness, recovery, personalization) | 🟠 High | 13 | ⭕ | Backlog | 2026-03-05 | 2026-03-05 |
+| [US-035](user-stories/US-035-world-class-brain-dump.md) | World-Class Brain Dump Experience (modes, time awareness, recovery, personalization) | 🟠 High | 13 | ✅ | Sprint 17 | 2026-03-05 | 2026-03-08 |
 | [US-036](user-stories/US-036-documentation-code-consistency-review.md) | Documentation-Code Consistency Review (pre-sprint planning, hybrid, report) | 🟠 High | 8 | ✅ | Sprint 13 | 2026-03-05 | 2026-03-05 |
 | [US-037](user-stories/US-037-reports-great-on-telegram.md) | Reports Look Great on Telegram | 🟡 Medium | 5 | ✅ | Backlog | 2026-03-05 | 2026-03-06 |
 | [US-038](user-stories/US-038-ai-identity-user-profile-chat-history.md) | AI Identity, User Profile, and Chat History | 🟡 Medium | 8 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
 | [US-039](user-stories/US-039-star-on-task-as-high-priority.md) | Treat Star on Task as High Priority | 🟡 Medium | 3 | ✅ | Sprint 15 | 2026-03-06 | 2026-03-06 |
 | [US-040](user-stories/US-040-check-existing-task-note-update-append.md) | Check if Task or Note Exists, Offer Update or Append | 🟡 Medium | 8 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
 | [US-041](user-stories/US-041-project-management-commit-style-and-doc-sync.md) | Project Management: Commit Style and Document Sync Sections | 🟡 Medium | 5 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
-| [US-042](user-stories/US-042-stoic-what-i-learned-today.md) | Stoic Journal: "What I Learned Today" Section | 🟡 Medium | 4 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
-| [US-043](user-stories/US-043-report-generation-speed-and-ui-updates.md) | Report Generation: Speed Up with Async and Chat UI Updates | 🟡 Medium | 5 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
+| [US-042](user-stories/US-042-stoic-what-i-learned-today.md) | Stoic Journal: "What I Learned Today" Section | 🟡 Medium | 4 | ✅ | Sprint 18 | 2026-03-06 | 2026-03-08 |
+| [US-043](user-stories/US-043-report-generation-speed-and-ui-updates.md) | Report Generation: Speed Up with Async and Chat UI Updates | 🟡 Medium | 5 | ✅ | Sprint 18 | 2026-03-06 | 2026-03-08 |
 | [US-044](user-stories/US-044-project-new-command.md) | /project_new Command to Create Project with Default Folders | 🟡 Medium | 5 | ✅ | Sprint 15 | 2026-03-06 | 2026-03-06 |
-| [US-045](user-stories/US-045-photo-folder-quick-reply.md) | Photo OCR: Folder Quick-Reply for NEED_INFO | 🟡 Medium | 3 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
-| [US-046](user-stories/US-046-photo-ocr-unprocessable-test.md) | Photo OCR: Test for OCRUnprocessableImageError | 🟡 Medium | 1 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
-| [US-047](user-stories/US-047-photo-ocr-retry-transient.md) | Photo OCR: Retry on Transient Failures | 🟡 Medium | 2 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
+| [US-045](user-stories/US-045-photo-folder-quick-reply.md) | Photo OCR: Folder Quick-Reply for NEED_INFO | 🟡 Medium | 3 | ✅ | Sprint 17 | 2026-03-06 | 2026-03-08 |
+| [US-046](user-stories/US-046-photo-ocr-unprocessable-test.md) | Photo OCR: Test for OCRUnprocessableImageError | 🟡 Medium | 1 | ✅ | Sprint 17 | 2026-03-06 | 2026-03-08 |
+| [US-047](user-stories/US-047-photo-ocr-retry-transient.md) | Photo OCR: Retry on Transient Failures | 🟡 Medium | 2 | ✅ | Sprint 17 | 2026-03-06 | 2026-03-08 |
 | [US-048](user-stories/US-048-photo-albums.md) | Photo OCR: Photo Albums Support | 🟢 Low | 5 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
 | [US-049](user-stories/US-049-photo-ocr-cost-logging.md) | Photo OCR: Cost Logging | 🟢 Low | 2 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
-| [US-050](user-stories/US-050-photo-send-as-file-hint.md) | Photo OCR: "Send as File" Hint in Help | 🟢 Low | 1 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
-| [US-051](user-stories/US-051-bookmark-command.md) | /bookmark Command to Save URLs to Joplin | 🟡 Medium | 5 | ⭕ | Backlog | 2026-03-08 | 2026-03-08 |
+| [US-050](user-stories/US-050-photo-send-as-file-hint.md) | Photo OCR: "Send as File" Hint in Help | 🟢 Low | 1 | ✅ | Sprint 18 | 2026-03-06 | 2026-03-08 |
+| [US-051](user-stories/US-051-bookmark-command.md) | /bookmark Command to Save URLs to Joplin | 🟡 Medium | 5 | ✅ | Sprint 17 | 2026-03-08 | 2026-03-08 |
 
 ## Defects
 
@@ -177,6 +178,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | **Sprint 14** | May 5-18 | DEF-017 (Dream fix), US-033 (Flashcard) | 9 | ✅ Complete |
 | **Sprint 15** | May 19-Jun 1 | DEF-022, DEF-023, US-044 (/project_new), US-039 (Star) | 12 | ✅ Complete |
 | **Sprint 16** | Mar 10-23 | US-034 (Project Sync) | 13 | ✅ Complete |
+| **Sprint 17** | Mar 24-Apr 6 | US-035 (Brain Dump), US-045/046/047 (Photo OCR), US-051 (/bookmark) | 24 | ✅ Complete |
+| **Sprint 18** | Mar 10-23 | US-052 (World-Class Stoic), US-042 (Learnings), US-050 (Photo hint) + US-043 stretch | 23 | ✅ Complete |
 
 **Remaining Backlog**: 34 points (US-016 ~55%, US-018 ~30%, US-035, US-051, etc.)
 **Projected Completion**: TBD — CI/CD operational, new features added to backlog
@@ -194,8 +197,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 **Total Items**: 50 Features + 20 Bugs = 70 items
 
 **Features by Status**:
-- ⭕ Not Started: 12 (US-035, US-038, US-040, US-041, US-042, US-043, US-045, US-046, US-047, US-048, US-049, US-050)
-- ⏳ In Progress: 2 (US-016, US-018)
+- ⭕ Not Started: 14 (US-016, US-018, US-035, US-038, US-040, US-041, US-042, US-043, US-045, US-046, US-047, US-048, US-049, US-050)
+- ⏳ In Progress: 0
 - ✅ Completed: 30 (US-001–US-015, US-017, US-019–US-024, US-025, US-027–US-032, US-034)
 
 **Bugs by Status**:
@@ -211,8 +214,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 **Feature Story Points**: 260
   - Completed: 240 points (US-001–US-015, US-017, US-019–US-025, US-027–US-034, US-036, US-039, US-044) — 92%
-  - In Progress: 29 points (US-016 ~55%, US-018 ~30%)
-  - Not Started: 53 points (US-035, US-038, US-040, US-041, US-042, US-043, US-045–US-050)
+  - In Progress: 0 points
+  - Not Started: 82 points (US-016, US-018, US-035, US-038, US-040, US-041, US-042, US-043, US-045–US-050)
 
 **Bug Story Points**: 48
   - Completed: 48 points (DEF-001–DEF-006, DEF-008–DEF-017, DEF-018–DEF-019, DEF-022, DEF-023)

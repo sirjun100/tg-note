@@ -575,13 +575,48 @@ class LLMOrchestrator:
 
         return []
 
+    async def generate_stoic_weekly_review(self, journal_text: str) -> str | None:
+        """Generate a weekly synthesis of Stoic Journal entries (T-005 Sprint 18).
+        Returns 150–300 word markdown synthesis, or None on failure."""
+        system_prompt = (
+            "You are a Stoic philosopher and personal coach reviewing a week of daily journal entries. "
+            "Write a concise synthesis (150–300 words) in markdown covering:\n"
+            "1. **Dominant Themes** — what recurred across the week (emotions, challenges, wins)\n"
+            "2. **Emotional Patterns** — mood and energy trends, high and low moments\n"
+            "3. **Wins & Growth** — concrete achievements and evidence of progress\n"
+            "4. **Growth Edges** — where the writer is being called to grow\n"
+            "5. **Stoic Principle** — one Stoic teaching most relevant to this week\n\n"
+            "Be warm, direct, and insightful. Speak directly to the writer ('you'). "
+            "Output only the markdown synthesis — no preamble, no explanation."
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Here are my journal entries from this week:\n\n{journal_text}"},
+        ]
+        try:
+            response = await self.provider.generate_response(
+                messages=messages,
+                temperature=0.4,
+                max_tokens=500,
+            )
+            content = (response.get("content") or "").strip()
+            return content if content else None
+        except Exception as exc:
+            logger.warning("Stoic weekly review LLM failed: %s", exc)
+            return None
+
     async def format_stoic_reflection(
+        self, mode: str, qa_pairs: list[dict[str, str]], is_quick: bool = False
+    ) -> str | None:
+        # Temporarily keep original signature working — is_quick flag not used in prompt
+        # (quick mode uses rule-based formatting in stoic.py)
+        return await self._format_stoic_reflection_impl(mode, qa_pairs)
+
+    async def _format_stoic_reflection_impl(
         self, mode: str, qa_pairs: list[dict[str, str]]
     ) -> str | None:
-        """
-        Format Q&A pairs into Stoic journal markdown (morning or evening).
-        Returns the formatted string, or None if LLM fails (caller should fall back to rule-based).
-        """
+        """Internal implementation — kept to avoid breaking existing callers."""
+        # (original logic preserved below)
         if not qa_pairs:
             return None
         ts = datetime.now().strftime("%H:%M")
@@ -623,6 +658,9 @@ Replace TIMESTAMP with the time. Fill from the user's Q&A (7 answers: profession
 - **What Went Wrong / Will Correct:**
   USER_ANSWER_OR_DASH
 
+- **Self-Compassion:**
+  USER_ANSWER_OR_DASH
+
 - **Within My Control / Not:**
   USER_ANSWER_OR_DASH
 
@@ -632,10 +670,14 @@ Replace TIMESTAMP with the time. Fill from the user's Q&A (7 answers: profession
 - **Grateful For:**
   USER_ANSWER_OR_DASH
 
+### 📚 What I Learned Today
+
+  USER_ANSWER_OR_OMIT_IF_EMPTY
+
 - **Tomorrow:**
   USER_ANSWER_OR_DASH
 
-Replace TIMESTAMP with the time. Fill from the user's Q&A (8 answers in order). Use " -" for empty. Keep it concise."""
+Replace TIMESTAMP with the time. Fill from the user's Q&A (10 answers in order). Use " -" for empty. Omit the 📚 section entirely if learned answer is empty/dash/skip. Keep it concise."""
 
         system_prompt = f"""You format a Stoic journal reflection from a list of question-answer pairs into clean markdown.
 
@@ -656,7 +698,7 @@ Output nothing else: no preamble, no explanation, only the markdown block. Use t
             response = await self.provider.generate_response(
                 messages=messages,
                 temperature=0.2,
-                max_tokens=600,
+                max_tokens=700,
             )
             content = (response.get("content") or "").strip()
             if content and ("### " in content or "**" in content):

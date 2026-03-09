@@ -17,19 +17,31 @@ class TestLoadStoicTemplate(unittest.TestCase):
     """Test _load_stoic_template returns correct question counts and body."""
 
     def test_morning_questions_count(self):
-        """Morning must have 7 questions: objectives, obstacle, goals, top 3 priorities (BF-009)."""
+        """Morning must have 7 questions: objectives, obstacle, goals, top 3 priorities (BF-009).
+        Sprint 18: variant rotation means slot 0 may pick any of 3 variants, so only count is checked."""
         morning_q, evening_q, body_tpl = stoic_module._load_stoic_template()
-        self.assertGreaterEqual(
+        self.assertEqual(
             len(morning_q), 7,
-            "Template should define at least 7 morning questions"
+            "Template should define exactly 7 morning question slots"
         )
-        self.assertIn("professional", (morning_q[0] or "").lower())
-        self.assertIn("personal", (morning_q[1] or "").lower())
-        self.assertIn("obstacle", (morning_q[2] or "").lower())
-        self.assertIn("goal", (morning_q[3] or "").lower())
-        self.assertIn("priority", (morning_q[4] or "").lower())
-        self.assertIn("priority", (morning_q[5] or "").lower())
-        self.assertIn("priority", (morning_q[6] or "").lower())
+        # Each slot covers the same topic — check broad keywords across all slots
+        work_keywords = ("professional", "important", "outcome", "accomplish", "work")
+        self.assertTrue(
+            any(k in morning_q[0].lower() for k in work_keywords),
+            f"Slot 0 should be a professional-objective question, got: {morning_q[0]}"
+        )
+        personal_keywords = ("personal", "commitment", "wellbeing", "yourself", "long-term")
+        self.assertTrue(
+            any(k in morning_q[1].lower() for k in personal_keywords),
+            f"Slot 1 should be a personal-objective question, got: {morning_q[1]}"
+        )
+        # Slots 4-6 are priority questions; variants may say "priority", "task", "needle", etc.
+        priority_keywords = ("priority", "task", "complete", "important", "needle", "accomplish")
+        for slot_idx in (4, 5, 6):
+            self.assertTrue(
+                any(k in morning_q[slot_idx].lower() for k in priority_keywords),
+                f"Slot {slot_idx} should be a priority question, got: {morning_q[slot_idx]}"
+            )
 
     def test_evening_questions_count(self):
         """Evening must have 8 questions: completed + wins + reflection + tomorrow (BF-009)."""
@@ -84,30 +96,22 @@ class TestExtractMorningPriorities(unittest.TestCase):
 
 
 class TestGetTomorrowAnswer(unittest.TestCase):
-    """Test _get_tomorrow_answer extracts the 8th evening answer."""
+    """Test _get_tomorrow_answer extracts the 10th evening answer (Sprint 18: index 9)."""
 
     def test_returns_tomorrow_answer_when_present(self):
-        """Returns the 8th answer when it has content."""
-        answers = [
-            {"q": "q0", "a": "a0"},
-            {"q": "q1", "a": "a1"},
-            {"q": "q2", "a": "a2"},
-            {"q": "q3", "a": "a3"},
-            {"q": "q4", "a": "a4"},
-            {"q": "q5", "a": "a5"},
-            {"q": "q6", "a": "a6"},
-            {"q": "tomorrow?", "a": "Begin the proposal draft"},
-        ]
+        """Returns index-9 answer (10th question) when it has content."""
+        answers = [{"q": f"q{i}", "a": f"a{i}"} for i in range(9)]
+        answers.append({"q": "tomorrow?", "a": "Begin the proposal draft"})
         self.assertEqual(stoic_module._get_tomorrow_answer(answers), "Begin the proposal draft")
 
-    def test_returns_none_when_fewer_than_8_answers(self):
-        """Returns None when fewer than 8 answers."""
-        answers = [{"q": "q", "a": "a"}] * 7
+    def test_returns_none_when_fewer_than_10_answers(self):
+        """Returns None when fewer than 10 answers (index 9 not present)."""
+        answers = [{"q": "q", "a": "a"}] * 9
         self.assertIsNone(stoic_module._get_tomorrow_answer(answers))
 
     def test_returns_none_when_empty_or_placeholder(self):
         """Returns None when answer is empty or '-'."""
-        answers = [{"q": "q", "a": "a"}] * 7 + [{"q": "tomorrow?", "a": ""}]
+        answers = [{"q": "q", "a": "a"}] * 9 + [{"q": "tomorrow?", "a": ""}]
         self.assertIsNone(stoic_module._get_tomorrow_answer(answers))
         answers[-1]["a"] = "-"
         self.assertIsNone(stoic_module._get_tomorrow_answer(answers))

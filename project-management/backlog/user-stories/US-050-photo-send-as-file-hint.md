@@ -1,11 +1,11 @@
 # User Story: US-050 - Photo OCR: "Send as File" Hint in Help
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟢 Low
 **Story Points**: 1
 **Created**: 2026-03-06
-**Updated**: 2026-03-06
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-08
+**Assigned Sprint**: Sprint 18
 **Parent**: [US-030](US-030-photo-ocr-capture.md) Photo OCR Capture
 
 ## Description

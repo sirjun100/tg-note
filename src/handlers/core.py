@@ -87,6 +87,8 @@ def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
     application.add_handler(CommandHandler("sync", _sync(orch)))
     application.add_handler(CommandHandler("note", _note(orch)))
+    application.add_handler(CommandHandler("bookmark", _bookmark(orch)))
+    application.add_handler(CommandHandler("learnings", _learnings(orch)))
     application.add_handler(CommandHandler("recipe", _recipe(orch)))
     application.add_handler(CommandHandler("task", _task(orch)))
     application.add_handler(CommandHandler("help_commands", _helpme(orch)))
@@ -122,7 +124,7 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         f"{time_greeting} I'm your Second Brain assistant.\n\n"
         "<b>📝 Capture</b>\n"
         "• Send any text → Save as Joplin note\n"
-        "• Send a photo → OCR and save to Joplin\n"
+        "• Send a photo → OCR and save to Joplin (tip: send as File for best quality)\n"
         "• /readlater &lt;url&gt; or /rl &lt;url&gt; → Save to reading queue\n"
         "• /task &lt;text&gt; → Create Google Task\n"
         "• /note &lt;text&gt; → Force note creation\n\n"
@@ -130,7 +132,8 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /find &lt;query&gt; or /search &lt;query&gt; → Quick note search\n"
         "• /ask &lt;question&gt; → AI answers from your notes (semantic search)\n\n"
         "<b>🧠 Productivity</b>\n"
-        "• /braindump → 15-min GTD brain dump session\n"
+        "• /braindump → GTD brain dump (standard 15 min); /braindump quick (5 min); /braindump thorough (25 min)\n"
+        "• /bookmark &lt;url&gt; → Save URL to Bookmarks folder\n"
         "• /stoic → Guided morning/evening reflection\n"
         "• /dream → Jungian dream analysis\n"
         "• /habits → Daily habit check-in\n"
@@ -286,6 +289,150 @@ def _sync(orch: TelegramOrchestrator):
     return handler
 
 
+def _bookmark(orch: TelegramOrchestrator):
+    """Save a URL as a bookmark note in the Bookmarks folder. Usage: /bookmark <url>"""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        parts = (update.message.text or "").strip().split(maxsplit=1)
+        url = parts[1].strip() if len(parts) > 1 else ""
+
+        if not url:
+            await update.message.reply_text(
+                "🔖 *Use /bookmark to save a URL to Joplin*\n\n"
+                "Example:\n"
+                "  /bookmark https://example.com/article\n\n"
+                "The bot fetches the page title and saves it to your Bookmarks folder.",
+                parse_mode="Markdown",
+            )
+            return
+
+        urls = extract_urls(url)
+        if not urls:
+            await update.message.reply_text(
+                format_error_message("Please provide a valid URL. Example: /bookmark https://example.com")
+            )
+            return
+
+        status_msg = await update.message.reply_text("🔖 Fetching page info...")
+        try:
+            url_context = await fetch_url_context(urls[0])
+        except Exception:
+            url_context = None
+
+        title = (url_context or {}).get("title") or urls[0]
+        description = (url_context or {}).get("description") or ""
+        extracted_text = (url_context or {}).get("extracted_text") or ""
+
+        # Build note body
+        body_parts = [f"🔖 **Source:** {urls[0]}", ""]
+        if description:
+            body_parts += [f"**Summary:** {description}", ""]
+        if extracted_text:
+            snippet = extracted_text[:500].strip()
+            if snippet:
+                body_parts += ["## Excerpt", snippet, ""]
+        body_parts.append("*Bookmarked via /bookmark*")
+        body = "\n".join(body_parts)
+
+        # Find or create Bookmarks folder
+        bookmark_folder_id: str | None = None
+        try:
+            folders = await orch.joplin_client.get_folders()
+            bm = next((f for f in folders if f.get("title", "").lower() == "bookmarks"), None)
+            if bm:
+                bookmark_folder_id = bm["id"]
+            else:
+                new_folder = await orch.joplin_client.create_folder("Bookmarks")
+                bookmark_folder_id = new_folder.get("id")
+        except Exception as exc:
+            logger.warning("Could not find/create Bookmarks folder: %s", exc)
+
+        note_data = {
+            "title": title,
+            "body": body,
+            "parent_id": bookmark_folder_id or "Bookmarks",
+            "tags": ["bookmark"],
+        }
+
+        result = await create_note_in_joplin(orch, note_data, url_context=url_context, message=status_msg)
+        if result and "error" not in result:
+            await status_msg.edit_text(
+                format_success_message(f"Bookmarked: {title}\n🔖 Saved to Bookmarks")
+            )
+        else:
+            await status_msg.edit_text(format_error_message("Failed to save bookmark. Try again."))
+
+    return handler
+
+
+def _learnings(orch: TelegramOrchestrator):
+    """US-042 T-012: Aggregate 'What I Learned Today' from last 7 Stoic Journal entries."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not update.message:
+            return
+
+        await update.message.reply_text("📚 Fetching your learnings from this week...")
+
+        STOIC_PATH = ["Areas", "📓 Journaling", "Stoic Journal"]
+        from datetime import UTC, datetime, timedelta
+        try:
+            folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_PATH)
+            notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
+        except Exception as exc:
+            logger.warning("Could not access Stoic Journal: %s", exc)
+            await update.message.reply_text("❌ Could not access Stoic Journal in Joplin.")
+            return
+
+        cutoff = (datetime.now(UTC) - timedelta(days=7)).date()
+        daily_notes = [
+            n for n in notes_in_folder
+            if "Daily Stoic Reflection" in n.get("title", "")
+            and "Weekly Stoic Review" not in n.get("title", "")
+        ]
+
+        import re
+        learnings: list[str] = []
+        for note_meta in daily_notes[-10:]:
+            try:
+                full = await orch.joplin_client.get_note(note_meta["id"])
+                title = full.get("title", "")
+                date_part = title.split(" - ")[0].strip()
+                try:
+                    note_date = datetime.fromisoformat(date_part).date()
+                    if note_date < cutoff:
+                        continue
+                except ValueError:
+                    pass
+                body = full.get("body", "")
+                match = re.search(r"### 📚 What I Learned Today\s*\n+(.*?)(?=\n- \*\*|\n### |\Z)", body, re.DOTALL)
+                if match:
+                    text = match.group(1).strip().lstrip("-").strip()
+                    if text and text != "-":
+                        learnings.append(f"**{date_part}**: {text}")
+            except Exception:
+                pass
+
+        if not learnings:
+            await update.message.reply_text(
+                "No learnings found this week. Complete an evening Stoic journal session "
+                "and answer the 'What did you learn today?' question to start building your list."
+            )
+            return
+
+        reply = "📚 *What You Learned This Week*\n\n" + "\n\n".join(learnings)
+        if len(reply) > 4000:
+            reply = reply[:3990] + "…"
+        await update.message.reply_text(reply, parse_mode="Markdown")
+
+    return handler
+
+
 def _note(orch: TelegramOrchestrator):
     """Create a Joplin note only (no task). Usage: /note <content or URL>."""
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -434,7 +581,8 @@ def _helpme(orch: TelegramOrchestrator):
             "🔹 /note <content> → Joplin note only (URLs fetched)\n"
             "🔹 /task <item> → Google Task only\n"
             "🔹 Plain message → Bot chooses (note or task by keywords)\n"
-            "🔹 Send a photo → OCR and save to Joplin (/photo_cancel to cancel)\n\n"
+            "🔹 Send a photo → OCR and save to Joplin (/photo_cancel to cancel)\n"
+            "   💡 Tip: use 'Send as File' in Telegram for best OCR quality (no compression)\n\n"
             "🔍 **Search**\n"
             "🔹 /find <query> or /search <query> → Search notes, reply with number to view\n\n"
             "📚 **Read Later**\n"
@@ -465,7 +613,8 @@ def _helpme(orch: TelegramOrchestrator):
             "/report_toggle_schedule on|off - Enable/disable scheduled reports\n"
             "/report_help - Show all report commands\n\n"
             "🧠 **Productivity**\n"
-            "/braindump - 15-min GTD mind sweep; /braindump_stop to end\n"
+            "/braindump [quick|thorough] - GTD mind sweep (5/15/25 min); /braindump_stop to end\n"
+            "/bookmark <url> - Save URL to Bookmarks folder in Joplin\n"
             "/stoic [morning|evening] - Guided reflection; /stoic_done to save\n"
             "/dream - Jungian dream analysis; /dream_done, /dream_cancel\n"
             "/habits - Daily habit check-in; /habits add|remove|list|stats\n"

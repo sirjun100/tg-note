@@ -6,6 +6,22 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ---
 
+## 2026-03-08 (Sprint 17)
+
+### New Features
+- **Brain dump modes** — `/braindump quick` (5 min), `/braindump` (standard 15 min), `/braindump thorough` (25 min). Mode preference saved automatically for next session. [US-035](project-management/backlog/user-stories/US-035-world-class-brain-dump.md)
+- **Brain dump time/day context** — Each message now carries elapsed time, target, item count, and time-of-day (morning/afternoon/evening) so the LLM can pace the session and adapt its tone.
+- **Brain dump session recovery** — Sessions are persisted in SQLite. If idle >30 min, a "session paused — resuming" message greets the user on their next reply.
+- **Photo OCR folder quick-reply** — When OCR needs a folder choice, an inline keyboard with top Joplin folders appears. Tap to save; no need to type. [US-045](project-management/backlog/user-stories/US-045-photo-folder-quick-reply.md)
+- **Photo OCR retry on transient failures** — Timeout, connection errors, and 5xx responses are retried up to 2× with exponential backoff (permanent errors like 400 Unprocessable are not retried). [US-047](project-management/backlog/user-stories/US-047-photo-ocr-retry-transient.md)
+- **/bookmark command** — `/bookmark <url>` fetches the page title and excerpt, creates a note in a Bookmarks folder (auto-created if missing), and confirms with the title. [US-051](project-management/backlog/user-stories/US-051-bookmark-command.md)
+
+### Internal
+- `StateManager` now supports a `user_preferences` table (key-value per user). Used for brain dump mode preference; available for future personalization.
+- Unit tests: brain dump modes, context injection, session recovery, user prefs, OCRUnprocessableImageError, and transient OCR retry.
+
+---
+
 ## 2026-03-09
 
 ### New Features
@@ -47,6 +63,33 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ### Migration Notes
 - Old command names still work as aliases. New names preferred: `/report_daily` instead of `/daily_report`, `/report_config` instead of `/show_report_config`, etc.
+
+---
+
+## 2026-03-08 — Sprint 18: World-Class Stoic Journal
+
+### New Features
+- **Mood & energy check-in** — Before each journaling session, Stoic Journal asks for mood and energy level. Stored in the note as a `## 🔎 Check-in` block. [US-052](project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md) T-001
+- **Self-compassion question** — Evening session now includes a dedicated self-compassion prompt (index 4): "If a close friend told you what went wrong today, what would you say?" (Kristin Neff 2003). [US-052](project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md) T-002
+- **Question rotation** — All journal questions rotate daily from 3 science-backed variants per slot. Same-day = same questions; new day = fresh perspective. [US-052](project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md) T-003
+- **Stoic quote priming** — Daily Stoic quote shown at the start of each session (25 morning / 25 evening), rotating by day ordinal. [US-052](project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md) T-004
+- **/stoic review** — Weekly synthesis command: fetches last 7 days of journal entries, calls AI to produce a 150-300 word reflection, saves as `YYYY-WW - Weekly Stoic Review` note. Requires ≥ 3 entries. [US-052](project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md) T-005
+- **Streak tracking** — Consecutive daily journaling tracked in `user_preferences`. Resets if a day is skipped. Motivational message shown on save. [US-052](project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md) T-006
+- **/stoic_quick** — 2-question shortcut (intention + priority for morning; one win + gratitude for evening). Mode auto-detected by time of day (≥17:00 = evening). Counts toward streak. [US-052](project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md) T-007
+- **"What I Learned Today"** — New evening question (index 8): saved as `### 📚 What I Learned Today` section, tagged `#learnings`. [US-042](project-management/backlog/user-stories/US-042-what-i-learned-today.md)
+- **/learnings** — Aggregates `📚 What I Learned Today` sections from last 7 Stoic Journal notes into a single digest. [US-042](project-management/backlog/user-stories/US-042-what-i-learned-today.md) T-012
+- **"Send as File" tip** — Help text for photo/OCR now includes a tip to use Telegram's "Send as File" for best OCR quality (no compression). [US-050](project-management/backlog/user-stories/US-050-send-as-file-tip.md)
+
+### Bug Fixes
+- **Variant rotation slot boundary** — Fixed `_parse_variant_block` to correctly detect slot boundaries: VARIANT_0 after collecting variants now starts a new slot. Previously all consecutive VARIANT_ lines were collapsed into one slot.
+
+### Breaking Changes
+- Evening Stoic Journal now has 10 questions (was 8). Sessions saved before this release are unaffected.
+- `_get_tomorrow_answer` now reads index 9 only (was index 7 in the 8-question structure).
+
+### Migration Notes
+- Quick-mode sessions (`/stoic_quick`) do not include a mood check-in.
+- `/stoic review` requires at least 3 journal entries in the past 7 days.
 
 ---
 

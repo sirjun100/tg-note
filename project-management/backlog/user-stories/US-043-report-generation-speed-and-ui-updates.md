@@ -1,11 +1,11 @@
 # User Story: US-043 - Report Generation: Speed Up with Async and Chat UI Updates
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟡 Medium
 **Story Points**: 5
 **Created**: 2026-03-06
-**Updated**: 2026-03-06
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-08
+**Assigned Sprint**: Sprint 18
 
 ## Description
 

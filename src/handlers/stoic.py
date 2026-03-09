@@ -1,12 +1,15 @@
 """
-Stoic Journal handlers: /stoic, /stoic morning, /stoic evening, /stoic_done.
-Guided reflection with questions from template; create or append to today's note.
+Stoic Journal handlers: /stoic, /stoic morning, /stoic evening, /stoic_done,
+/stoic_quick, /stoic_review.
+Sprint 18: mood check-in, quote priming, question rotation, self-compassion,
+streak tracking, /stoic quick mode, /stoic review weekly synthesis, US-042
+"What I Learned Today".
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -24,9 +27,97 @@ logger = logging.getLogger(__name__)
 STOIC_JOURNAL_PATH = ["Areas", "📓 Journaling", "Stoic Journal"]
 STOIC_TAGS = ["stoic", "journal", "daily"]
 
+# Preference keys
+_PREF_STREAK = "stoic_streak"
+_PREF_LAST_ENTRY = "stoic_last_entry_date"
+
+# Quick mode question counts per phase
+_QUICK_MORNING_COUNT = 2  # intention + priorities #1
+_QUICK_EVENING_COUNT = 2  # one win + gratitude
+
+
+# ---------------------------------------------------------------------------
+# Quote loading (T-004)
+# ---------------------------------------------------------------------------
+
+def _load_stoic_quotes() -> dict[str, list[str]]:
+    """Load quotes from stoic_quotes.md; return {morning: [...], evening: [...]}."""
+    path = Path(__file__).parent.parent / "prompts" / "stoic_quotes.md"
+    result: dict[str, list[str]] = {"morning": [], "evening": []}
+    if not path.exists():
+        result["morning"] = ["Marcus Aurelius: \"Confine yourself to the present.\""]
+        result["evening"] = ["Seneca: \"Let us go to our sleep with joy and gladness; let us say 'I have lived today.'\""]
+        return result
+    current: list[str] | None = None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped == "## MORNING":
+            current = result["morning"]
+        elif stripped == "## EVENING":
+            current = result["evening"]
+        elif stripped.startswith("*") or not stripped:
+            continue
+        elif current is not None and stripped:
+            current.append(stripped)
+    return result
+
+
+def _daily_quote(mode: str) -> str:
+    """Pick a quote for today's session, rotating daily."""
+    quotes = _load_stoic_quotes()
+    pool = quotes.get(mode, quotes["morning"])
+    if not pool:
+        return ""
+    idx = datetime.now(UTC).toordinal() % len(pool)
+    return pool[idx]
+
+
+# ---------------------------------------------------------------------------
+# Template loading with variant rotation (T-003)
+# ---------------------------------------------------------------------------
+
+def _parse_variant_block(lines: list[str]) -> list[str]:
+    """
+    Given lines that may have VARIANT_0/1/2 prefixes, pick one variant per
+    question slot using today's date as seed (so same day = same questions).
+    A new slot begins when VARIANT_0 is seen after variants have already been
+    collected, or after a blank line.  Lines without VARIANT_ prefix are
+    returned as-is.
+    """
+    slot_seed = datetime.now(UTC).toordinal()
+    result: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line:
+            i += 1
+            continue
+        if line.startswith("VARIANT_"):
+            # Collect variants for this slot; VARIANT_0 after non-empty
+            # variants starts the next slot.
+            variants: list[str] = []
+            while i < len(lines):
+                text = lines[i].strip()
+                if not text.startswith("VARIANT_"):
+                    break
+                # VARIANT_0 after we already have variants → new slot
+                if text.startswith("VARIANT_0:") and variants:
+                    break
+                colon = text.index(":")
+                variants.append(text[colon + 2:])
+                i += 1
+            if variants:
+                chosen = variants[slot_seed % len(variants)]
+                result.append(chosen)
+        else:
+            result.append(line)
+            i += 1
+    return result
+
 
 def _load_stoic_template() -> tuple[list[str], list[str], str]:
-    """Load prompts/stoic_journal_template.md; return (morning_questions, evening_questions, body_template)."""
+    """Load prompts/stoic_journal_template.md; return (morning_questions, evening_questions, body_template).
+    Applies date-seeded question rotation for VARIANT_ lines."""
     path = Path(__file__).parent.parent / "prompts" / "stoic_journal_template.md"
     if not path.exists():
         return (
@@ -35,7 +126,6 @@ def _load_stoic_template() -> tuple[list[str], list[str], str]:
             "# {{DATE}} - Daily Stoic Reflection\n\n## Morning Reflection\n\n{{MORNING_CONTENT}}\n\n## Evening Reflection\n\n{{EVENING_CONTENT}}",
         )
     raw = path.read_text(encoding="utf-8")
-    # Single "---" separates questions block from body template
     parts = raw.split("---", 1)
     if len(parts) < 2:
         return (
@@ -44,21 +134,23 @@ def _load_stoic_template() -> tuple[list[str], list[str], str]:
             "# {{DATE}} - Daily Stoic Reflection\n\n{{MORNING_CONTENT}}\n\n{{EVENING_CONTENT}}",
         )
     block, body_template = parts[0].strip(), parts[1].strip()
-    morning_questions: list[str] = []
-    evening_questions: list[str] = []
+    morning_raw: list[str] = []
+    evening_raw: list[str] = []
     current: list[str] | None = None
     for line in block.splitlines():
-        line = line.strip()
-        if not line:
+        stripped = line.strip()
+        if stripped.upper() == "MORNING_QUESTIONS:":
+            current = morning_raw
             continue
-        if line.upper() == "MORNING_QUESTIONS:":
-            current = morning_questions
-            continue
-        if line.upper() == "EVENING_QUESTIONS:":
-            current = evening_questions
+        if stripped.upper() == "EVENING_QUESTIONS:":
+            current = evening_raw
             continue
         if current is not None:
             current.append(line)
+
+    morning_questions = _parse_variant_block(morning_raw)
+    evening_questions = _parse_variant_block(evening_raw)
+
     if not morning_questions:
         morning_questions = ["What is your intention for today?"]
     if not evening_questions:
@@ -66,15 +158,47 @@ def _load_stoic_template() -> tuple[list[str], list[str], str]:
     return morning_questions, evening_questions, body_template
 
 
+# ---------------------------------------------------------------------------
+# Answer helpers
+# ---------------------------------------------------------------------------
+
 def _get_answer(answers: list[dict[str, str]], index: int) -> str:
-    """Get answer text at index, or empty string."""
     if index < 0 or index >= len(answers):
         return ""
     return (answers[index].get("a") or "").strip()
 
 
+# ---------------------------------------------------------------------------
+# Mood check-in (T-001)
+# ---------------------------------------------------------------------------
+
+_MOOD_QUESTION = (
+    "How are you feeling right now? "
+    "(e.g. energized, anxious, hopeful, frustrated, calm, scattered, clear)"
+)
+_ENERGY_QUESTION = "Energy level: 1 (exhausted) → 5 (peak). Just type the number."
+
+_CHECKIN_STEP_MOOD = 0
+_CHECKIN_STEP_ENERGY = 1
+_CHECKIN_DONE = 2
+
+
+def _format_checkin_section(mood: str, energy: str) -> str:
+    """Format check-in as a note section."""
+    lines = ["## 🔎 Check-in", ""]
+    if mood:
+        lines.append(f"- **Mood**: {mood}")
+    if energy:
+        lines.append(f"- **Energy**: {energy}/5")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Note formatting (updated for new question order with self-compassion + learnings)
+# ---------------------------------------------------------------------------
+
 def _format_morning_content(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
-    """Fill morning template: professional objective, personal objective, obstacle, greater goals, top 3 priorities."""
+    """Fill morning template with answers."""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     ts = now.strftime("%H:%M")
     professional = _get_answer(answers, 0)
@@ -109,17 +233,32 @@ def _format_morning_content(answers: list[dict[str, str]], user_id: int, orch: T
 
 
 def _format_evening_content(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
-    """Fill evening template: morning priorities completed, prof/personal wins, went wrong, control, progress, gratitude, tomorrow."""
+    """Fill evening template.
+    New question order (Sprint 18):
+      0: priorities completed
+      1: professional wins
+      2: personal wins
+      3: what went wrong
+      4: self-compassion (NEW)
+      5: within control
+      6: progress toward goals
+      7: gratitude
+      8: what I learned today (US-042)
+      9: tomorrow
+    """
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     ts = now.strftime("%H:%M")
+
     priorities_completed = _get_answer(answers, 0)
     prof_wins = _get_answer(answers, 1)
     personal_wins = _get_answer(answers, 2)
     went_wrong = _get_answer(answers, 3)
-    control = _get_answer(answers, 4)
-    progress = _get_answer(answers, 5)
-    gratitude = _get_answer(answers, 6)
-    tomorrow = _get_answer(answers, 7)
+    self_compassion = _get_answer(answers, 4)
+    control = _get_answer(answers, 5)
+    progress = _get_answer(answers, 6)
+    gratitude = _get_answer(answers, 7)
+    learned = _get_answer(answers, 8)
+    tomorrow = _get_answer(answers, 9)
 
     lines = [
         f"### 🌙 Evening ({ts})",
@@ -136,6 +275,9 @@ def _format_evening_content(answers: list[dict[str, str]], user_id: int, orch: T
         "- **What Went Wrong / Will Correct:**",
         f"  {went_wrong}" if went_wrong else "  -",
         "",
+        "- **Self-Compassion:**",
+        f"  {self_compassion}" if self_compassion else "  -",
+        "",
         "- **Within My Control / Not:**",
         f"  {control}" if control else "  -",
         "",
@@ -144,6 +286,17 @@ def _format_evening_content(answers: list[dict[str, str]], user_id: int, orch: T
         "",
         "- **Grateful For:**",
         f"  {gratitude}" if gratitude else "  -",
+    ]
+
+    if learned and learned.lower() not in ("-", "skip", ""):
+        lines += [
+            "",
+            "### 📚 What I Learned Today",
+            "",
+            f"  {learned}",
+        ]
+
+    lines += [
         "",
         "- **Tomorrow:**",
         f"  {tomorrow}" if tomorrow else "  -",
@@ -152,59 +305,159 @@ def _format_evening_content(answers: list[dict[str, str]], user_id: int, orch: T
 
 
 def _format_section(mode: str, answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
-    """Format answers into template structure (morning or evening) with timestamp."""
     if mode == "morning":
         return _format_morning_content(answers, user_id, orch)
     return _format_evening_content(answers, user_id, orch)
 
 
-def _extract_morning_priorities(note_body: str) -> list[str]:
-    """Extract the 3 morning priorities from a note body. Returns [p1, p2, p3] or [] if not found."""
-    import re
+# ---------------------------------------------------------------------------
+# Quick-mode formatting (T-007)
+# ---------------------------------------------------------------------------
 
-    # Find the morning section (until evening or end)
+def _format_quick_morning(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
+    now = get_user_timezone_aware_now(user_id, orch.logging_service)
+    ts = now.strftime("%H:%M")
+    intention = _get_answer(answers, 0)
+    priority = _get_answer(answers, 1)
+    lines = [
+        f"### 🌞 Morning — Quick ({ts})",
+        "",
+        "- **Intention:**",
+        f"  {intention}" if intention else "  -",
+        "",
+        "- **#1 Priority:**",
+        f"  {priority}" if priority else "  -",
+    ]
+    return "\n".join(lines)
+
+
+def _format_quick_evening(answers: list[dict[str, str]], user_id: int, orch: TelegramOrchestrator) -> str:
+    now = get_user_timezone_aware_now(user_id, orch.logging_service)
+    ts = now.strftime("%H:%M")
+    win = _get_answer(answers, 0)
+    gratitude = _get_answer(answers, 1)
+    lines = [
+        f"### 🌙 Evening — Quick ({ts})",
+        "",
+        "- **One Win:**",
+        f"  {win}" if win else "  -",
+        "",
+        "- **Grateful For:**",
+        f"  {gratitude}" if gratitude else "  -",
+    ]
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Morning priorities extraction
+# ---------------------------------------------------------------------------
+
+def _extract_morning_priorities(note_body: str) -> list[str]:
+    import re
     match = re.search(r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)", note_body, re.DOTALL)
     if not match:
         return []
-
     section = match.group(0)
     priorities: list[str | None] = [None, None, None]
-
-    # Look for lines like "  1. X" or "1. X" (with optional leading whitespace)
     for m in re.finditer(r"^\s*([123])\.\s+(.+)$", section, re.MULTILINE):
         num = int(m.group(1))
         text = (m.group(2) or "").strip()
-        # Skip placeholder "-" or empty
         if text and text != "-":
             priorities[num - 1] = text
-
     return [p for p in priorities if p is not None]
 
 
 def _empty_morning_placeholder() -> str:
-    """Placeholder when no morning content yet."""
-    return "### 🌞 Morning\n\n- **Professional Objective:**\n  -\n\n- **Personal Objective:**\n  -\n\n- **Obstacle & Response:**\n  -\n\n- **Greater Goals:**\n  -\n\n- **Top 3 Priorities:**\n  1. -\n  2. -\n  3. -"
+    return (
+        "### 🌞 Morning\n\n"
+        "- **Professional Objective:**\n  -\n\n"
+        "- **Personal Objective:**\n  -\n\n"
+        "- **Obstacle & Response:**\n  -\n\n"
+        "- **Greater Goals:**\n  -\n\n"
+        "- **Top 3 Priorities:**\n  1. -\n  2. -\n  3. -"
+    )
 
+
+def _empty_evening_placeholder() -> str:
+    return (
+        "### 🌙 Evening\n\n"
+        "- **Morning Priorities Completed?**\n  -\n\n"
+        "- **What Went Well (Professional):**\n  -\n\n"
+        "- **What Went Well (Personal):**\n  -\n\n"
+        "- **What Went Wrong / Will Correct:**\n  -\n\n"
+        "- **Self-Compassion:**\n  -\n\n"
+        "- **Within My Control / Not:**\n  -\n\n"
+        "- **Progress Toward Greater Goals:**\n  -\n\n"
+        "- **Grateful For:**\n  -\n\n"
+        "- **Tomorrow:**\n  -"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Streak tracking (T-006)
+# ---------------------------------------------------------------------------
+
+def _update_streak(orch: TelegramOrchestrator, user_id: int) -> int:
+    """Increment streak if first entry today, reset if gap > 1 day. Returns new streak."""
+    today = datetime.now(UTC).date().isoformat()
+    last = orch.state_manager.get_user_pref(user_id, _PREF_LAST_ENTRY)
+    streak_str = orch.state_manager.get_user_pref(user_id, _PREF_STREAK) or "0"
+    streak = int(streak_str) if streak_str.isdigit() else 0
+
+    if last == today:
+        # Already journaled today — streak unchanged
+        return streak
+
+    if last:
+        try:
+            last_date = datetime.fromisoformat(last).date()
+            today_date = datetime.now(UTC).date()
+            gap = (today_date - last_date).days
+            streak = streak + 1 if gap == 1 else 1
+        except ValueError:
+            streak = 1
+    else:
+        streak = 1
+
+    orch.state_manager.set_user_pref(user_id, _PREF_STREAK, str(streak))
+    orch.state_manager.set_user_pref(user_id, _PREF_LAST_ENTRY, today)
+    return streak
+
+
+def _streak_message(streak: int, mode: str, is_quick: bool = False) -> str:
+    prefix = "⚡ Quick entry" if is_quick else "📓 Stoic reflection"
+    if streak == 1:
+        return f"{prefix} saved. Day 1 — every journey begins here."
+    elif streak < 7:
+        return f"{prefix} saved. 🔥 Day {streak} streak! You're building the habit."
+    elif streak < 30:
+        return f"{prefix} saved. 🔥 Day {streak} streak! Consistency is the foundation of growth."
+    else:
+        return f"{prefix} saved. 🔥 Day {streak} streak! You are the 1% who actually shows up."
+
+
+# ---------------------------------------------------------------------------
+# Tomorrow task creation
+# ---------------------------------------------------------------------------
 
 def _get_tomorrow_rfc3339(user_id: int, orch: TelegramOrchestrator) -> str:
-    """Get tomorrow's date at midnight in user's timezone as RFC3339 for Google Tasks."""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return tomorrow.isoformat()
 
 
 def _get_tomorrow_answer(answers: list[dict[str, str]]) -> str | None:
-    """Extract the 'one thing tomorrow' answer from evening answers (index 7). Returns None if empty."""
-    if len(answers) < 8:
-        return None
-    text = (answers[7].get("a") or "").strip()
-    return text if text and text != "-" else None
+    """Extract tomorrow answer — index 9 in full evening (10 questions)."""
+    if len(answers) > 9:
+        text = (answers[9].get("a") or "").strip()
+        if text and text not in ("-", "skip"):
+            return text
+    return None
 
 
 async def _create_tomorrow_task_from_stoic(
     orch: TelegramOrchestrator, user_id: int, mode: str, answers: list[dict[str, str]], message: Message
 ) -> bool:
-    """If evening mode and user answered the 'tomorrow' question, create a Google Task for tomorrow."""
     if mode != "evening":
         return False
     tomorrow_text = _get_tomorrow_answer(answers)
@@ -226,17 +479,11 @@ async def _create_tomorrow_task_from_stoic(
     return False
 
 
-def _empty_evening_placeholder() -> str:
-    """Placeholder when no evening content yet."""
-    return "### 🌙 Evening\n\n- **Morning Priorities Completed?**\n  -\n\n- **What Went Well (Professional):**\n  -\n\n- **What Went Well (Personal):**\n  -\n\n- **What Went Wrong / Will Correct:**\n  -\n\n- **Within My Control / Not:**\n  -\n\n- **Progress Toward Greater Goals:**\n  -\n\n- **Grateful For:**\n  -\n\n- **Tomorrow:**\n  -"
+# ---------------------------------------------------------------------------
+# Note body helpers
+# ---------------------------------------------------------------------------
 
-
-def _build_full_body(
-    body_template: str,
-    date_str: str,
-    morning_content: str,
-    evening_content: str,
-) -> str:
+def _build_full_body(body_template: str, date_str: str, morning_content: str, evening_content: str) -> str:
     return (
         body_template.replace("{{DATE}}", date_str)
         .replace("{{MORNING_CONTENT}}", morning_content or _empty_morning_placeholder())
@@ -245,55 +492,56 @@ def _build_full_body(
 
 
 def _replace_section(body: str, new_section: str, mode: str) -> str:
-    """Replace the morning/evening section in note body with new content."""
     import re
-
     pattern = r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)" if mode == "morning" else r"### 🌙 Evening.*$"
     flags = re.DOTALL
+    return re.sub(pattern, new_section.rstrip(), body, flags=flags)
 
-    if mode == "morning":
-        # For morning, replace until we hit evening section or end
-        replacement = re.sub(pattern, new_section.rstrip(), body, flags=flags)
-    else:
-        # For evening, replace until end of document
-        replacement = re.sub(pattern, new_section.rstrip(), body, flags=flags)
 
-    return replacement
+def _check_section_exists(note_body: str, mode: str) -> bool:
+    import re
+    pattern = r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)" if mode == "morning" else r"### 🌙 Evening.*$"
+    match = re.search(pattern, note_body, re.DOTALL)
+    if not match:
+        return False
+    section = match.group(0)
+    for line in section.split("\n"):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("###") or (stripped.startswith("- **") and stripped.endswith(":**")) or stripped == "-":
+            continue
+        return True
+    return False
 
+
+# ---------------------------------------------------------------------------
+# Apply replace / append actions (duplicate detection)
+# ---------------------------------------------------------------------------
 
 async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, message: Message, state: dict[str, Any]) -> bool:
-    """Apply the replace action for duplicate sections."""
     if state.get("pending_action") != "duplicate_detected":
         await message.reply_text("❌ No pending duplicate action. Use /stoic_done to save your reflection.")
         return False
-
     note_id = state.get("existing_note_id")
     existing_body = state.get("existing_body", "")
     new_section = state.get("new_section_content", "")
     mode = state.get("mode", "morning")
-
     if not note_id or not new_section:
         await message.reply_text("❌ Missing required information. Please try again.")
         return False
-
     try:
         new_body = _replace_section(existing_body, new_section, mode)
         await orch.joplin_client.update_note(note_id, {"body": new_body})
-        logger.info("Stoic save: replaced %s section in note %s", mode, note_id)
-
-        # Clear the pending action state
         state.pop("pending_action", None)
         state.pop("existing_note_id", None)
         state.pop("existing_body", None)
         state.pop("new_section_content", None)
         orch.state_manager.update_state(user_id, state)
-
         await message.reply_text(f"✅ Replaced {mode} reflection.")
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()
         except Exception as exc:
-            logger.debug("Could not schedule Joplin sync: %s", exc)
+            logger.debug("Could not schedule sync: %s", exc)
         answers = state.get("answers", [])
         await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
@@ -304,37 +552,29 @@ async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, messag
 
 
 async def _apply_append_action(orch: TelegramOrchestrator, user_id: int, message: Message, state: dict[str, Any]) -> bool:
-    """Apply the append action for duplicate sections."""
     if state.get("pending_action") != "duplicate_detected":
         await message.reply_text("❌ No pending duplicate action. Use /stoic_done to save your reflection.")
         return False
-
     note_id = state.get("existing_note_id")
     existing_body = state.get("existing_body", "")
     new_section = state.get("new_section_content", "")
-
     if not note_id or not new_section:
         await message.reply_text("❌ Missing required information. Please try again.")
         return False
-
     try:
         new_body = f"{existing_body}\n\n{new_section}"
         await orch.joplin_client.update_note(note_id, {"body": new_body})
-        logger.info("Stoic save: appended section to note %s", note_id)
-
-        # Clear the pending action state
         state.pop("pending_action", None)
         state.pop("existing_note_id", None)
         state.pop("existing_body", None)
         state.pop("new_section_content", None)
         orch.state_manager.update_state(user_id, state)
-
         await message.reply_text("✅ Appended reflection to today's note.")
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()
         except Exception as exc:
-            logger.debug("Could not schedule Joplin sync: %s", exc)
+            logger.debug("Could not schedule sync: %s", exc)
         mode = state.get("mode", "morning")
         answers = state.get("answers", [])
         await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
@@ -345,105 +585,150 @@ async def _apply_append_action(orch: TelegramOrchestrator, user_id: int, message
         return False
 
 
-def _stoic_cancel(orch: TelegramOrchestrator):
-    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        user = update.effective_user
-        if not user or not check_whitelist(user.id):
-            return
-        if not update.message:
-            return
+# ---------------------------------------------------------------------------
+# Finish session (save to Joplin)
+# ---------------------------------------------------------------------------
 
-        user_id = user.id
-        state = orch.state_manager.get_state(user_id)
+async def _finish_stoic_session(
+    orch: TelegramOrchestrator, user_id: int, message: Message, state: dict[str, Any]
+) -> bool:
+    mode = state.get("mode", "morning")
+    is_quick = state.get("is_quick", False)
+    answers = state.get("answers", [])
+    body_template = state.get("body_template") or ""
+    if not body_template.strip():
+        _, __, body_template = _load_stoic_template()
 
-        if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            await update.message.reply_text(
-                "No active Stoic journal session to cancel. Use /stoic to start one."
+    date_str = get_current_date_str(user_id, orch.logging_service)
+    title = f"{date_str} - Daily Stoic Reflection"
+
+    if not answers:
+        await message.reply_text("No answers to save. Use /stoic_cancel to exit.")
+        return False
+
+    await message.reply_text("📝 Formatting reflection...")
+    section_content: str | None = None
+    try:
+        section_content = await orch.llm_orchestrator.format_stoic_reflection(mode, answers, is_quick=is_quick)
+    except Exception as exc:
+        logger.debug("Stoic LLM format failed, using rule-based: %s", exc)
+    if not section_content:
+        if is_quick:
+            section_content = _format_quick_morning(answers, user_id, orch) if mode == "morning" else _format_quick_evening(answers, user_id, orch)
+        else:
+            section_content = _format_section(mode, answers, user_id, orch)
+
+    # Prepend check-in section if present
+    mood = state.get("mood_checkin", "")
+    energy = state.get("energy_level", "")
+    checkin_block = ""
+    if mood or energy:
+        checkin_block = _format_checkin_section(mood, energy)
+
+    await message.reply_text("📂 Finding Stoic Journal folder...")
+    try:
+        folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
+    except Exception as exc:
+        logger.error("Stoic Journal folder resolution failed: %s", exc)
+        await message.reply_text("❌ Could not find or create Stoic Journal folder.")
+        return False
+
+    notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
+    existing = next((n for n in notes_in_folder if n.get("title") == title), None)
+
+    tags = STOIC_TAGS + [mode]
+    # Apply learnings tags if "What I learned" was answered (evening only)
+    if mode == "evening" and not is_quick:
+        learned = _get_answer(answers, 8)
+        if learned and learned.lower() not in ("-", "skip", ""):
+            tags = tags + ["learnings", "content-ideas"]
+
+    if existing:
+        await message.reply_text("📎 Updating today's note...")
+        note_id = existing["id"]
+        try:
+            full_note = await orch.joplin_client.get_note(note_id)
+            existing_body = (full_note.get("body") or "").strip()
+        except Exception as exc:
+            logger.error("Failed to fetch existing note: %s", exc)
+            await message.reply_text("❌ Could not fetch existing note. Try again.")
+            return False
+
+        if _check_section_exists(existing_body, mode):
+            await message.reply_text(
+                f"⚠️ You already have a {mode.capitalize()} reflection for today.\n\n"
+                f"  /stoic_replace — Replace the existing reflection\n"
+                f"  /stoic_append — Add another reflection to the note"
             )
-            return
+            state["pending_action"] = "duplicate_detected"
+            state["existing_note_id"] = note_id
+            state["existing_body"] = existing_body
+            state["new_section_content"] = section_content
+            orch.state_manager.update_state(user_id, state)
+            return False
 
-        mode = state.get("mode", "morning")
-        answer_count = len(state.get("answers", []))
-        orch.state_manager.clear_state(user_id)
-        logger.info("User %s cancelled Stoic journal session (%s mode, %d answers)", user_id, mode, answer_count)
+        import re
+        pattern = r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)" if mode == "morning" else r"### 🌙 Evening.*$"
+        section_exists_empty = bool(re.search(pattern, existing_body, re.DOTALL))
 
-        await update.message.reply_text(
-            "❌ Stoic journal session cancelled. No changes were saved.\n\n"
-            "Start a new session with /stoic, /stoic morning, or /stoic evening."
-        )
+        if section_exists_empty:
+            new_body = _replace_section(existing_body, section_content, mode)
+        else:
+            new_body = f"{existing_body}\n\n{section_content}" if existing_body else section_content
 
-    return handler
+        # Prepend check-in block if not already present
+        if checkin_block and "## 🔎 Check-in" not in new_body:
+            # Insert after the title line
+            lines = new_body.split("\n", 2)
+            if len(lines) >= 1:
+                new_body = lines[0] + "\n\n" + checkin_block + "\n\n" + "\n".join(lines[1:])
 
-
-def _stoic_replace(orch: TelegramOrchestrator):
-    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        user = update.effective_user
-        if not user or not check_whitelist(user.id):
-            return
-        if not update.message:
-            return
-
-        user_id = user.id
-        state = orch.state_manager.get_state(user_id)
-        if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            await update.message.reply_text(
-                "❌ No active Stoic journal session with pending duplicate. "
-                "Use /stoic_done first to see the duplicate options."
-            )
-            return
-
-        logger.info("User %s executing /stoic_replace", user_id)
-        saved = await _apply_replace_action(orch, user_id, update.message, state)
-        if saved:
-            orch.state_manager.clear_state(user_id)
-            await update.message.reply_text(
-                "✅ Stoic reflection saved.\n\n"
-                "It's in *Areas → 📓 Journaling → Stoic Journal*. "
-                "If you don't see it on your Mac, run /sync then sync in Joplin.\n\nMemento mori.",
-                parse_mode="Markdown",
-            )
-
-    return handler
-
-
-def _stoic_append(orch: TelegramOrchestrator):
-    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        user = update.effective_user
-        if not user or not check_whitelist(user.id):
-            return
-        if not update.message:
-            return
-
-        user_id = user.id
-        state = orch.state_manager.get_state(user_id)
-        if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            await update.message.reply_text(
-                "❌ No active Stoic journal session with pending duplicate. "
-                "Use /stoic_done first to see the duplicate options."
-            )
-            return
-
-        logger.info("User %s executing /stoic_append", user_id)
-        saved = await _apply_append_action(orch, user_id, update.message, state)
-        if saved:
-            orch.state_manager.clear_state(user_id)
-            await update.message.reply_text(
-                "✅ Stoic reflection saved.\n\n"
-                "It's in *Areas → 📓 Journaling → Stoic Journal*. "
-                "If you don't see it on your Mac, run /sync then sync in Joplin.\n\nMemento mori.",
-                parse_mode="Markdown",
-            )
-
-    return handler
+        try:
+            await orch.joplin_client.update_note(note_id, {"body": new_body})
+        except Exception as exc:
+            logger.error("Failed to update stoic note: %s", exc)
+            await message.reply_text("❌ Failed to update today's note.")
+            return False
+        await orch.joplin_client.apply_tags(note_id, tags)
+        logger.info("Stoic save: updated note %s (%s mode)", note_id, mode)
+        try:
+            from src.handlers.core import _schedule_joplin_sync
+            _schedule_joplin_sync()
+            await message.reply_text("🔄 Syncing so it appears on your devices...")
+        except Exception as exc:
+            logger.debug("Could not schedule sync: %s", exc)
+        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
+        return True
+    else:
+        await message.reply_text("📄 Creating new note...")
+        morning_content = section_content if mode == "morning" else ""
+        evening_content = section_content if mode == "evening" else ""
+        full_body = _build_full_body(body_template, date_str, morning_content, evening_content)
+        if checkin_block and "## 🔎 Check-in" not in full_body:
+            lines = full_body.split("\n", 2)
+            if len(lines) >= 1:
+                full_body = lines[0] + "\n\n" + checkin_block + "\n\n" + "\n".join(lines[1:])
+        try:
+            note_id = await orch.joplin_client.create_note(folder_id=folder_id, title=title, body=full_body)
+            await orch.joplin_client.apply_tags(note_id, tags)
+        except Exception as exc:
+            logger.error("Failed to create stoic note: %s", exc)
+            await message.reply_text("❌ Failed to create note in Stoic Journal.")
+            return False
+        logger.info("Stoic save: created note %s (%s mode)", note_id, mode)
+        try:
+            from src.handlers.core import _schedule_joplin_sync
+            _schedule_joplin_sync()
+            await message.reply_text("🔄 Syncing so it appears on your devices...")
+        except Exception as exc:
+            logger.debug("Could not schedule sync: %s", exc)
+        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
+        return True
 
 
-def register_stoic_handlers(application: Any, orch: TelegramOrchestrator) -> None:
-    application.add_handler(CommandHandler("stoic", _stoic(orch)))
-    application.add_handler(CommandHandler("stoic_done", _stoic_done(orch)))
-    application.add_handler(CommandHandler("stoic_cancel", _stoic_cancel(orch)))
-    application.add_handler(CommandHandler("stoic_replace", _stoic_replace(orch)))
-    application.add_handler(CommandHandler("stoic_append", _stoic_append(orch)))
-
+# ---------------------------------------------------------------------------
+# /stoic main handler (T-001, T-004, T-006 start)
+# ---------------------------------------------------------------------------
 
 def _stoic(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -466,20 +751,17 @@ def _stoic(orch: TelegramOrchestrator):
                 "📓 You already have a Stoic journal session.\n\n"
                 "Options:\n"
                 "  Keep replying with more answers\n"
-                "  /stoic_done - Save your reflection\n"
-                "  /stoic_cancel - Cancel and start over"
+                "  /stoic_done — Save your reflection\n"
+                "  /stoic_cancel — Cancel and start over"
             )
             return
 
         morning_q, evening_q, body_tpl = _load_stoic_template()
         questions = morning_q if mode == "morning" else evening_q
-        if not questions:
-            await update.message.reply_text("No questions configured for this mode.")
-            return
 
+        # For evening: prepend morning priorities to first question
         first_question = questions[0]
         if mode == "evening":
-            # Include the 3 morning priorities in the first question so the user can reflect on them
             try:
                 date_str = get_current_date_str(user_id, orch.logging_service)
                 title = f"{date_str} - Daily Stoic Reflection"
@@ -493,8 +775,7 @@ def _stoic(orch: TelegramOrchestrator):
                     if priorities:
                         priorities_text = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(priorities))
                         first_question = (
-                            f"Your 3 morning priorities today were:\n{priorities_text}\n\n"
-                            f"{first_question}"
+                            f"Your 3 morning priorities today were:\n{priorities_text}\n\n{first_question}"
                         )
             except Exception as exc:
                 logger.debug("Could not fetch morning priorities for evening: %s", exc)
@@ -509,18 +790,30 @@ def _stoic(orch: TelegramOrchestrator):
             "body_template": body_tpl,
             "morning_questions": morning_q,
             "evening_questions": evening_q,
+            "checkin_step": _CHECKIN_STEP_MOOD,
+            "mood_checkin": "",
+            "energy_level": "",
+            "is_quick": False,
         }
         orch.state_manager.update_state(user_id, new_state)
         logger.info("User %s started Stoic journal (%s), %d questions", user_id, mode, len(questions))
+
+        # Show quote + mood check-in
+        quote = _daily_quote(mode)
+        quote_block = f"_{quote}_\n\n" if quote else ""
         await update.message.reply_text(
-            f"📓 *Stoic Journal — {mode.capitalize()}*\n\n{first_question}",
+            f"📓 *Stoic Journal — {mode.capitalize()}*\n\n{quote_block}{_MOOD_QUESTION}",
             parse_mode="Markdown",
         )
 
     return handler
 
 
-def _stoic_done(orch: TelegramOrchestrator):
+# ---------------------------------------------------------------------------
+# /stoic quick handler (T-007)
+# ---------------------------------------------------------------------------
+
+def _stoic_quick(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -530,211 +823,252 @@ def _stoic_done(orch: TelegramOrchestrator):
 
         user_id = user.id
         state = orch.state_manager.get_state(user_id)
-        if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            logger.info("User %s called /stoic_done but no active session", user_id)
+        if state and state.get("active_persona") == "STOIC_JOURNAL":
             await update.message.reply_text(
-                "No active Stoic journal session. Use /stoic or /stoic morning or /stoic evening to start."
+                "📓 You already have a Stoic session running.\n"
+                "  /stoic_done — Save it\n"
+                "  /stoic_cancel — Discard it"
             )
             return
 
-        logger.info("User %s finishing Stoic session (%s answers)", user_id, len(state.get("answers", [])))
+        # Detect mode from args or time of day
+        mode = "morning"
+        if context.args:
+            arg = (context.args[0] or "").strip().lower()
+            if arg in ("morning", "evening"):
+                mode = arg
+        else:
+            hour = get_user_timezone_aware_now(user_id, orch.logging_service).hour
+            mode = "evening" if hour >= 17 else "morning"
+
+        _, __, body_tpl = _load_stoic_template()
+        quick_morning_q = ["What is your intention for today?", "What is your #1 priority?"]
+        quick_evening_q = ["What was one win today?", "What are you grateful for today?"]
+        questions = quick_morning_q if mode == "morning" else quick_evening_q
+
+        session_start = get_user_timezone_aware_now(user_id, orch.logging_service)
+        new_state: dict[str, Any] = {
+            "active_persona": "STOIC_JOURNAL",
+            "session_start": session_start.isoformat(),
+            "mode": mode,
+            "questions": questions,
+            "answers": [],
+            "body_template": body_tpl,
+            "is_quick": True,
+            "checkin_step": _CHECKIN_DONE,  # No check-in for quick mode
+            "mood_checkin": "",
+            "energy_level": "",
+        }
+        orch.state_manager.update_state(user_id, new_state)
+        logger.info("User %s started Stoic quick (%s)", user_id, mode)
+
+        quote = _daily_quote(mode)
+        quote_block = f"_{quote}_\n\n" if quote else ""
+        await update.message.reply_text(
+            f"⚡ *Stoic Quick — {mode.capitalize()}* (2 questions)\n\n{quote_block}{questions[0]}",
+            parse_mode="Markdown",
+        )
+
+    return handler
+
+
+# ---------------------------------------------------------------------------
+# /stoic review — weekly synthesis (T-005)
+# ---------------------------------------------------------------------------
+
+def _stoic_review(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not update.message:
+            return
+
+        await update.message.reply_text("📖 Fetching last 7 days of Stoic Journal entries...")
+        try:
+            folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
+            notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
+        except Exception as exc:
+            logger.error("Could not fetch Stoic Journal folder: %s", exc)
+            await update.message.reply_text("❌ Could not access Stoic Journal in Joplin.")
+            return
+
+        # Filter to past 7 days (exclude existing review notes)
+        cutoff = (datetime.now(UTC) - timedelta(days=7)).date()
+        daily_notes = [
+            n for n in notes_in_folder
+            if "Weekly Stoic Review" not in n.get("title", "")
+            and "Daily Stoic Reflection" in n.get("title", "")
+        ]
+
+        # Fetch bodies for recent notes
+        recent: list[str] = []
+        for note_meta in daily_notes[-10:]:  # fetch up to 10, filter by date
+            try:
+                full = await orch.joplin_client.get_note(note_meta["id"])
+                title = full.get("title", "")
+                # Parse date from title "YYYY-MM-DD - Daily Stoic Reflection"
+                date_part = title.split(" - ")[0].strip()
+                try:
+                    note_date = datetime.fromisoformat(date_part).date()
+                    if note_date >= cutoff:
+                        recent.append(f"## {title}\n\n{full.get('body', '')}")
+                except ValueError:
+                    pass
+            except Exception:
+                pass
+
+        if len(recent) < 3:
+            await update.message.reply_text(
+                f"You have {len(recent)} journal entr{'y' if len(recent) == 1 else 'ies'} this week. "
+                f"A review works best with 3+. Keep journaling and try again!"
+            )
+            return
+
+        await update.message.reply_text(f"🧠 Synthesising {len(recent)} entries with AI...")
+        combined = "\n\n---\n\n".join(recent)
+        try:
+            synthesis = await orch.llm_orchestrator.generate_stoic_weekly_review(combined)
+        except Exception as exc:
+            logger.error("Stoic weekly review LLM failed: %s", exc)
+            await update.message.reply_text("❌ AI synthesis failed. Try again later.")
+            return
+
+        if not synthesis:
+            await update.message.reply_text("❌ Could not generate a synthesis. Try again later.")
+            return
+
+        # Save review note
+        week_label = datetime.now(UTC).strftime("%Y-W%W")
+        review_title = f"{week_label} - Weekly Stoic Review"
+        review_body = f"# {review_title}\n\n{synthesis}\n\n---\n*Generated from {len(recent)} journal entries.*"
+        try:
+            folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
+            note_id = await orch.joplin_client.create_note(
+                folder_id=folder_id, title=review_title, body=review_body
+            )
+            await orch.joplin_client.apply_tags(note_id, ["stoic", "journal", "weekly-review"])
+        except Exception as exc:
+            logger.warning("Could not save stoic review note: %s", exc)
+
+        # Send to Telegram (truncate if needed)
+        reply = f"📖 *Weekly Stoic Review*\n\n{synthesis}"
+        if len(reply) > 4000:
+            reply = reply[:3990] + "…"
+        await update.message.reply_text(reply, parse_mode="Markdown")
+
+    return handler
+
+
+# ---------------------------------------------------------------------------
+# /stoic_cancel, /stoic_replace, /stoic_append
+# ---------------------------------------------------------------------------
+
+def _stoic_cancel(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not update.message:
+            return
+        user_id = user.id
+        state = orch.state_manager.get_state(user_id)
+        if not state or state.get("active_persona") != "STOIC_JOURNAL":
+            await update.message.reply_text("No active Stoic journal session. Use /stoic to start one.")
+            return
+        orch.state_manager.clear_state(user_id)
+        await update.message.reply_text(
+            "❌ Stoic journal session cancelled.\n\n"
+            "Start again: /stoic, /stoic morning, /stoic evening, or /stoic_quick"
+        )
+    return handler
+
+
+def _stoic_replace(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not update.message:
+            return
+        user_id = user.id
+        state = orch.state_manager.get_state(user_id)
+        if not state or state.get("active_persona") != "STOIC_JOURNAL":
+            await update.message.reply_text("❌ No active Stoic session with pending duplicate.")
+            return
+        saved = await _apply_replace_action(orch, user_id, update.message, state)
+        if saved:
+            streak = _update_streak(orch, user_id)
+            orch.state_manager.clear_state(user_id)
+            await update.message.reply_text(
+                f"{_streak_message(streak, state.get('mode', 'morning'))}\n\n"
+                f"It's in *Areas → 📓 Journaling → Stoic Journal*.\n\nMemento mori.",
+                parse_mode="Markdown",
+            )
+    return handler
+
+
+def _stoic_append(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not update.message:
+            return
+        user_id = user.id
+        state = orch.state_manager.get_state(user_id)
+        if not state or state.get("active_persona") != "STOIC_JOURNAL":
+            await update.message.reply_text("❌ No active Stoic session with pending duplicate.")
+            return
+        saved = await _apply_append_action(orch, user_id, update.message, state)
+        if saved:
+            streak = _update_streak(orch, user_id)
+            orch.state_manager.clear_state(user_id)
+            await update.message.reply_text(
+                f"{_streak_message(streak, state.get('mode', 'morning'))}\n\n"
+                f"It's in *Areas → 📓 Journaling → Stoic Journal*.\n\nMemento mori.",
+                parse_mode="Markdown",
+            )
+    return handler
+
+
+# ---------------------------------------------------------------------------
+# /stoic_done
+# ---------------------------------------------------------------------------
+
+def _stoic_done(orch: TelegramOrchestrator):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        if not update.message:
+            return
+        user_id = user.id
+        state = orch.state_manager.get_state(user_id)
+        if not state or state.get("active_persona") != "STOIC_JOURNAL":
+            await update.message.reply_text("No active Stoic session. Use /stoic or /stoic_quick to start.")
+            return
+
         await update.message.reply_text("📓 Saving to Stoic Journal...")
         saved = await _finish_stoic_session(orch, user_id, update.message, state)
         if saved:
+            streak = _update_streak(orch, user_id)
+            is_quick = state.get("is_quick", False)
+            mode = state.get("mode", "morning")
             orch.state_manager.clear_state(user_id)
             await update.message.reply_text(
-                "✅ Stoic reflection saved.\n\n"
-                "It’s in *Areas → 📓 Journaling → Stoic Journal*. "
-                "If you don’t see it on your Mac, run /sync then sync in Joplin.\n\nMemento mori.",
+                f"{_streak_message(streak, mode, is_quick=is_quick)}\n\n"
+                f"It's in *Areas → 📓 Journaling → Stoic Journal*. "
+                f"If you don't see it on your Mac, run /sync.\n\nMemento mori.",
                 parse_mode="Markdown",
             )
 
     return handler
 
 
-def _check_section_exists(note_body: str, mode: str) -> bool:
-    """Check if morning/evening section already exists with REAL content (not just placeholder)."""
-    import re
-
-    # Find the section
-    pattern = r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)" if mode == "morning" else r"### 🌙 Evening.*$"
-    match = re.search(pattern, note_body, re.DOTALL)
-
-    if not match:
-        return False
-
-    section = match.group(0)
-
-    # Check if section has actual content (not just empty placeholders)
-    # Empty placeholder: "- **Wins:**\n  -" or "- **Wins:**\n  - " (with just dash)
-    # Real content: "- **Wins:**\n  - Completed task"
-    lines = section.split("\n")
-
-    for line in lines:
-        stripped = line.strip()
-
-        # Skip empty lines
-        if not stripped:
-            continue
-
-        # Skip section header (e.g., "### 🌙 Evening")
-        if stripped.startswith("###"):
-            continue
-
-        # Skip section labels (e.g., "- **Wins:**", "- **Challenges:**")
-        if stripped.startswith("- **") and stripped.endswith(":**"):
-            continue
-
-        # Skip empty bullet points (just "-" or nothing after dash)
-        if stripped == "-":
-            continue
-
-        # Any other line is real content
-        return True
-
-    # Only found header and labels, no real content
-    return False
-
-
-async def _finish_stoic_session(
-    orch: TelegramOrchestrator, user_id: int, message: Message, state: dict[str, Any]
-) -> bool:
-    mode = state.get("mode", "morning")
-    answers = state.get("answers", [])
-    body_template = state.get("body_template") or ""
-    if not body_template.strip():
-        _, __, body_template = _load_stoic_template()
-
-    date_str = get_current_date_str(user_id, orch.logging_service)
-    title = f"{date_str} - Daily Stoic Reflection"
-
-    if not answers:
-        await message.reply_text(
-            "No answers to save. Use /stoic_cancel to exit, or start a new session with /stoic."
-        )
-        return False
-
-    await message.reply_text("📝 Formatting reflection...")
-    section_content = None
-    try:
-        section_content = await orch.llm_orchestrator.format_stoic_reflection(mode, answers)
-    except Exception as exc:
-        logger.debug("Stoic LLM format failed, using rule-based: %s", exc)
-    if not section_content:
-        section_content = _format_section(mode, answers, user_id, orch)
-    logger.info("Stoic save: formatted %s reflection, %d answers", mode, len(answers))
-
-    await message.reply_text("📂 Finding Stoic Journal folder...")
-    try:
-        folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
-    except Exception as exc:
-        logger.error("Stoic Journal folder resolution failed: %s", exc)
-        await message.reply_text("❌ Could not find or create Stoic Journal folder.")
-        return False
-
-    notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
-    existing = next((n for n in notes_in_folder if n.get("title") == title), None)
-
-    tags = STOIC_TAGS + [mode]
-
-    if existing:
-        await message.reply_text("📎 Updating today's note...")
-        note_id = existing["id"]
-        try:
-            full_note = await orch.joplin_client.get_note(note_id)
-            existing_body = (full_note.get("body") or "").strip()
-        except Exception as exc:
-            logger.error("Failed to fetch existing note body for update: %s", exc)
-            await message.reply_text(
-                "❌ Could not fetch your existing note for updating. "
-                "This is a safety measure to prevent data loss. "
-                "Please try again or contact support if the problem persists."
-            )
-            return False
-
-        # Debug logging for data loss investigation
-        logger.info("BF-008 DEBUG: mode=%s, existing_body length=%d", mode, len(existing_body))
-        logger.info("BF-008 DEBUG: existing has Morning: %s", "### 🌞 Morning" in existing_body)
-        logger.info("BF-008 DEBUG: existing has Evening: %s", "### 🌙 Evening" in existing_body)
-
-        # Check for duplicate sections with REAL content
-        if _check_section_exists(existing_body, mode):
-            await message.reply_text(
-                f"⚠️ You already have a {mode.capitalize()} reflection for today.\n\n"
-                f"What would you like to do?\n"
-                f"  /stoic_replace - Replace the existing reflection\n"
-                f"  /stoic_append - Add another reflection to the note"
-            )
-            # Store state for pending action
-            state["pending_action"] = "duplicate_detected"
-            state["existing_note_id"] = note_id
-            state["existing_body"] = existing_body
-            state["new_section_content"] = section_content
-            orch.state_manager.update_state(user_id, state)
-            return False
-
-        # No real content found - either replace empty placeholder or append
-        # Check if section exists at all (even if empty)
-        import re
-        pattern = r"### 🌞 Morning.*?(?=\n### 🌙 Evening|$)" if mode == "morning" else r"### 🌙 Evening.*$"
-        section_exists_empty = bool(re.search(pattern, existing_body, re.DOTALL))
-
-        if section_exists_empty:
-            # Section exists but is empty - replace the placeholder
-            new_body = _replace_section(existing_body, section_content, mode)
-            logger.info("BF-008 DEBUG: Replaced empty %s placeholder", mode)
-        else:
-            # Section doesn't exist at all - append
-            new_body = f"{existing_body}\n\n{section_content}" if existing_body else section_content
-            logger.info("BF-008 DEBUG: Appended %s section", mode)
-
-        # Debug logging for data loss investigation
-        logger.info("BF-008 DEBUG: new_body length=%d", len(new_body))
-        logger.info("BF-008 DEBUG: new has Morning: %s", "### 🌞 Morning" in new_body)
-        logger.info("BF-008 DEBUG: new has Evening: %s", "### 🌙 Evening" in new_body)
-
-        try:
-            await orch.joplin_client.update_note(note_id, {"body": new_body})
-        except Exception as exc:
-            logger.error("Failed to update Stoic note %s: %s", note_id, exc)
-            await message.reply_text("❌ Failed to update today's note.")
-            return False
-        await orch.joplin_client.apply_tags(note_id, tags)
-        logger.info("Stoic save: updated note %s (%s)", note_id, title)
-        try:
-            from src.handlers.core import _schedule_joplin_sync
-            _schedule_joplin_sync()
-            await message.reply_text("🔄 Syncing so it appears on your devices...")
-        except Exception as exc:
-            logger.debug("Could not schedule Joplin sync after Stoic save: %s", exc)
-        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
-        return True
-    else:
-        await message.reply_text("📄 Creating new note...")
-        morning_content = section_content if mode == "morning" else ""
-        evening_content = section_content if mode == "evening" else ""
-        full_body = _build_full_body(body_template, date_str, morning_content, evening_content)
-        try:
-            note_id = await orch.joplin_client.create_note(
-                folder_id=folder_id,
-                title=title,
-                body=full_body,
-            )
-            await orch.joplin_client.apply_tags(note_id, tags)
-        except Exception as exc:
-            logger.error("Failed to create Stoic note: %s", exc)
-            await message.reply_text("❌ Failed to create note in Stoic Journal.")
-            return False
-        logger.info("Stoic save: created note %s in folder %s (%s)", note_id, folder_id, title)
-        try:
-            from src.handlers.core import _schedule_joplin_sync
-            _schedule_joplin_sync()
-            await message.reply_text("🔄 Syncing so it appears on your devices...")
-        except Exception as exc:
-            logger.debug("Could not schedule Joplin sync after Stoic save: %s", exc)
-        await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
-        return True
-
+# ---------------------------------------------------------------------------
+# handle_stoic_message — message routing during session (T-001 check-in phase)
+# ---------------------------------------------------------------------------
 
 async def handle_stoic_message(
     orch: TelegramOrchestrator, user_id: int, text: str, message: Message
@@ -743,22 +1077,72 @@ async def handle_stoic_message(
     if not state or state.get("active_persona") != "STOIC_JOURNAL":
         return
 
-    text_stripped = (text or "").strip().lower()
-    if text_stripped in ("done", "save", "finish"):
+    text_stripped = (text or "").strip()
+    if text_stripped.lower() in ("done", "save", "finish"):
         await message.reply_text("Use /stoic_done to save your reflection.")
         return
 
+    is_quick = state.get("is_quick", False)
+    checkin_step = state.get("checkin_step", _CHECKIN_DONE)
+
+    # --- Check-in phase (mood then energy) ---
+    if checkin_step == _CHECKIN_STEP_MOOD:
+        state["mood_checkin"] = text_stripped
+        state["checkin_step"] = _CHECKIN_STEP_ENERGY
+        orch.state_manager.update_state(user_id, state)
+        await message.reply_text(_ENERGY_QUESTION)
+        return
+
+    if checkin_step == _CHECKIN_STEP_ENERGY:
+        state["energy_level"] = text_stripped[:10]  # cap length
+        state["checkin_step"] = _CHECKIN_DONE
+        orch.state_manager.update_state(user_id, state)
+        # Transition to first real question
+        mode = state.get("mode", "morning")
+        morning_q, evening_q, body_tpl = _load_stoic_template()
+        questions = morning_q if mode == "morning" else evening_q
+        state["questions"] = questions
+        state["body_template"] = body_tpl
+        orch.state_manager.update_state(user_id, state)
+
+        first_q = questions[0]
+        if mode == "evening":
+            # Try to prepend morning priorities
+            try:
+                date_str = get_current_date_str(user_id, orch.logging_service)
+                title = f"{date_str} - Daily Stoic Reflection"
+                folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
+                notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
+                existing = next((n for n in notes_in_folder if n.get("title") == title), None)
+                if existing:
+                    full_note = await orch.joplin_client.get_note(existing["id"])
+                    body = full_note.get("body") or ""
+                    priorities = _extract_morning_priorities(body)
+                    if priorities:
+                        priorities_text = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(priorities))
+                        first_q = f"Your 3 morning priorities today were:\n{priorities_text}\n\n{first_q}"
+            except Exception as exc:
+                logger.debug("Could not fetch morning priorities: %s", exc)
+        await message.reply_text(first_q)
+        return
+
+    # --- Main Q&A phase ---
     mode = state.get("mode", "morning")
-    # Always get questions from template so we never rely on persisted list
     morning_q, evening_q, body_tpl = _load_stoic_template()
     questions = morning_q if mode == "morning" else evening_q
+    if is_quick:
+        questions = (
+            ["What is your intention for today?", "What is your #1 priority?"]
+            if mode == "morning"
+            else ["What was one win today?", "What are you grateful for today?"]
+        )
     state["questions"] = questions
     state["body_template"] = body_tpl
 
     answers = list(state.get("answers", []))
     current_index = len(answers)
     question_text = questions[current_index] if current_index < len(questions) else "Additional thought"
-    answers.append({"q": question_text, "a": text})
+    answers.append({"q": question_text, "a": text_stripped})
     state["answers"] = answers
     orch.state_manager.update_state(user_id, state)
 
@@ -769,3 +1153,17 @@ async def handle_stoic_message(
         await message.reply_text(
             "Anything else? Reply with more, or /stoic_done to save to your Stoic Journal."
         )
+
+
+# ---------------------------------------------------------------------------
+# Register all handlers
+# ---------------------------------------------------------------------------
+
+def register_stoic_handlers(application: Any, orch: TelegramOrchestrator) -> None:
+    application.add_handler(CommandHandler("stoic", _stoic(orch)))
+    application.add_handler(CommandHandler("stoic_done", _stoic_done(orch)))
+    application.add_handler(CommandHandler("stoic_cancel", _stoic_cancel(orch)))
+    application.add_handler(CommandHandler("stoic_replace", _stoic_replace(orch)))
+    application.add_handler(CommandHandler("stoic_append", _stoic_append(orch)))
+    application.add_handler(CommandHandler("stoic_quick", _stoic_quick(orch)))
+    application.add_handler(CommandHandler("stoic_review", _stoic_review(orch)))

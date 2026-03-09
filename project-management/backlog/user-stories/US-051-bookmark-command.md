@@ -1,11 +1,11 @@
 # User Story: US-051 - /bookmark Command to Save URLs to Joplin
 
-**Status**: ⭕ Not Started
+**Status**: ✅ Completed
 **Priority**: 🟡 Medium
 **Story Points**: 5
 **Created**: 2026-03-08
 **Updated**: 2026-03-08
-**Assigned Sprint**: Backlog
+**Assigned Sprint**: Sprint 17
 
 ## Description
 
@@ -125,7 +125,7 @@ so that I can quickly capture references without losing context or spending time
 
 | File | Purpose |
 |------|---------|
-| `src/handlers/bookmark.py` | Command handler (new) |
+| `src/handlers/core.py` | Command handler (implemented in core, not a separate file) |
 | `src/url_enrichment.py` | Reuse `fetch_url_context` |
 | `src/llm_orchestrator.py` | Reuse tag generation or add lightweight variant |
 | `src/joplin_client.py` | `create_note`, `get_or_create_folder_by_path` |

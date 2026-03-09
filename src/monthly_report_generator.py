@@ -12,6 +12,7 @@ Generates monthly reports aggregating:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 from dataclasses import dataclass, field
@@ -469,10 +470,17 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
             month - 1 if month > 1 else 12,
         )
 
-        created, updated = await self._get_notes_in_range(start, end)
-        prev_created, prev_updated = await self._get_notes_in_range(prev_start, prev_end)
-        completed = await self._get_completed_tasks_in_range(user_id, start, end)
-        prev_completed = await self._get_completed_tasks_in_range(user_id, prev_start, prev_end)
+        (
+            (created, updated),
+            (prev_created, prev_updated),
+            completed,
+            prev_completed,
+        ) = await asyncio.gather(
+            self._get_notes_in_range(start, end),
+            self._get_notes_in_range(prev_start, prev_end),
+            self._get_completed_tasks_in_range(user_id, start, end),
+            self._get_completed_tasks_in_range(user_id, prev_start, prev_end),
+        )
         decisions = self._get_decisions_in_range(user_id, start, end)
 
         total_items = len(created) + len(completed)
@@ -511,9 +519,11 @@ Focus on: trends, potential issues, wins to celebrate, suggestions for next mont
         projects = self._analyze_project_activity(created, completed)
         top_tags = self._analyze_tags(created, user_id, start, end)
         most_day, least_day, peak_hours = self._analyze_patterns(created, completed)
-        insights = await self._generate_insights(metrics, weekly_data, projects)
-        in_tasks_pending = await self._get_pending_tasks_count(user_id)
-        in_notes_count = await self._get_inbox_notes_count()
+        insights, in_tasks_pending, in_notes_count = await asyncio.gather(
+            self._generate_insights(metrics, weekly_data, projects),
+            self._get_pending_tasks_count(user_id),
+            self._get_inbox_notes_count(),
+        )
 
         stalled: list[str] = []
         if self.task_service:

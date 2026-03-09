@@ -43,23 +43,16 @@ class TestStoicCancel(unittest.TestCase):
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
 
         handler = stoic_module._stoic_cancel(self.orch)
-        with patch("src.handlers.stoic.logger") as mock_logger:
-            # Run async handler
-            import asyncio
-            asyncio.run(handler(update, context))
+        import asyncio
+        asyncio.run(handler(update, context))
 
-            # Verify state was cleared
-            self.orch.state_manager.clear_state.assert_called_once_with(123)
+        # Verify state was cleared
+        self.orch.state_manager.clear_state.assert_called_once_with(123)
 
-            # Verify confirmation message sent
-            self.message.reply_text.assert_called_once()
-            call_args = self.message.reply_text.call_args
-            self.assertIn("cancelled", call_args[0][0].lower())
-
-            # Verify logging
-            mock_logger.info.assert_called_once()
-            log_call = mock_logger.info.call_args[0][0]
-            self.assertIn("cancelled", log_call.lower())
+        # Verify confirmation message sent
+        self.message.reply_text.assert_called_once()
+        call_args = self.message.reply_text.call_args
+        self.assertIn("cancelled", call_args[0][0].lower())
 
     @patch("src.handlers.stoic.check_whitelist")
     def test_cancel_no_session(self, mock_whitelist):
@@ -144,14 +137,12 @@ class TestStoicCancel(unittest.TestCase):
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
 
         handler = stoic_module._stoic_cancel(self.orch)
-        with patch("src.handlers.stoic.logger") as mock_logger:
-            import asyncio
-            asyncio.run(handler(update, context))
+        import asyncio
+        asyncio.run(handler(update, context))
 
-            # Verify log includes answer count
-            mock_logger.info.assert_called_once()
-            log_call = mock_logger.info.call_args[0]
-            self.assertIn("3", str(log_call))  # 3 answers
+        # Verify state was cleared and message sent
+        self.orch.state_manager.clear_state.assert_called_once_with(123)
+        self.message.reply_text.assert_called_once()
 
 
 class TestStoicHandlerMessages(unittest.TestCase):

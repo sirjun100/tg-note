@@ -12,6 +12,7 @@ Generates comprehensive weekly reports aggregating:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 from dataclasses import dataclass, field
@@ -264,11 +265,15 @@ class WeeklyReportGenerator:
     async def _build_metrics(
         self, user_id: int, start: datetime, end: datetime
     ) -> WeeklyMetrics:
-        created_notes, modified_notes = await self._collect_joplin_metrics(start, end)
-        completed_tasks, pending_tasks, overdue_tasks = (
-            await self._collect_google_tasks_metrics(user_id, start, end)
+        (
+            (created_notes, modified_notes),
+            (completed_tasks, pending_tasks, overdue_tasks),
+            inbox_notes_count,
+        ) = await asyncio.gather(
+            self._collect_joplin_metrics(start, end),
+            self._collect_google_tasks_metrics(user_id, start, end),
+            self._collect_inbox_notes_count(),
         )
-        inbox_notes_count = await self._collect_inbox_notes_count()
         messages, decisions = self._collect_db_metrics(user_id, start, end)
 
         total_attempted = len(created_notes) + len(completed_tasks) + len(pending_tasks) + len(overdue_tasks)
