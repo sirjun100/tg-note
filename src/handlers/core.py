@@ -46,8 +46,8 @@ PROJECT_STATUS_TAGS = {
     "status/done",
 }
 
-# Recipe notes go in Resources/🍽️ Recipe (try Ressources first for French setups)
-RECIPE_FOLDER_PATHS = (["Ressources", "🍽️ Recipe"], ["Resources", "🍽️ Recipe"])
+# Recipe notes go in Resources/🍽️ Recipe (try Resources first, Ressources as fallback for French)
+RECIPE_FOLDER_PATHS = (["Resources", "🍽️ Recipe"], ["Ressources", "🍽️ Recipe"])
 
 GREETING_PATTERNS = [
     r"^(hi|hello|hey|howdy|greetings|yo)[\s!?.]*$",
@@ -1474,7 +1474,7 @@ async def create_note_in_joplin(
             note_title=note_data.get("title", ""),
             note_body=note_data.get("body", ""),
         )
-        # Recipe notes always go in Resources/🍽️ Recipe (or Ressources/🍽️ Recipe)
+        # Recipe notes always go in Resources/🍽️ Recipe (Ressources fallback for French)
         if url_context and url_context.get("content_type") == "recipe":
             for path in RECIPE_FOLDER_PATHS:
                 try:

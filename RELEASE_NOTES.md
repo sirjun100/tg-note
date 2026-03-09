@@ -6,6 +6,14 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ---
 
+## 2026-03-09
+
+### Bug Fixes
+- **Recipe image failure feedback** — When image generation fails (screenshot, Gemini, or URL fetch), the bot now logs the reason and alerts the user with the specific cause (e.g. rate limit, API key not set).
+- **Recipe folder** — Recipes now save to Resources/🍽️ Recipe first (Ressources fallback for French setups). Previously tried Ressources first.
+
+---
+
 ## 2026-03-08
 
 ### New Features

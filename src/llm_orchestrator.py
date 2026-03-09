@@ -852,7 +852,7 @@ Preparation / Cooking steps:
 
 Nutrition: {nutrition_text}
 
-Default folder for this recipe note: Set parent_id to the folder "Ressources/🍽️ Recipe" or "Resources/🍽️ Recipe" if that path exists. Recipe notes are always saved to Resources/🍽️ Recipe.
+Default folder for this recipe note: Set parent_id to the folder "Resources/🍽️ Recipe" (or "Ressources/🍽️ Recipe" for French setups). Recipe notes are always saved to Resources/🍽️ Recipe.
 
 Tags for recipe notes: Always include the tag "recipe". Also add 1–3 tags from the content (e.g. cooking, baking, dessert, vegetarian, vegan, cuisine type, meal type such as breakfast or dinner).
 
