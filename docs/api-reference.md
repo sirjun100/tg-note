@@ -173,8 +173,8 @@ These limits are more than sufficient for personal use (a few dozen interactions
 
 **Image generation flow** (current, in `src/recipe_image.py`):
 1. Send text prompt describing the dish
-2. Receive inline image data (base64 PNG)
-3. Embed as data URL in Joplin note
+2. Receive inline image data (base64 PNG) or `(None, error_reason)` on failure
+3. Embed as data URL in Joplin note; on failure, log reason and alert user with specific cause
 
 **Vision/OCR flow** (planned, FR-030):
 1. Send photo as base64 inline data

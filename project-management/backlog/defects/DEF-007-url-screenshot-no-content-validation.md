@@ -185,7 +185,7 @@ async def fetch_url_context(url: str) -> dict[str, Any]:
 
 ### 4. Update note creation to warn user
 
-In `src/handlers/core.py` where screenshot is used (lines 850-877):
+In `src/handlers/core.py` where screenshot is used (`create_note_in_joplin`):
 
 ```python
 if url_context.get("error"):
@@ -201,7 +201,7 @@ elif url_context and url_context.get("url") and not url_context.get("skip_screen
 
 - File: `src/url_enrichment.py` — URL validation and content extraction
 - File: `src/url_enrichment.py:246-268` — `_is_challenge_page()` as reference for detection pattern
-- File: `src/handlers/core.py:850-877` — Screenshot integration in note creation
+- File: `src/handlers/core.py` — Screenshot integration in `create_note_in_joplin` (DEF-025: only show "screenshot skipped" when URL was primary input)
 - File: `src/url_screenshot.py` — Screenshot capture (downstream of validation)
 
 ## Testing

@@ -98,7 +98,7 @@ If the notes are mostly **from** a specific book or course (e.g. "Laravel: Up an
 
 **→ Resources** (and optionally **Resources → Recipes** or **Resources → Reference**).
 
-Recipes are reference material: you look them up when you cook. Put them in **Resources**. The bot already sends recipe URLs to Resources (or a **Recipes** folder if you have one). You can:
+Recipes are reference material: you look them up when you cook. Put them in **Resources**. The bot saves recipes to **Resources/🍽️ Recipe** (or Ressources/🍽️ Recipe for French setups). You can:
 
 - Create a subfolder **Resources → Recipes** and keep all recipe notes there, or
 - Use **Resources → Reference** and tag notes with `recipe` (the bot adds a `recipe` tag for recipe notes).

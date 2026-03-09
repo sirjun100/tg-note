@@ -467,7 +467,7 @@ Sometimes things live in both places. That's not only fine — it's the design:
 | "Great article on productivity" | Paste the URL | Note in Resources with summary |
 | "Meeting notes from standup" | `Standup notes: decided to prioritize the auth bug, John will handle deploy, need to update docs by Friday` | Note in Projects + Tasks: "Update docs by Friday" |
 | "Random idea at 2am" | `Idea: what if the app could also track habits` | Note in Inbox for later processing |
-| "Recipe from a friend" | `Mike's BBQ rub recipe: 2 tbsp paprika, 1 tbsp brown sugar...` | Note in Resources/Recipes |
+| "Recipe from a friend" | `Mike's BBQ rub recipe: 2 tbsp paprika, 1 tbsp brown sugar...` | Note in Resources/🍽️ Recipe |
 | "I'm overwhelmed" | `/braindump` | Guided session → Note + extracted tasks |
 | "Need to call mom" | `/task Call mom about Sunday dinner` | Task only — no note needed |
 | "Book highlights" | `Notes from Atomic Habits chapter 3: habit stacking means...` | Note in Resources/Books & Articles |

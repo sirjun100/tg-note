@@ -52,7 +52,7 @@ Tags applied automatically. Folder chosen by AI. Action items extracted and read
 |----------|-------------|
 | *"I need to renew my passport before June"* | Google Task created with deadline |
 | *A URL to an interesting article* | Joplin note with summary, key points, and tags |
-| *"Recipe: Mike's BBQ rub — 2 tbsp paprika, 1 tbsp brown sugar..."* | Note in Resources/Recipes with recipe tag |
+| *"Recipe: Mike's BBQ rub — 2 tbsp paprika, 1 tbsp brown sugar..."* | Note in Resources/🍽️ Recipe with recipe tag |
 | *"Idea: what if the app could track habits too"* | Note captured in Inbox for later processing |
 | `/braindump` | Guided 15-minute GTD mind-sweep that empties your brain into organized notes and tasks |
 | `/task Call mom about Sunday dinner` | Single Google Task — no note needed |
