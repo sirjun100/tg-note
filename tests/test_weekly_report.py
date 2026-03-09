@@ -289,17 +289,19 @@ class TestGenerateWeeklyReport:
 
     async def test_full_pipeline_format(self):
         """End-to-end: mock data → generate → format → verify all sections present."""
-        now = datetime.now()
-        this_week_ts = now.timestamp() * 1000
-        yesterday = (now - timedelta(days=1)).isoformat() + "Z"
+        # Fixed reference: Sunday 2026-03-08 (week Mon 2 Mar - Sun 8 Mar)
+        ref = datetime(2026, 3, 8, 18, 0)
+        mid_week = datetime(2026, 3, 5, 12, 0)  # Wednesday in week
+        week_start_ts = int(datetime(2026, 3, 2, 0, 0).timestamp() * 1000)
+        yesterday = (ref - timedelta(days=1)).isoformat() + "Z"
 
         mock_joplin = MagicMock()
         mock_joplin.get_all_notes = AsyncMock(return_value=[
             {"id": "n1", "title": "Project Plan", "parent_id": "f1",
-             "created_time": this_week_ts, "updated_time": this_week_ts,
+             "created_time": week_start_ts, "updated_time": week_start_ts,
              "tags": "work"},
             {"id": "n2", "title": "Meeting Notes", "parent_id": "f2",
-             "created_time": this_week_ts, "updated_time": this_week_ts,
+             "created_time": week_start_ts, "updated_time": week_start_ts,
              "tags": "meetings"},
         ])
         mock_joplin.get_folders = AsyncMock(return_value=[
@@ -313,7 +315,7 @@ class TestGenerateWeeklyReport:
         ]
         mock_tasks.get_user_tasks.return_value = [
             {"id": "t1", "title": "Review PR", "status": "completed",
-             "completed": now.isoformat() + "Z"},
+             "completed": mid_week.isoformat() + "Z"},
             {"id": "t2", "title": "Write docs", "status": "needsAction",
              "due": yesterday},
         ]
@@ -322,7 +324,7 @@ class TestGenerateWeeklyReport:
             joplin_client=mock_joplin,
             task_service=mock_tasks,
         )
-        report = await gen.generate_weekly_report(user_id=42)
+        report = await gen.generate_weekly_report(user_id=42, reference_date=ref)
         msg = gen.format_weekly_report(report)
 
         assert "Weekly Review" in msg or "WEEKLY REVIEW" in msg
