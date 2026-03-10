@@ -17,6 +17,7 @@ from src.handlers.reorg import register_reorg_handlers
 from src.handlers.reports import register_report_handlers
 from src.handlers.search import register_search_handlers
 from src.handlers.stoic import register_stoic_handlers
+from src.handlers.voice import register_voice_handlers
 
 __all__ = [
     "register_ask_handlers",
@@ -34,4 +35,5 @@ __all__ = [
     "register_reorg_handlers",
     "register_search_handlers",
     "register_stoic_handlers",
+    "register_voice_handlers",
 ]

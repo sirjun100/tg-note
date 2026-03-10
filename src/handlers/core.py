@@ -135,6 +135,7 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
         "• /braindump → GTD brain dump (standard 15 min); /braindump quick (5 min); /braindump thorough (25 min)\n"
         "• /bookmark &lt;url&gt; → Save URL to Bookmarks folder\n"
         "• /stoic → Guided morning/evening reflection\n"
+        "• /learnings → What you learned this week (from Stoic journal)\n"
         "• /dream → Jungian dream analysis\n"
         "• /habits → Daily habit check-in\n"
         "• /flashcard → Spaced repetition practice from notes\n"
@@ -616,6 +617,7 @@ def _helpme(orch: TelegramOrchestrator):
             "/braindump [quick|thorough] - GTD mind sweep (5/15/25 min); /braindump_stop to end\n"
             "/bookmark <url> - Save URL to Bookmarks folder in Joplin\n"
             "/stoic [morning|evening] - Guided reflection; /stoic_done to save\n"
+            "/learnings - What you learned this week (from Stoic evening entries)\n"
             "/dream - Jungian dream analysis; /dream_done, /dream_cancel\n"
             "/habits - Daily habit check-in; /habits add|remove|list|stats\n"
             "/flashcard - Spaced repetition; /flashcard from <note>; /flashcard_done\n"
@@ -1599,15 +1601,11 @@ async def _process_llm_response(
             _schedule_joplin_sync()
 
             folder_id = note_result.get("folder_id") or llm_response.note.get("parent_id")
-            folder_name = "Unknown"
+            folder_path = "Unknown"
             if folder_id:
-                try:
-                    folder = await orch.joplin_client.get_folder(folder_id)
-                    folder_name = folder.get("title", "Unknown") if folder else "Unknown"
-                except Exception as exc:
-                    logger.warning("Failed to resolve folder '%s' after note creation: %s", folder_id, exc)
+                folder_path = await _build_folder_path(orch, folder_id)
 
-            success_msg = f"✅ Note created: '{llm_response.note['title']}' in folder '{folder_name}'"
+            success_msg = f"✅ Note created: '{llm_response.note['title']}'\n📂 {folder_path}"
             if tag_info.get("all_tags"):
                 success_msg += f"\nTags: {_format_tag_display(tag_info)}"
             if note_result.get("image_skipped"):
@@ -1702,6 +1700,11 @@ async def create_note_in_joplin(
                     and url_context.get("url")
                     and not url_context.get("skip_screenshot")
                 )
+                or (
+                    url_context
+                    and url_context.get("content_type") == "media"
+                    and url_context.get("image_url")
+                )
             )
             if needs_image and message:
                 await message.reply_text("🖼️ Adding image...")
@@ -1718,8 +1721,6 @@ async def create_note_in_joplin(
                 error_msg = url_context.get("error", "")
                 if error_msg:
                     await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")
-                else:
-                    await message.reply_text("⚠️ Screenshot skipped (site uses security verification).")
             # For recipe with URL: try screenshot first, fall back to LLM when it fails
             if url_context and url_context.get("content_type") == "recipe":
                 has_url = url_context.get("url") and url_context.get("url") != "(pasted)"
@@ -1766,12 +1767,14 @@ async def create_note_in_joplin(
                     )
                     if message:
                         await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
-            if final_image_data_url is None and url_context and url_context.get("content_type") == "recipe" and url_context.get("image_url"):
+            if final_image_data_url is None and url_context and url_context.get("content_type") in ("recipe", "media") and url_context.get("image_url"):
                 final_image_data_url = await _fetch_image_as_data_url(url_context["image_url"])
                 if final_image_data_url is None:
-                    image_failure_reasons.append("recipe image URL fetch failed")
+                    content_type_label = url_context.get("content_type", "url")
+                    image_failure_reasons.append(f"{content_type_label} image URL fetch failed")
                     logger.info(
-                        "Recipe image URL fetch failed for '%s'",
+                        "%s image URL fetch failed for '%s'",
+                        content_type_label.capitalize(),
                         normalized_note.get("title", "")[:60],
                     )
 
@@ -2005,6 +2008,31 @@ async def _build_url_context(validated_text: str) -> dict[str, Any]:
             context.get("template_name", "unknown"),
         )
     return context
+
+
+async def _build_folder_path(orch: TelegramOrchestrator, folder_id: str) -> str:
+    """
+    Build a human-readable full path for a folder, e.g. 'Areas / 📓 Journaling / Stoic Journal'.
+    Falls back to the folder title alone if the parent chain can't be resolved.  (DEF-031 / US-054)
+    """
+    try:
+        folders = await orch.joplin_client.get_folders()
+        by_id = {f["id"]: f for f in folders}
+        parts: list[str] = []
+        current_id: str | None = folder_id
+        visited: set[str] = set()
+        while current_id and current_id not in visited:
+            folder = by_id.get(current_id)
+            if not folder:
+                break
+            parts.append(folder.get("title", "?"))
+            visited.add(current_id)
+            current_id = folder.get("parent_id") or None
+        parts.reverse()
+        return " / ".join(parts) if parts else "Unknown"
+    except Exception as exc:
+        logger.warning("Could not build folder path for %s: %s", folder_id, exc)
+        return "Unknown"
 
 
 def _schedule_joplin_sync() -> None:

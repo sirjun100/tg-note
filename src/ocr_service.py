@@ -54,7 +54,21 @@ def check_gemini_api_key_available() -> tuple[bool, str]:
     return True, f"{_mask_api_key(api_key)} (from {source})"
 _GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 _MAX_RETRIES_429 = 2
+_MAX_RETRIES_TRANSIENT = 2
 _RETRY_DELAY_SEC = 3.0
+
+# Exception types that indicate a transient (retryable) failure
+_TRANSIENT_EXC_TYPES = (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError)
+
+
+def _is_transient_http_error(exc: Exception) -> bool:
+    """Return True for network-level or 5xx server errors worth retrying."""
+    if isinstance(exc, _TRANSIENT_EXC_TYPES):
+        return True
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        return getattr(resp, "status_code", 0) >= 500
+    return False
 
 _OCR_PROMPT = """Extract all text from this image.
 
@@ -143,7 +157,8 @@ async def extract_text_from_image(
 
     last_exc: Exception | None = None
     data: dict | None = None
-    for attempt in range(_MAX_RETRIES_429 + 1):
+    max_attempts = max(_MAX_RETRIES_429, _MAX_RETRIES_TRANSIENT) + 1
+    for attempt in range(max_attempts):
         try:
             data = await _do_request()
             break
@@ -156,12 +171,24 @@ async def extract_text_from_image(
         except (httpx.HTTPError, Exception) as exc:
             last_exc = exc
             exc_resp = getattr(exc, "response", None)
-            if exc_resp is not None and getattr(exc_resp, "status_code", None) == 429:
-                if attempt < _MAX_RETRIES_429:
-                    await asyncio.sleep(_RETRY_DELAY_SEC)
-                    continue
-                logger.warning("Gemini rate limit (429); OCR skipped")
+            is_429 = exc_resp is not None and getattr(exc_resp, "status_code", None) == 429
+            is_transient = _is_transient_http_error(exc)
+
+            if is_429 and attempt < _MAX_RETRIES_429:
+                logger.warning("Gemini rate limit (429), retrying (attempt %d)...", attempt + 1)
+                await asyncio.sleep(_RETRY_DELAY_SEC)
+                continue
+
+            if is_transient and attempt < _MAX_RETRIES_TRANSIENT:
+                delay = _RETRY_DELAY_SEC * (2 ** attempt)
+                logger.warning("Transient OCR error (%s), retrying in %.0fs (attempt %d)...", type(exc).__name__, delay, attempt + 1)
+                await asyncio.sleep(delay)
+                continue
+
+            if is_429:
+                logger.warning("Gemini rate limit (429) after retries; OCR skipped")
                 return None
+
             err_body = ""
             if exc_resp is not None:
                 with contextlib.suppress(Exception):
@@ -170,7 +197,7 @@ async def extract_text_from_image(
             return None
     else:
         if last_exc:
-            logger.warning("OCR failed: %s", last_exc)
+            logger.warning("OCR failed after retries: %s", last_exc)
         return None
 
     if status_task:

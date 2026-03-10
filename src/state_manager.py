@@ -44,6 +44,17 @@ class StateManager:
                 ON user_states(updated_at)
             ''')
 
+            # User preferences table (key-value per user)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_preferences (
+                    user_id INTEGER NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, key)
+                )
+            ''')
+
             conn.commit()
             conn.close()
 
@@ -184,6 +195,41 @@ class StateManager:
                 logger.error(f"Error getting active users: {e}")
                 return []
 
+    def get_user_pref(self, user_id: int, key: str) -> str | None:
+        """Return a stored user preference value, or None if not set."""
+        with self._lock:
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT value FROM user_preferences WHERE user_id = ? AND key = ?",
+                    (user_id, key),
+                )
+                row = cursor.fetchone()
+                conn.close()
+                return row[0] if row else None
+            except sqlite3.Error as e:
+                logger.error(f"Error getting preference {key} for user {user_id}: {e}")
+                return None
+
+    def set_user_pref(self, user_id: int, key: str, value: str) -> bool:
+        """Store a user preference value."""
+        with self._lock:
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute(
+                    '''INSERT OR REPLACE INTO user_preferences (user_id, key, value, updated_at)
+                       VALUES (?, ?, ?, CURRENT_TIMESTAMP)''',
+                    (user_id, key, value),
+                )
+                conn.commit()
+                conn.close()
+                return True
+            except sqlite3.Error as e:
+                logger.error(f"Error setting preference {key} for user {user_id}: {e}")
+                return False
+
     def migrate_from_dict(self, dict_states: dict[int, dict[str, Any]]) -> bool:
         """Migrate states from in-memory dict to database (for transition)"""
         success = True
@@ -199,6 +245,7 @@ class InMemoryStateManager:
 
     def __init__(self):
         self._states: dict[int, tuple[dict[str, Any], str]] = {}
+        self._prefs: dict[tuple[int, str], str] = {}
         self._lock = threading.Lock()
 
     def get_state(self, user_id: int) -> dict[str, Any] | None:
@@ -231,3 +278,12 @@ class InMemoryStateManager:
     def get_all_active_users(self) -> list[int]:
         with self._lock:
             return list(self._states.keys())
+
+    def get_user_pref(self, user_id: int, key: str) -> str | None:
+        with self._lock:
+            return self._prefs.get((user_id, key))
+
+    def set_user_pref(self, user_id: int, key: str, value: str) -> bool:
+        with self._lock:
+            self._prefs[(user_id, key)] = value
+            return True

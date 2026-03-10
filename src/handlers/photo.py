@@ -13,8 +13,8 @@ import time
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes, MessageHandler, filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 from src.security_utils import (
     check_whitelist,
@@ -213,6 +213,15 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
             return
         if llm_response.status == "NEED_INFO" and llm_response.question:
             image_data_url = _image_bytes_to_data_url(image_data, mime_type)
+
+            # US-045: fetch top folders for quick-reply keyboard
+            folder_choices: list[dict] = []
+            try:
+                all_folders = await orch.joplin_client.get_folders()
+                folder_choices = [f for f in all_folders if f.get("title")][:8]
+            except Exception:
+                pass
+
             orch.state_manager.update_state(
                 user_id,
                 {
@@ -222,9 +231,19 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
                     "image_data_url": image_data_url,
                     "mime_type": mime_type,
                     "caption": caption,
+                    "folder_choices": folder_choices,
                 },
             )
-            await status_msg.edit_text(f"🤔 {llm_response.question}")
+
+            reply_markup = None
+            if folder_choices:
+                keyboard = [
+                    [InlineKeyboardButton(f"📁 {f['title']}", callback_data=f"photo_folder_{i}")]
+                    for i, f in enumerate(folder_choices)
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await status_msg.edit_text(f"🤔 {llm_response.question}", reply_markup=reply_markup)
             return
 
         note_data = llm_response.note
@@ -422,6 +441,37 @@ async def handle_photo_message(
         await status_msg.edit_text(format_error_message("Failed to create note in Joplin."))
 
 
+def _photo_folder_callback(orch: TelegramOrchestrator):
+    """US-045: Handle inline folder selection for photo OCR NEED_INFO."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        query = update.callback_query
+        if not query or not query.data:
+            return
+        await query.answer()
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        state = orch.state_manager.get_state(user.id)
+        if not state or state.get("active_persona") != PHOTO_OCR_PERSONA:
+            await query.edit_message_text("❌ Session expired. Send the photo again.")
+            return
+
+        folder_choices = state.get("folder_choices", [])
+        try:
+            idx = int(query.data.split("_")[-1])
+            folder = folder_choices[idx]
+        except (ValueError, IndexError):
+            await query.edit_message_text("❌ Invalid selection. Send the photo again.")
+            return
+
+        folder_name = folder.get("title", "")
+        await query.edit_message_text(f"📁 Saving to {folder_name}...")
+        await handle_photo_message(orch, user.id, f"Save to {folder_name}", query.message)
+
+    return handler
+
+
 def register_photo_handlers(application: Any, orch: TelegramOrchestrator) -> None:
     """Register photo message handler and /photo_cancel."""
     from src.ocr_service import check_gemini_api_key_available
@@ -463,4 +513,5 @@ def register_photo_handlers(application: Any, orch: TelegramOrchestrator) -> Non
 
     application.add_handler(MessageHandler(filters.PHOTO, handler))
     application.add_handler(CommandHandler("photo_cancel", photo_cancel_cmd))
+    application.add_handler(CallbackQueryHandler(_photo_folder_callback(orch), pattern="^photo_folder_"))
     logger.info("Photo handlers registered")

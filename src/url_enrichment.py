@@ -428,16 +428,25 @@ async def fetch_url_context(url: str) -> dict[str, Any]:
             )
             return result
 
+        # Media sites (YouTube, Vimeo, Spotify) can't be rendered by screenshot APIs.
+        # Mark skip_screenshot silently — og:image thumbnail will be used instead.
+        _MEDIA_DOMAINS = ("youtube.com", "youtu.be", "vimeo.com", "spotify.com")
+        is_media_site = any(d in final_url.lower() for d in _MEDIA_DOMAINS)
+        if is_media_site:
+            result["skip_screenshot"] = True
+            # No error set — fallback to og:image thumbnail, no warning shown to user
+
         # Skip screenshot when page is a Cloudflare (or similar) security challenge
-        if _is_challenge_page(html_text, title):
+        if not is_media_site and _is_challenge_page(html_text, title):
             result["skip_screenshot"] = True
             result["error"] = "Security verification required"
 
-        # Check for error pages (404, paywall, etc.)
-        is_error, error_reason = _is_error_page(html_text, title, final_url)
-        if is_error:
-            result["skip_screenshot"] = True
-            result["error"] = error_reason
+        # Check for error pages (404, paywall, etc.) — skip for media sites to avoid false positives
+        if not is_media_site:
+            is_error, error_reason = _is_error_page(html_text, title, final_url)
+            if is_error:
+                result["skip_screenshot"] = True
+                result["error"] = error_reason
 
         description = _extract_meta(
             html_text,

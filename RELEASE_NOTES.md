@@ -6,6 +6,27 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ---
 
+## 2026-03-10 (Sprint 19 — Polish & Bug Fixes)
+
+### New Features
+- **Voice message support** — Send a voice note or audio file; the bot transcribes it via OpenAI Whisper and routes it through the same pipeline as text messages. Shows transcription before processing. [DEF-032](project-management/backlog/defects/DEF-032-joplin-did-not-process-voice-message-transcription.md)
+- **Stoic quick-reply keyboards** — Each stoic journal question now shows a context-aware `ReplyKeyboardMarkup`: 1–5 numeric for energy, emoji mood options for feeling/mood, Yes/No/Skip for yes-no questions, and a Skip button for open-ended questions. Keyboard removed at end of session. [US-053](project-management/backlog/user-stories/US-053-stoic-quick-reply-for-each-answer.md)
+- **Note creation shows full folder path** — Success message now displays the complete path (e.g. `📂 Projects / Professional / My Project`) instead of just the folder name. [US-054](project-management/backlog/user-stories/US-054-note-creation-show-full-path-and-auto-sync.md)
+- **YouTube & media thumbnails** — YouTube, Vimeo, and Spotify links now silently skip screenshot and use the `og:image` thumbnail instead. No more "Screenshot skipped" warning for media sites. [DEF-033](project-management/backlog/defects/DEF-033-joplin-agent-fails-to-take-screenshot-of-youtube-v.md)
+
+### Bug Fixes
+- **DEF-028: Task times in user timezone** — `/tasks_status` and task listings now convert UTC timestamps to the user's configured timezone (e.g. America/Montreal). [DEF-028](project-management/backlog/defects/DEF-028-tasks-status-shows-times-not-in-user-timezone.md)
+- **DEF-029: Missing projects in task creation** — Project selection list now finds nested projects (e.g. `Projects/Professional/My Project`) using a structure-based heuristic instead of only direct children. [DEF-029](project-management/backlog/defects/DEF-029-task-creation-project-list-incomplete-missing-projects.md)
+- **DEF-030: Stoic streak uses local date** — Streak tracking now uses the user's local date (not UTC), so completing an entry at 11 PM local time correctly counts for that day. [DEF-030](project-management/backlog/defects/DEF-030-stoic-note-timestamp-utc-instead-of-montreal-time.md)
+- **DEF-031: Full folder path on note save** — Note creation success message shows the complete Joplin folder path hierarchy. [DEF-031](project-management/backlog/defects/DEF-031-note-creation-should-show-full-path-and-trigger-sync.md)
+
+### Internal
+- Documented Joplin folder structure in `project-management/joplin-folder-structure.md`.
+- Updated PARA template in `reorg_orchestrator.py`: Resources expanded to 5 items; Archive includes year-based sub-folders.
+- Unit tests: voice handler (9 tests), stoic quick replies (15 tests), timezone fix coverage.
+
+---
+
 ## 2026-03-08 (Sprint 17)
 
 ### New Features

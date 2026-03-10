@@ -179,6 +179,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
         register_report_handlers,
         register_search_handlers,
         register_stoic_handlers,
+        register_voice_handlers,
     )
 
     register_google_tasks_handlers(application, orchestrator)
@@ -195,6 +196,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
     register_flashcard_handlers(application, orchestrator)
     register_planning_handlers(application, orchestrator)
     register_profile_handlers(application, orchestrator)
+    register_voice_handlers(application, orchestrator)
     register_core_handlers(application, orchestrator)
 
     return application

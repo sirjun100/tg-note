@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import httpx
+
 from src.ocr_service import (
+    OCRUnprocessableImageError,
+    _is_transient_http_error,
     _mask_api_key,
     check_gemini_api_key_available,
     extract_text_from_image,
@@ -96,6 +100,130 @@ def test_mask_api_key():
     assert _mask_api_key("short") == "(too short or empty)"
     assert _mask_api_key("") == "(too short or empty)"
     assert _mask_api_key("123456789012") == "1234...9012"
+
+
+# ---------------------------------------------------------------------------
+# T-011: OCRUnprocessableImageError propagates correctly (US-046)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_extract_raises_unprocessable_on_400_unable_to_process():
+    """Gemini 400 'Unable to process input image' raises OCRUnprocessableImageError."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 400
+    mock_resp.text = "Unable to process input image: corrupt or unsupported format"
+    mock_resp.raise_for_status = MagicMock()
+
+    with (
+        patch("src.ocr_service.get_settings") as mock_settings,
+        patch("src.ocr_service.httpx.AsyncClient") as mock_client,
+    ):
+        mock_settings.return_value = type("Settings", (), {"google": type("G", (), {"gemini_api_key": "key123"})()})()
+        mock_client.return_value.__aenter__.return_value.post = AsyncMock(return_value=mock_resp)
+
+        with pytest.raises(OCRUnprocessableImageError):
+            await extract_text_from_image(b"bad_image_bytes")
+
+
+@pytest.mark.asyncio
+async def test_photo_handler_catches_unprocessable_and_sends_user_message():
+    """_handle_photo sends friendly error message when OCRUnprocessableImageError is raised."""
+    from src.handlers import photo as photo_module
+
+    _TEST_IMAGE_BYTES = b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 100
+
+    orch = MagicMock()
+    orch.logging_service = MagicMock()
+    orch.state_manager = MagicMock()
+
+    user = MagicMock()
+    user.id = 12345
+    photo_file = AsyncMock()
+    photo_file.download_as_bytearray = AsyncMock(return_value=bytearray(_TEST_IMAGE_BYTES))
+    photo = MagicMock()
+    photo.get_file = AsyncMock(return_value=photo_file)
+    message = AsyncMock()
+    message.photo = [photo]
+    message.caption = None
+    status_msg = AsyncMock()
+    message.reply_text = AsyncMock(return_value=status_msg)
+    status_msg.edit_text = AsyncMock()
+    update = MagicMock()
+    update.effective_user = user
+    update.message = message
+
+    with (
+        patch("src.handlers.photo.check_whitelist", return_value=True),
+        patch("src.ocr_service.extract_text_from_image", new_callable=AsyncMock, side_effect=OCRUnprocessableImageError()),
+    ):
+        await photo_module._handle_photo(orch, update, MagicMock())
+
+    edit_calls = [c[0][0] for c in status_msg.edit_text.call_args_list]
+    assert any("unable to process" in t.lower() or "different photo" in t.lower() for t in edit_calls)
+
+
+# ---------------------------------------------------------------------------
+# T-013: Retry on transient failures (US-047)
+# ---------------------------------------------------------------------------
+
+def test_is_transient_http_error_timeout():
+    exc = httpx.TimeoutException("timeout", request=MagicMock())
+    assert _is_transient_http_error(exc) is True
+
+
+def test_is_transient_http_error_connect_error():
+    exc = httpx.ConnectError("connection refused", request=MagicMock())
+    assert _is_transient_http_error(exc) is True
+
+
+def test_is_transient_http_error_500():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 503
+    exc = httpx.HTTPStatusError("503", request=MagicMock(), response=mock_resp)
+    assert _is_transient_http_error(exc) is True
+
+
+def test_is_transient_http_error_400_not_transient():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 400
+    exc = httpx.HTTPStatusError("400", request=MagicMock(), response=mock_resp)
+    assert _is_transient_http_error(exc) is False
+
+
+@pytest.mark.asyncio
+async def test_extract_retries_on_timeout_then_succeeds():
+    """On transient timeout, OCR retries and returns result on second attempt."""
+    good_resp = MagicMock()
+    good_resp.status_code = 200
+    good_resp.raise_for_status = MagicMock()
+    good_resp.json = MagicMock(return_value={
+        "candidates": [{"content": {"parts": [
+            {"text": '{"text":"hi","type":"document","summary":"s","suggested_title":"t","structured_data":null}'}
+        ]}}]
+    })
+
+    call_count = 0
+
+    async def _post_side_effect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise httpx.TimeoutException("timeout", request=MagicMock())
+        return good_resp
+
+    with (
+        patch("src.ocr_service.get_settings") as mock_settings,
+        patch("src.ocr_service.httpx.AsyncClient") as mock_client,
+        patch("src.ocr_service.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        mock_settings.return_value = type("Settings", (), {"google": type("G", (), {"gemini_api_key": "key123"})()})()
+        mock_client.return_value.__aenter__.return_value.post = _post_side_effect
+
+        result = await extract_text_from_image(b"fake_bytes")
+
+    assert result is not None
+    assert result["text"] == "hi"
+    assert call_count == 2  # failed once, succeeded on retry
 
 
 def test_gemini_api_key_available_when_configured():

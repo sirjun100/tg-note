@@ -9,13 +9,13 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-08 (Sprint 17 ✅, Sprint 18 ✅)
+**Last Updated**: 2026-03-10 (Sprint 17 ✅, Sprint 18 ✅, Sprint 19 ✅)
 
 ## Project Overview
 
 **Project Name**: Intelligent Telegram-Joplin Bot
-**Current Sprint**: Sprint 18 (✅ Complete)
-**Status**: ✅ Sprint 18 Complete — 23 pts delivered (18 committed + 5 stretch)
+**Current Sprint**: Sprint 19 (✅ Complete)
+**Status**: ✅ Sprint 19 Complete — Polish & Bug Fixes (DEF-028–033, US-053, US-054, DEF-032 voice handler)
 **Timeline**: Sprint 10–16 ✅; Sprint 9 (US-016) ~55%
 **Quality**: Production Ready ✅
 
@@ -44,6 +44,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
+| [US-058](user-stories/US-058-bot-understands-natural-conversational-intent-from.md) | Bot understands natural conversational intent from | 🟡 Medium | 5 | ⭕ | - | 2026-03-10 | 2026-03-10 |
+| [US-057](user-stories/US-057-parse-health-data-from-garmin-fatsecret-and-arbole.md) | Parse health data from Garmin, FatSecret, and Arbo | 🟡 Medium | 8 | ⭕ | - | 2026-03-10 | 2026-03-10 |
 | [US-052](user-stories/US-052-world-class-stoic-journaling-experience.md) | World-Class Stoic Journaling Experience | 🟠 High | 13 | ✅ | Sprint 18 | 2026-03-08 | 2026-03-08 |
 | [US-001](user-stories/US-001-git-commit-template.md) | Add Git Commit Message Template | 🟠 High | 5 | ✅ | Sprint 1 | 2026-01-01 | 2026-01-01 |
 | [US-002](user-stories/US-002-mermaid-workflow-diagrams.md) | Add Mermaid Workflow Diagrams for Backlog Management | 🟠 High | 5 | ✅ | Sprint 1 | 2026-01-01 | 2026-01-01 |
@@ -96,11 +98,17 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [US-049](user-stories/US-049-photo-ocr-cost-logging.md) | Photo OCR: Cost Logging | 🟢 Low | 2 | ⭕ | Backlog | 2026-03-06 | 2026-03-06 |
 | [US-050](user-stories/US-050-photo-send-as-file-hint.md) | Photo OCR: "Send as File" Hint in Help | 🟢 Low | 1 | ✅ | Sprint 18 | 2026-03-06 | 2026-03-08 |
 | [US-051](user-stories/US-051-bookmark-command.md) | /bookmark Command to Save URLs to Joplin | 🟡 Medium | 5 | ✅ | Sprint 17 | 2026-03-08 | 2026-03-08 |
+| [US-053](user-stories/US-053-stoic-quick-reply-for-each-answer.md) | Stoic Journal Quick Reply for Each Answer | 🟡 Medium | 3 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
+| [US-054](user-stories/US-054-note-creation-show-full-path-and-auto-sync.md) | Note Creation: Show Full Path and Auto-Sync | 🟡 Medium | 2 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
+| [US-055](user-stories/US-055-google-tasks-duplicate-check-before-add.md) | Google Tasks: Duplicate Check Before Add, Offer Edit/Priority/Cancel | 🟡 Medium | 5 | ⭕ | Backlog | 2026-03-09 | 2026-03-09 |
+| [US-056](user-stories/US-056-grocery-shopping-price-and-store-search.md) | Grocery/Shopping: Find Stores Nearby and Compare Prices (Local + Online) | 🟡 Medium | 8 | ⭕ | Backlog | 2026-03-09 | 2026-03-09 |
 
 ## Defects
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
+| [DEF-033](defects/DEF-033-joplin-agent-fails-to-take-screenshot-of-youtube-v.md) | Joplin agent fails to take screenshot of YouTube v | 🟠 High | 3 | ✅ | Sprint 19 | 2026-03-10 | 2026-03-10 |
+| [DEF-032](defects/DEF-032-joplin-did-not-process-voice-message-transcription.md) | Joplin did not process voice message transcription | 🟠 High | 3 | ✅ | Sprint 19 | 2026-03-10 | 2026-03-10 |
 | [DEF-001](defects/DEF-001-google-tasks-sync-no-token.md) | Google Tasks Sync Fails: No Google token found for user | 🟠 High | 2 | ✅ | Backlog | 2026-03-01 | 2026-03-01 |
 | [DEF-002](defects/DEF-002-github-actions-build-failure.md) | GitHub Actions Build Failure | 🔴 Critical | 3 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
 | [DEF-003](defects/DEF-003-scheduler-not-working.md) | Scheduler Not Working — App Down | 🔴 Critical | 5 | ✅ | Backlog | 2026-03-01 | 2026-03-03 |
@@ -128,6 +136,10 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [DEF-025](defects/DEF-025-recipe-pasted-text-shows-screenshot-skipped.md) | Recipe Pasted as Text Shows "Screenshot skipped" Incorrectly | 🟡 Medium | 2 | ✅ | Backlog | 2026-03-09 | 2026-03-09 |
 | [DEF-026](defects/DEF-026-braindump-and-image-ocr-cannot-save-to-joplin.md) | Braindump and Image OCR Cannot Save to Joplin | 🟠 High | 1 | ✅ | Backlog | 2026-03-09 | 2026-03-09 |
 | [DEF-027](defects/DEF-027-braindump-google-tasks-token-expired.md) | Braindump: Google Tasks Creation Fails with token_expired | 🟠 High | 2 | ✅ | Backlog | 2026-03-09 | 2026-03-09 |
+| [DEF-028](defects/DEF-028-tasks-status-shows-times-not-in-user-timezone.md) | Tasks Status Shows Times Not in User Timezone | 🟡 Medium | 2 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
+| [DEF-029](defects/DEF-029-task-creation-project-list-incomplete-missing-projects.md) | Task Creation Project List Incomplete — Missing Projects | 🟡 Medium | 3 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
+| [DEF-030](defects/DEF-030-stoic-note-timestamp-utc-instead-of-montreal-time.md) | Stoic Note Timestamp Shows UTC Instead of Montreal Time | 🟡 Medium | 2 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
+| [DEF-031](defects/DEF-031-note-creation-should-show-full-path-and-trigger-sync.md) | Note Creation Should Show Full Path and Trigger Sync | 🟡 Medium | 2 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
 
 ---
 

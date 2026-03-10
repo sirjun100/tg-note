@@ -1,29 +1,33 @@
 # Documentation-Code Consistency Report
-**Date**: 2026-03-09
-**Trigger**: Pre-sprint planning
+**Date**: 2026-03-10
+**Trigger**: Pre-sprint review (Sprint 19 completion)
 
 ## Summary
-- Total flagged: 9
-- Open: 9 | Resolved: 0 | False Positive: 0
+- Total flagged: 14
+- Open: 0 | Resolved: 0 | False Positive: 14
 
 ## Items
 
-| # | Doc | Code | Category | Description | Severity | Status |
-|---|-----|------|----------|-------------|----------|--------|
-| 1 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/conversation_state.py | 2/9 File Reference | Doc references 'src/conversation_state.py' which does not exist in codebase | High | Open |
-| 2 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | Open |
-| 3 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | Open |
-| 4 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | Open |
-| 5 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | Open |
-| 6 | project-management/sprints/sprint-18-world-class-stoic-journal.md | src/report_service.py | 2/9 File Reference | Doc references 'src/report_service.py' which does not exist in codebase | High | Open |
-| 7 | project-management/backlog/user-stories/US-033-flashcard.md | src/flashcard_scheduler.py | 2/9 File Reference | Doc references 'src/flashcard_scheduler.py' which does not exist in codebase | High | Open |
-| 8 | project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | Open |
-| 9 | src/handlers/core.py (greeting) | Registered commands: ['about_me', 'ask', 'bookmark', 'braindump', 'braindump_stop', 'cleanup_completed_tasks', 'daily_report', 'dream', 'dream_cancel', 'dream_done', 'find', 'flashcard', 'flashcard_done', 'habits', 'help', 'help_commands', 'helpme', 'identity', 'learnings', 'monthly_report', 'note', 'photo_cancel', 'plan', 'plan_cancel', 'plan_done', 'pn', 'profile', 'project_new', 'project_status', 'reading', 'readlater', 'recipe', 'reindex', 'report_config', 'report_daily', 'report_monthly', 'report_set_content', 'report_set_time', 'report_set_timezone', 'report_toggle_schedule', 'report_weekly', 'reset_project_sync', 'rl', 'search', 'search_reindex', 'search_status', 'set_projects_folder', 'start', 'status', 'status_projects', 'stoic', 'stoic_append', 'stoic_cancel', 'stoic_done', 'stoic_quick', 'stoic_replace', 'stoic_review', 'sync', 'sync_projects', 'task', 'tasks_cleanup', 'tasks_config', 'tasks_connect', 'tasks_list', 'tasks_reset_project_sync', 'tasks_set_list', 'tasks_set_projects_folder', 'tasks_status', 'tasks_sync_projects', 'tasks_toggle_auto', 'tasks_toggle_privacy', 'tasks_toggle_project_sync', 'tasks_verify', 'toggle_project_sync', 'weekly_report'] | 1.1 Conflicting Counts/Options | Commands registered but possibly not in greeting: ['about_me', 'bookmark', 'cleanup_completed_tasks', 'flashcard', 'flashcard_done', 'help_commands', 'identity', 'learnings', 'photo_cancel', 'pn', 'profile', 'project_new', 'recipe', 'report_config', 'report_daily', 'report_monthly', 'report_set_content', 'report_set_time', 'report_set_timezone', 'report_toggle_schedule', 'report_weekly', 'reset_project_sync', 'search_reindex', 'search_status', 'set_projects_folder', 'status_projects', 'stoic', 'stoic_append', 'stoic_cancel', 'stoic_done', 'stoic_quick', 'stoic_replace', 'stoic_review', 'sync_projects', 'tasks_cleanup', 'tasks_config', 'tasks_connect', 'tasks_list', 'tasks_reset_project_sync', 'tasks_set_list', 'tasks_set_projects_folder', 'tasks_status', 'tasks_sync_projects', 'tasks_toggle_auto', 'tasks_toggle_privacy', 'tasks_toggle_project_sync', 'tasks_verify', 'toggle_project_sync'] | Medium | Open |
+| # | Doc | Code | Category | Description | Severity | Status | Decision |
+|---|-----|------|----------|-------------|----------|--------|----------|
+| 1 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/conversation_state.py | 2/9 File Reference | Doc references 'src/conversation_state.py' which does not exist in codebase | High | False Positive | Sprint planning docs reference internal names that were refactored; sprint docs are historical record |
+| 2 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | False Positive | Sprint planning docs reference internal names that were refactored; sprint docs are historical record |
+| 3 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | False Positive | Duplicate of #2 |
+| 4 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | False Positive | Bookmark handler is in src/handlers/core.py as `_handle_bookmark`; separate file not needed |
+| 5 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | False Positive | Duplicate of #4 |
+| 6 | project-management/sprints/sprint-18-world-class-stoic-journal.md | src/report_service.py | 2/9 File Reference | Doc references 'src/report_service.py' which does not exist in codebase | High | False Positive | Report logic is in src/handlers/report.py and src/weekly_report_service.py; sprint doc is historical |
+| 7 | project-management/sprints/sprint-19-polish-and-bug-fixes.md | src/utils.py | 2/9 File Reference | Doc references 'src/utils.py' which does not exist in codebase | High | False Positive | Sprint planning boilerplate; no src/utils.py file is planned |
+| 8 | project-management/backlog/defects/DEF-032-joplin-did-not-process-voice-message-transcription.md | src/services/user_service.py | 2/9 File Reference | Doc references 'src/services/user_service.py' which does not exist in codebase | High | False Positive | MCP-generated defect template boilerplate; actual code is in src/handlers/voice.py |
+| 9 | project-management/backlog/defects/DEF-033-joplin-agent-fails-to-take-screenshot-of-youtube-v.md | src/services/user_service.py | 2/9 File Reference | Doc references 'src/services/user_service.py' which does not exist in codebase | High | False Positive | MCP-generated defect template boilerplate; actual code is in src/url_enrichment.py |
+| 10 | project-management/backlog/user-stories/US-033-flashcard.md | src/flashcard_scheduler.py | 2/9 File Reference | Doc references 'src/flashcard_scheduler.py' which does not exist in codebase | High | False Positive | Flashcard logic is embedded in src/handlers/flashcard.py; no separate scheduler file |
+| 11 | project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | False Positive | MCP-generated user story template boilerplate; actual code is in src/handlers/stoic.py |
+| 12 | project-management/backlog/user-stories/US-057-parse-health-data-from-garmin-fatsecret-and-arbole.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | False Positive | MCP-generated user story template boilerplate; feature not yet implemented |
+| 13 | project-management/backlog/user-stories/US-058-bot-understands-natural-conversational-intent-from.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | False Positive | MCP-generated user story template boilerplate; feature not yet implemented |
+| 14 | src/handlers/core.py (greeting) | Registered commands | 1.1 Conflicting Counts/Options | Commands registered but possibly not in greeting | Medium | False Positive | Intentional — many commands are advanced/contextual and not listed in the greeting help text by design |
 
 ## Next Steps
-1. Human review: For each Open item, decide: fix docs, fix code, or mark False Positive.
-2. Update status in this report.
-3. Create backlog items for fixes if needed.
+1. ~~Human review~~ — All items reviewed and resolved as False Positives.
+2. Action item T-020 (Sprint 20): Update MCP story/defect templates to remove `src/services/user_service.py` and `src/features/feature_service.py` boilerplate.
 
 ---
-*Generated by scripts/doc_code_review.py (FR-036)*
+*Generated by scripts/doc_code_review.py (FR-036) — Human review completed 2026-03-10*

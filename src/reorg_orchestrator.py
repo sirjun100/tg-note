@@ -73,8 +73,17 @@ class ReorgOrchestrator:
                 "🏠 Home",
                 {"📓 Journaling": ["Dream Journal", "Stoic Journal", "Other"]},
             ],
-            "Resources": ["📖 Books & Articles", "📋 Templates", "🔗 Reference"],
-            "Archive": []
+            "Resources": [
+                "📖 Books & Articles",
+                "🛠️ Tools & Software",
+                "📋 Templates & Checklists",
+                "🔗 Reference Materials",
+                "🎓 Learning Materials",
+            ],
+            "Archive": [
+                {"Completed Projects (by year)": ["2026", "2025", "2024", "2023", "2022"]},
+                "Historical Areas",
+            ],
         },
         "roles": {
             "Inbox": [],
@@ -452,23 +461,79 @@ class ReorgOrchestrator:
     async def get_project_folders(
         self, projects_folder_id: str | None = None
     ) -> list[tuple[str, str]]:
-        """FR-034: Return all direct children of Projects root as (folder_id, folder_title).
-        If projects_folder_id is set (config override), use it as Projects root; else use name-based."""
+        """FR-034 / DEF-029: Return all project folders under Projects root as (folder_id, title).
+
+        A "project folder" is any folder that contains at least one of the standard
+        PROJECT_SUBFOLDERS (Overview, Backlog, …). This handles both flat layouts
+        (Projects/My Project) and nested layouts (Projects/Professional/My Project).
+
+        Falls back to all direct children when no folder matches the subfolders heuristic.
+        """
         try:
             folders = await self.joplin_client.get_folders()
+            folders_by_id = {f["id"]: f for f in folders}
+
+            # Locate the Projects root
             project_root_id = projects_folder_id
             if not project_root_id:
                 for f in folders:
                     title_lower = (f.get("title") or "").strip().lower()
-                    if title_lower in ("01 - projects", "projects", "project"):
+                    is_root = not (f.get("parent_id") or "")
+                    if title_lower in ("01 - projects", "projects", "project") and is_root:
                         project_root_id = f["id"]
                         break
+                # Fallback: non-root folder with matching name
+                if not project_root_id:
+                    for f in folders:
+                        title_lower = (f.get("title") or "").strip().lower()
+                        if title_lower in ("01 - projects", "projects", "project"):
+                            project_root_id = f["id"]
+                            break
             if not project_root_id:
                 return []
-            result: list[tuple[str, str]] = []
+
+            # Collect all folder IDs that are descendants of Projects root
+            def _is_under_root(folder_id: str, depth: int = 0) -> bool:
+                if depth > 5:
+                    return False
+                pid = (folders_by_id.get(folder_id) or {}).get("parent_id") or ""
+                if pid == project_root_id:
+                    return True
+                if not pid:
+                    return False
+                return _is_under_root(pid, depth + 1)
+
+            # Find folders whose children include a PROJECT_SUBFOLDER name
+            subfolders_lower = {s.lower() for s in self.PROJECT_SUBFOLDERS}
+            children_by_parent: dict[str, list[dict]] = {}
             for f in folders:
-                if (f.get("parent_id") or "") == project_root_id:
-                    result.append((f["id"], f.get("title", "Unknown")))
+                pid = f.get("parent_id") or ""
+                children_by_parent.setdefault(pid, []).append(f)
+
+            result: list[tuple[str, str]] = []
+            seen: set[str] = set()
+            for f in folders:
+                fid = f["id"]
+                if fid in seen:
+                    continue
+                if not _is_under_root(fid):
+                    continue
+                # Check if any child matches a PROJECT_SUBFOLDER name
+                kids = children_by_parent.get(fid, [])
+                has_project_structure = any(
+                    (k.get("title") or "").strip().lower() in subfolders_lower
+                    for k in kids
+                )
+                if has_project_structure:
+                    result.append((fid, f.get("title", "Unknown")))
+                    seen.add(fid)
+
+            # Fallback: direct children if heuristic found nothing
+            if not result:
+                for f in folders:
+                    if (f.get("parent_id") or "") == project_root_id:
+                        result.append((f["id"], f.get("title", "Unknown")))
+
             return result
         except Exception as e:
             logger.warning("Could not get project folders: %s", e)

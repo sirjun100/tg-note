@@ -35,8 +35,9 @@ class TestLoadStoicTemplate(unittest.TestCase):
             any(k in morning_q[1].lower() for k in personal_keywords),
             f"Slot 1 should be a personal-objective question, got: {morning_q[1]}"
         )
-        # Slots 4-6 are priority questions; variants may say "priority", "task", "needle", etc.
-        priority_keywords = ("priority", "task", "complete", "important", "needle", "accomplish")
+        # Slots 4-6 are priority questions; variants may say "priority", "task", "needle",
+        # "highest-value", "use of time", etc. — keep keywords broad (T-016 Sprint 19).
+        priority_keywords = ("priority", "task", "complete", "important", "needle", "accomplish", "value", "time")
         for slot_idx in (4, 5, 6):
             self.assertTrue(
                 any(k in morning_q[slot_idx].lower() for k in priority_keywords),

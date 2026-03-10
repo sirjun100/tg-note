@@ -5,17 +5,47 @@ Google Tasks handlers: authorization, configuration, listing.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+import pytz
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
 from src.security_utils import check_whitelist
+from src.timezone_utils import get_user_timezone
 
 if TYPE_CHECKING:
     from src.telegram_orchestrator import TelegramOrchestrator
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_str_to_local(utc_str: str, user_id: int, logging_service: Any) -> str:
+    """Convert a UTC datetime string (ISO or RFC3339) to user's local date+time string."""
+    try:
+        tz = pytz.timezone(get_user_timezone(user_id, logging_service))
+        # Normalise: replace trailing Z, handle space vs T separator
+        s = utc_str.replace("Z", "+00:00").replace(" ", "T")
+        dt_utc = datetime.fromisoformat(s)
+        if dt_utc.tzinfo is None:
+            dt_utc = pytz.utc.localize(dt_utc)
+        return dt_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return utc_str[:16]  # fallback: trim to YYYY-MM-DD HH:MM
+
+
+def _due_to_local_date(due_str: str, user_id: int, logging_service: Any) -> str:
+    """Convert a Google Tasks RFC3339 due date to the user's local date string."""
+    try:
+        tz = pytz.timezone(get_user_timezone(user_id, logging_service))
+        s = due_str.replace("Z", "+00:00")
+        dt_utc = datetime.fromisoformat(s)
+        if dt_utc.tzinfo is None:
+            dt_utc = pytz.utc.localize(dt_utc)
+        return dt_utc.astimezone(tz).strftime("%Y-%m-%d")
+    except Exception:
+        return due_str[:10]
 
 
 def register_google_tasks_handlers(application: Any, orch: TelegramOrchestrator) -> None:
@@ -469,7 +499,9 @@ def _tasks_status(orch: TelegramOrchestrator):
                 for sync in status["recent_syncs"][:3]:
                     action = sync.get("action", "unknown")
                     icon = "✅" if sync.get("sync_result") == "success" else "❌"
-                    msg += f"{icon} {action} - {sync.get('created_at', 'N/A')}\n"
+                    raw_ts = sync.get("created_at", "")
+                    ts = _utc_str_to_local(raw_ts, user.id, orch.logging_service) if raw_ts else "N/A"
+                    msg += f"{icon} {action} - {ts}\n"
             if status.get("failed_syncs"):
                 msg += f"\n⚠️ Failed syncs: {len(status['failed_syncs'])}\n"
                 for sync in status["failed_syncs"][:2]:
@@ -541,7 +573,7 @@ def _list_inbox_tasks(orch: TelegramOrchestrator):
             for i, task in enumerate(tasks, 1):
                 title = task.get("title", "Untitled")
                 due = task.get("due", "")
-                due_str = f" (due: {due[:10]})" if due else ""
+                due_str = f" (due: {_due_to_local_date(due, user.id, orch.logging_service)})" if due else ""
                 icon = "✅" if task.get("status") == "completed" else "⭕"
                 msg += f"{i}. {icon} {title}{due_str}\n"
 

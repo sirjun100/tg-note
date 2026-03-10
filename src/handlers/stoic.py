@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from telegram import Message, Update
+from telegram import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import CommandHandler, ContextTypes
 
 from src.exceptions import GoogleAuthError
@@ -182,6 +182,40 @@ _ENERGY_QUESTION = "Energy level: 1 (exhausted) → 5 (peak). Just type the numb
 _CHECKIN_STEP_MOOD = 0
 _CHECKIN_STEP_ENERGY = 1
 _CHECKIN_DONE = 2
+
+
+def _quick_replies_for_question(question: str) -> ReplyKeyboardMarkup | None:
+    """
+    Return a ReplyKeyboardMarkup with context-appropriate suggestions for a question,
+    or None if no suggestions are relevant.  (US-053)
+    """
+    q = question.lower()
+
+    # Energy rating
+    if "energy" in q and ("1" in q or "rate" in q or "scale" in q or "level" in q):
+        rows = [[KeyboardButton(str(i)) for i in range(1, 6)]]
+        return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+    # Mood / how are you feeling
+    if "mood" in q or "feeling" in q or "emotion" in q or "how are you" in q:
+        rows = [
+            [KeyboardButton("Good 😊"), KeyboardButton("Okay 😐"), KeyboardButton("Low 😔")],
+            [KeyboardButton("Energized ⚡"), KeyboardButton("Stressed 😤"), KeyboardButton("Grateful 🙏")],
+        ]
+        return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+    # Yes / No / Skip questions
+    if any(kw in q for kw in ("did you", "were you", "have you", "did your", "skip")):
+        rows = [[KeyboardButton("Yes"), KeyboardButton("No"), KeyboardButton("Skip")]]
+        return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+    # All other questions get a Skip button only
+    rows = [[KeyboardButton("Skip")]]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+def _remove_keyboard() -> ReplyKeyboardRemove:
+    return ReplyKeyboardRemove()
 
 
 def _format_checkin_section(mood: str, energy: str) -> str:
@@ -400,7 +434,9 @@ def _empty_evening_placeholder() -> str:
 
 def _update_streak(orch: TelegramOrchestrator, user_id: int) -> int:
     """Increment streak if first entry today, reset if gap > 1 day. Returns new streak."""
-    today = datetime.now(UTC).date().isoformat()
+    # DEF-030: use user's local date, not UTC
+    now_local = get_user_timezone_aware_now(user_id, orch.logging_service)
+    today = now_local.date().isoformat()
     last = orch.state_manager.get_user_pref(user_id, _PREF_LAST_ENTRY)
     streak_str = orch.state_manager.get_user_pref(user_id, _PREF_STREAK) or "0"
     streak = int(streak_str) if streak_str.isdigit() else 0
@@ -412,7 +448,7 @@ def _update_streak(orch: TelegramOrchestrator, user_id: int) -> int:
     if last:
         try:
             last_date = datetime.fromisoformat(last).date()
-            today_date = datetime.now(UTC).date()
+            today_date = now_local.date()
             gap = (today_date - last_date).days
             streak = streak + 1 if gap == 1 else 1
         except ValueError:
@@ -1096,7 +1132,10 @@ async def handle_stoic_message(
         state["mood_checkin"] = text_stripped
         state["checkin_step"] = _CHECKIN_STEP_ENERGY
         orch.state_manager.update_state(user_id, state)
-        await message.reply_text(_ENERGY_QUESTION)
+        await message.reply_text(
+            _ENERGY_QUESTION,
+            reply_markup=_quick_replies_for_question(_ENERGY_QUESTION),
+        )
         return
 
     if checkin_step == _CHECKIN_STEP_ENERGY:
@@ -1129,7 +1168,10 @@ async def handle_stoic_message(
                         first_q = f"Your 3 morning priorities today were:\n{priorities_text}\n\n{first_q}"
             except Exception as exc:
                 logger.debug("Could not fetch morning priorities: %s", exc)
-        await message.reply_text(first_q)
+        await message.reply_text(
+            first_q,
+            reply_markup=_quick_replies_for_question(first_q),
+        )
         return
 
     # --- Main Q&A phase ---
@@ -1154,10 +1196,15 @@ async def handle_stoic_message(
 
     next_index = len(answers)
     if next_index < len(questions):
-        await message.reply_text(questions[next_index])
+        next_q = questions[next_index]
+        await message.reply_text(
+            next_q,
+            reply_markup=_quick_replies_for_question(next_q),
+        )
     else:
         await message.reply_text(
-            "Anything else? Reply with more, or /stoic_done to save to your Stoic Journal."
+            "Anything else? Reply with more, or /stoic_done to save to your Stoic Journal.",
+            reply_markup=_remove_keyboard(),
         )
 
 
