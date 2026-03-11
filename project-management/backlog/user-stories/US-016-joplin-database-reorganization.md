@@ -1,7 +1,7 @@
 # User Story: US-016 - Joplin Database Reorganization, Tag Management, and Entry Enrichment
 
-**Status**: ⏳ In Progress (~55% complete)
-**Priority**: 🟠 High
+**Status**: ⭕ To Do
+**Priority**: 🟢 Low
 **Story Points**: 21
 **Created**: 2025-01-23
 **Updated**: 2026-03-01

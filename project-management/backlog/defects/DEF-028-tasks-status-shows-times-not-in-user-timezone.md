@@ -4,8 +4,8 @@
 **Priority**: 🟡 Medium
 **Story Points**: 2
 **Created**: 2026-03-09
-**Updated**: 2026-03-09
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 19
 
 ---
 
@@ -52,3 +52,8 @@ Times appear in UTC or server timezone, not the user's timezone.
 
 - [DEF-005: Stoic Journal Timezone](DEF-005-stoic-journal-timezone-and-data-loss.md) — similar timezone fix; reports use `report_configurations.timezone`
 - [US-014: Daily Report](user-stories/US-014-daily-priority-report.md) — report delivery timezone configuration
+
+## History
+
+- 2026-03-09 - Created
+- 2026-03-10 - Assigned to Sprint 19; Status changed to ✅ Completed

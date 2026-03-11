@@ -4,8 +4,8 @@
 **Priority**: 🟡 Medium
 **Story Points**: 2
 **Created**: 2026-03-09
-**Updated**: 2026-03-09
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 19
 
 ---
 
@@ -74,3 +74,8 @@ When LLM formatting is used, timestamps appear in UTC.
 
 - [DEF-005: Stoic Journal Timezone](DEF-005-stoic-journal-timezone-and-data-loss.md) — Fixed note title/date; rule-based formatter uses `get_user_timezone_aware_now`. This defect is the remaining LLM path.
 - `src/timezone_utils.py` — `get_user_timezone_aware_now`, `get_user_timezone`
+
+## History
+
+- 2026-03-09 - Created
+- 2026-03-10 - Assigned to Sprint 19; Status changed to ✅ Completed

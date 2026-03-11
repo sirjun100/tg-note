@@ -4,8 +4,8 @@
 **Priority**: 🟡 Medium
 **Story Points**: 2
 **Created**: 2026-03-09
-**Updated**: 2026-03-09
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 19
 
 ---
 
@@ -56,3 +56,8 @@ When a note is created (via any flow: plain message, /note, braindump, photo OCR
 
 1. **Full path:** Add helper to resolve full folder path from folder_id (walk parent chain, build path string). Use in success message.
 2. **Sync everywhere:** Ensure `_schedule_joplin_sync()` is called after every successful note creation path (braindump, photo, recipe, planning, core, stoic, dream, etc.).
+
+## History
+
+- 2026-03-09 - Created
+- 2026-03-10 - Assigned to Sprint 19; Status changed to ✅ Completed

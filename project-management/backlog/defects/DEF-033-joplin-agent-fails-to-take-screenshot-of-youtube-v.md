@@ -1,250 +1,80 @@
----
-template_version: 1.1.0
-last_updated: 2025-01-27
-compatible_with: [user-story, sprint-planning, product-backlog]
-requires: [markdown-support]
----
-
-# Defect Template
-
-This is a generic template for creating defect (bug) items. Copy this template when reporting defects or creating defect items in the backlog.
-
-## Usage
-
-1. Copy this template
-2. Assign unique ID (e.g., DEF-001, DEF-015, or use your ID format)
-3. Fill in all sections, especially reproduction steps
-4. Save to: `backlog/defects/DEF-033-[defect-description].md`
-5. Add entry to main product backlog table
-
----
-
 # Defect: DEF-033 - Joplin agent fails to take screenshot of YouTube videos
 
 [← Back to Product Backlog](../product-backlog.md)
 
-**Status**: ⭕ To Do  
-**Priority**: 🟠 High  
-**Story Points**: 3 (Fibonacci: 1, 2, 3, 5, 8, 13)  
-**Created**: 2026-03-10  
-**Updated**: 2026-03-10  
-**Assigned Sprint**: [Sprint Number or "Backlog"]
+**Status**: ✅ Completed
+**Priority**: 🟠 High
+**Story Points**: 3
+**Created**: 2026-03-10
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 19
 
-## Description
+---
 
-The Joplin agent that is supposed to capture screenshots from YouTube URLs is not working. When a YouTube link is provided, the agent fails to take a screenshot and does not save anything to Joplin. This may be related to YouTube blocking headless browser rendering, missing dependencies, or an unhandled error in the screenshot capture pipeline.
+## Problem Statement
 
-Example:
-- User registration fails when email contains special characters
-- Dashboard shows incorrect total count after filtering
+When a user sent a YouTube URL to the bot, the screenshot step failed because YouTube's static HTML contains strings like "video not available" which triggered `_is_error_page()` as a false-positive. This set `skip_screenshot=True` with an error, causing a "Screenshot skipped" warning to be shown. Additionally, the `og:image` thumbnail fallback only applied to recipe content, so YouTube links showed no image at all.
+
+**User impact:** YouTube URLs saved to Joplin with no thumbnail and an unnecessary warning message.
+
+---
 
 ## Steps to Reproduce
 
-1. 1. Send a YouTube video URL to the bot (e.g. https://www.youtube.com/watch?v=XXXXX)
-2. 2. Request the Joplin agent to take a screenshot of the page
-3. 3. Agent attempts to capture the screenshot
-4. 4. No screenshot is saved to Joplin
+1. Send a YouTube URL to the bot (e.g. `https://www.youtube.com/watch?v=dQw4w9WgXcQ`)
+2. Bot attempts to take a screenshot
+3. False-positive error detected → "Screenshot skipped: ..." warning shown
+4. Note saved with no image
 
-**Tips**:
-- Be specific and detailed
-- Include exact values/inputs if relevant
-- Number each step sequentially
-- Include precondition if needed (e.g., "User must be logged in")
-- Test the steps yourself to ensure they reproduce the defect
-- Include environment details if relevant to reproduction
-
-Example:
-1. Navigate to Settings > Profile
-2. Enter email: "user+test@example.com"
-3. Click "Save"
-4. Error message appears: "Invalid email format"
+---
 
 ## Expected Behavior
 
-The agent captures a screenshot of the YouTube page (thumbnail or video frame) and saves it as an attachment or embedded image in a Joplin note.
+- No "Screenshot skipped" warning for YouTube/media sites
+- `og:image` thumbnail used as fallback image
+- Note saved cleanly with thumbnail
 
-Example:
-- Email should be saved successfully with validation passing
-- Success message should appear: "Profile updated"
+---
 
 ## Actual Behavior
 
-The agent does not take the screenshot. No image is saved and no meaningful error is returned to the user.
+- Warning shown: "Screenshot skipped: Security verification required" or similar
+- No thumbnail in saved note
 
-Example:
-- Error message appears: "Invalid email format"
-- Email is not saved
-- User cannot proceed
-
-## Environment
-
-[Platform-specific environment details. Adapt this section to your application type.]
-
-### For Web Applications:
-- **Browser**: [Chrome, Firefox, Safari, etc.]
-- **Browser Version**: [Version number]
-- **OS**: [Windows, macOS, Linux]
-- **OS Version**: [Version number]
-- **Screen Resolution**: [if relevant]
-
-### For Mobile Applications:
-- **Device**: [Device model, e.g., iPhone 13, Pixel 6]
-- **OS**: [iOS, Android]
-- **OS Version**: [Version number, e.g., iOS 16.0, Android 14]
-- **App Version**: [Version number]
-
-### For Backend/API:
-- **Server Environment**: [Production, Staging, Development]
-- **API Version**: [Version number]
-- **Database Version**: [if relevant]
-
-### General:
-- **User Role**: [Admin, User, Guest, etc. - if relevant]
-- **Account Type**: [Free, Premium, etc. - if relevant]
-
-## Screenshots/Logs
-
-[If applicable, include screenshots, error logs, stack traces, or console output.]
-
-**Format**:
-- Use markdown image syntax: `![Description](path/to/image.png)`
-- Use code blocks for logs:
-  ```
-  Error: Invalid email format
-  Stack trace:
-  at validateEmail() ...
-  ```
-
-## Technical Details
-
-[Technical information about the defect. Include any relevant technical context, edge cases, or patterns observed.]
-
-Examples:
-- The email validation regex doesn't handle the '+' character
-- Race condition when multiple users update the same record
-- Missing null check causes NullPointerException
+---
 
 ## Root Cause
 
-[Analysis of the root cause. May be filled in after investigation.]
+Two issues:
+1. `_is_error_page()` in `src/url_enrichment.py` matched YouTube HTML (contains "video not available" strings) as an error page
+2. `og:image` fallback in `src/handlers/core.py` was recipe-only — not applied to media content type
 
-Example:
-- Missing null check in `UserService.validateEmail()` method
-- Email regex pattern doesn't include '+' character: `/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i`
+---
 
-## Solution
+## Fix
 
-[Proposed or implemented solution. Include code changes, configuration updates, or workarounds.]
+In `src/url_enrichment.py`:
+- Added `_MEDIA_DOMAINS` tuple (`youtube.com`, `youtu.be`, `vimeo.com`, `spotify.com`)
+- Media sites skip screenshot silently (no error set) before `_is_error_page()` is called
 
-Example:
-- Update email regex to include '+' character
-- Add null check before validation
-- Update unit tests to cover this case
+In `src/handlers/core.py`:
+- Extended `og:image` fallback to cover `content_type == "media"` (not just recipes)
+- Skip warning only shown when `url_context.get("error")` is non-empty
 
-## Reference Documents
+| File | Change |
+|------|--------|
+| `src/url_enrichment.py` | Media domain detection; skip before error checks |
+| `src/handlers/core.py` | `og:image` fallback extended to media; conditional warning |
 
-- [Document Name 1] - [Section/Page]
-- [Document Name 2] - [Section/Page]
+---
 
-Examples:
-- API documentation - Validation rules section
-- User guide - Registration section
-- Architecture documentation - Authentication flow
+## References
 
-## Technical References
+- [Sprint 19](../../sprints/sprint-19-polish-and-bug-fixes.md)
 
-[Links to specific code locations, classes, or files. Adapt format to your tech stack.]
-
-**Format examples**:
-- Class: `UserService`
-- Method: `UserService.validateEmail()`
-- File: `src/services/user_service.py`
-- Line: Line 42-45
-- Test: `tests/services/test_user_service.py`
-
-## Testing
-
-- [ ] Unit test added/updated
-- [ ] Integration test added/updated
-- [ ] Manual testing completed
-- [ ] Tested in multiple browsers/environments (if applicable)
-- [ ] Regression testing completed (if applicable)
-
-## Clarifying Questions
-
-*AI: Before starting implementation, ask the user clarifying questions. Document questions and answers here after the user responds.*
-
-- **Q**: [Question 1]
-- **A**: [User answer]
-- **Date**: 2026-03-10
-
-## Notes
-
-[Additional notes, context, workarounds, or related issues.]
-
-Examples:
-- Temporary workaround: Users can use email without '+' character
-- Related defect: DEF-012 (similar issue in password validation)
-- This defect affects 15% of users with email addresses containing '+'
-
-## Acceptance Verification
-
-**Complete before marking status as Done.** Verify the fix resolves the defect and meets verification criteria.
-
-- [ ] Actual Behavior now matches Expected Behavior
-- [ ] All items in the Testing Checklist above are completed
-- [ ] Steps to Reproduce no longer produce the defect
+---
 
 ## History
 
 - 2026-03-10 - Created
-- 2026-03-10 - Status changed to ⏳ In Progress
-- 2026-03-10 - Assigned to Sprint 3
-- 2026-03-10 - Root cause identified
-- 2026-03-10 - Status changed to ✅ Done
-
----
-
-## Status Values
-
-- ⭕ **To Do**: Item not yet started
-- ⏳ **In Progress**: Item currently being worked on
-- ✅ **Done**: Item finished and verified
-
-## Priority Levels
-
-- 🔴 **Critical**: Blocks core functionality, data loss, security issue, must be fixed immediately
-- 🟠 **High**: Significant impact on user experience, should be addressed soon
-- 🟡 **Medium**: Minor impact, annoying but workaround exists
-- 🟢 **Low**: Cosmetic issue, very minor impact, low priority
-
-## Story Points Guide (Fibonacci)
-
-- **1 Point**: Trivial fix, < 1 hour
-- **2 Points**: Simple fix, 1-4 hours
-- **3 Points**: Small fix, 4-8 hours
-- **5 Points**: Medium fix, 1-2 days
-- **8 Points**: Large fix, 2-3 days
-- **13 Points**: Very complex fix, requires investigation (consider breaking down)
-
----
-
-## Template Validation Checklist
-
-Before submitting, ensure:
-
-- [ ] All required fields are filled (Status, Priority, Story Points, Dates)
-- [ ] Steps to reproduce are clear and detailed (minimum 3 steps)
-- [ ] Expected behavior is clearly documented
-- [ ] Actual behavior is clearly documented
-- [ ] Environment details are complete (platform, OS, version, etc.)
-- [ ] Screenshots/logs are included (if applicable)
-- [ ] Root cause is identified (if known)
-- [ ] Solution is documented (if implemented)
-- [ ] Story points are estimated using Fibonacci sequence
-- [ ] Priority is assigned based on impact and urgency
-- [ ] Technical references are included (if applicable)
-- [ ] Testing Checklist is completed (if fix is implemented)
-- [ ] Links to related documents are correct
-- [ ] File is saved with correct naming convention: `DEF-XXX-defect-description.md`
-- [ ] Entry is added to product backlog table
+- 2026-03-10 - Assigned to Sprint 19; Status changed to ✅ Completed

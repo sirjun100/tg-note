@@ -1,11 +1,11 @@
 # User Story: US-035 - World-Class Brain Dump Experience
 
-**Status**: ⭕ Not Started  
-**Priority**: 🟠 High  
-**Story Points**: 13  
-**Created**: 2026-03-05  
-**Updated**: 2026-03-05  
-**Assigned Sprint**: Backlog (Sprint 13+ candidate)
+**Status**: ⏳ In Progress
+**Priority**: 🟠 High
+**Story Points**: 13
+**Created**: 2026-03-05
+**Updated**: 2026-03-08
+**Assigned Sprint**: Sprint 17
 
 ## Description
 

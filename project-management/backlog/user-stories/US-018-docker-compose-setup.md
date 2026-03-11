@@ -7,8 +7,8 @@ requires: [docker, docker-compose]
 
 # User Story: US-018 - Docker Compose Setup for Telegram-Joplin Bot and Joplin Server
 
-**Status**: ⏳ In Progress (bot container only — ~30%)
-**Priority**: 🟠 High
+**Status**: ⭕ To Do
+**Priority**: 🟢 Low
 **Story Points**: 8 (Fibonacci: 1, 2, 3, 5, 8, 13)
 **Created**: 2026-01-24
 **Updated**: 2026-03-01

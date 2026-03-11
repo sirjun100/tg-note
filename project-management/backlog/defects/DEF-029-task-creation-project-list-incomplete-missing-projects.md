@@ -4,8 +4,8 @@
 **Priority**: 🟡 Medium
 **Story Points**: 3
 **Created**: 2026-03-09
-**Updated**: 2026-03-09
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 19
 
 ---
 
@@ -85,3 +85,8 @@ List truncated to 10 (display) / 8 (buttons). No pagination, no "show more", no 
 
 - [US-034: Joplin ↔ Google Tasks Project Sync](../user-stories/US-034-joplin-google-tasks-project-sync.md)
 - [FR-034](https://github.com/martinfou/telegram-joplin/blob/main/project-management/backlog/features/) — project sync feature
+
+## History
+
+- 2026-03-09 - Created
+- 2026-03-10 - Assigned to Sprint 19; Status changed to ✅ Completed

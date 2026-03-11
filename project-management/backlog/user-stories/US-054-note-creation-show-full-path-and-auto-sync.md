@@ -6,8 +6,8 @@
 **Priority**: 🟡 Medium
 **Story Points**: 2
 **Created**: 2026-03-09
-**Updated**: 2026-03-09
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 19
 
 ## Description
 
@@ -33,3 +33,8 @@ Improves discoverability (full path) and reduces friction (no manual sync). User
 ## Related
 
 - [DEF-031](../defects/DEF-031-note-creation-should-show-full-path-and-trigger-sync.md) — Same scope, tracked as defect; can be closed when this story is implemented.
+
+## History
+
+- 2026-03-09 - Created
+- 2026-03-10 - Assigned to Sprint 19; Status changed to ✅ Completed
