@@ -255,7 +255,7 @@ class TestGenerateWeeklyReport:
                     "INSERT INTO telegram_messages (user_id, message_text, timestamp, message_type) VALUES (?, ?, ?, ?)",
                     (123, f"msg {i}", mid_week.isoformat(), "user"),
                 )
-            for i in range(3):
+            for _i in range(3):
                 conn.execute(
                     "INSERT INTO decisions (user_id, status, timestamp) VALUES (?, ?, ?)",
                     (123, "SUCCESS", mid_week.isoformat()),

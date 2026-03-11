@@ -13,8 +13,6 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 
 class TestVoiceTranscription(unittest.IsolatedAsyncioTestCase):
     """T-019 / T-020: _transcribe_voice happy path and failure."""
@@ -202,7 +200,7 @@ class TestHandleVoiceSuccessPath(unittest.IsolatedAsyncioTestCase):
 
         with patch("src.handlers.voice.check_whitelist", return_value=True), \
              patch("src.handlers.voice._transcribe_voice", return_value="create a note about sleep"), \
-             patch("src.handlers.core._route_plain_message", new_callable=AsyncMock, return_value=True) as mock_route:
+             patch("src.handlers.core._route_plain_message", new_callable=AsyncMock, return_value=True):
             await voice_module._handle_voice(mock_orch, mock_update, mock_context)
 
         # Route was invoked (via the lazy import inside _handle_voice)

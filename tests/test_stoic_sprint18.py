@@ -15,8 +15,6 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from src.handlers import stoic as stoic_module
 from src.handlers.stoic import (
     _CHECKIN_DONE,
@@ -29,7 +27,6 @@ from src.handlers.stoic import (
     _streak_message,
     _update_streak,
 )
-
 
 # ---------------------------------------------------------------------------
 # T-004: Quote bank
@@ -241,6 +238,8 @@ class TestStreakUpdate(unittest.TestCase):
 
         mock_orch.state_manager.get_user_pref.side_effect = get_pref
         mock_orch.state_manager.set_user_pref.side_effect = set_pref
+        # DEF-030: _update_streak now uses get_user_timezone_aware_now() via logging_service
+        mock_orch.logging_service.get_report_configuration.return_value = {"timezone": "UTC"}
         return mock_orch
 
     def test_first_entry_gives_streak_of_one(self):
@@ -289,6 +288,7 @@ class TestStreakUpdate(unittest.TestCase):
 
         mock_orch.state_manager.get_user_pref.side_effect = get_pref
         mock_orch.state_manager.set_user_pref.side_effect = set_pref
+        mock_orch.logging_service.get_report_configuration.return_value = {"timezone": "UTC"}
 
         _update_streak(mock_orch, 1)
 
@@ -439,11 +439,11 @@ class TestQuickModeState(unittest.IsolatedAsyncioTestCase):
         mock_context = MagicMock()
         mock_context.args = ["morning"]
 
-        with patch("src.handlers.stoic.check_whitelist", return_value=True):
-            with patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
-                mock_now.return_value = datetime(2026, 3, 8, 9, 0, tzinfo=UTC)
-                handler = stoic_module._stoic_quick(mock_orch)
-                await handler(mock_update, mock_context)
+        with patch("src.handlers.stoic.check_whitelist", return_value=True), \
+             patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
+            mock_now.return_value = datetime(2026, 3, 8, 9, 0, tzinfo=UTC)
+            handler = stoic_module._stoic_quick(mock_orch)
+            await handler(mock_update, mock_context)
 
         self.assertTrue(stored_state.get("is_quick"), "is_quick should be True in state")
         self.assertEqual(stored_state.get("checkin_step"), _CHECKIN_DONE)
@@ -464,11 +464,11 @@ class TestQuickModeState(unittest.IsolatedAsyncioTestCase):
         mock_context = MagicMock()
         mock_context.args = ["morning"]
 
-        with patch("src.handlers.stoic.check_whitelist", return_value=True):
-            with patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
-                mock_now.return_value = datetime(2026, 3, 8, 9, 0, tzinfo=UTC)
-                handler = stoic_module._stoic_quick(mock_orch)
-                await handler(mock_update, mock_context)
+        with patch("src.handlers.stoic.check_whitelist", return_value=True), \
+             patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
+            mock_now.return_value = datetime(2026, 3, 8, 9, 0, tzinfo=UTC)
+            handler = stoic_module._stoic_quick(mock_orch)
+            await handler(mock_update, mock_context)
 
         self.assertEqual(stored_state.get("mode"), "morning")
         # Quick morning should have exactly 2 questions
@@ -490,11 +490,11 @@ class TestQuickModeState(unittest.IsolatedAsyncioTestCase):
         mock_context = MagicMock()
         mock_context.args = []  # No explicit mode
 
-        with patch("src.handlers.stoic.check_whitelist", return_value=True):
-            with patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
-                mock_now.return_value = datetime(2026, 3, 8, 19, 30, tzinfo=UTC)  # 19:30 → evening
-                handler = stoic_module._stoic_quick(mock_orch)
-                await handler(mock_update, mock_context)
+        with patch("src.handlers.stoic.check_whitelist", return_value=True), \
+             patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
+            mock_now.return_value = datetime(2026, 3, 8, 19, 30, tzinfo=UTC)  # 19:30 → evening
+            handler = stoic_module._stoic_quick(mock_orch)
+            await handler(mock_update, mock_context)
 
         self.assertEqual(stored_state.get("mode"), "evening")
 
@@ -514,11 +514,11 @@ class TestQuickModeState(unittest.IsolatedAsyncioTestCase):
         mock_context = MagicMock()
         mock_context.args = []
 
-        with patch("src.handlers.stoic.check_whitelist", return_value=True):
-            with patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
-                mock_now.return_value = datetime(2026, 3, 8, 8, 0, tzinfo=UTC)  # 08:00 → morning
-                handler = stoic_module._stoic_quick(mock_orch)
-                await handler(mock_update, mock_context)
+        with patch("src.handlers.stoic.check_whitelist", return_value=True), \
+             patch("src.handlers.stoic.get_user_timezone_aware_now") as mock_now:
+            mock_now.return_value = datetime(2026, 3, 8, 8, 0, tzinfo=UTC)  # 08:00 → morning
+            handler = stoic_module._stoic_quick(mock_orch)
+            await handler(mock_update, mock_context)
 
         self.assertEqual(stored_state.get("mode"), "morning")
 

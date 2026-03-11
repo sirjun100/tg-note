@@ -137,9 +137,8 @@ def test_state_manager() -> bool:
     try:
         from src.state_manager import StateManager
 
-        temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-        temp_db.close()
-        temp_db_path = temp_db.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as _f:
+            temp_db_path = _f.name
         manager = StateManager(db_path=temp_db_path)
 
         test_user_id = 12345
@@ -159,10 +158,9 @@ def test_state_manager() -> bool:
         return False
     finally:
         if temp_db_path and os.path.exists(temp_db_path):
-            try:
+            import contextlib
+            with contextlib.suppress(OSError):
                 os.unlink(temp_db_path)
-            except OSError:
-                pass
 
 
 def main() -> bool:

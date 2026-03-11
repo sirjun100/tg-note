@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import unittest
 
-from telegram import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from src.handlers.stoic import _quick_replies_for_question, _remove_keyboard
 

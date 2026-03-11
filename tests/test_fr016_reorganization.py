@@ -274,7 +274,8 @@ class TestEnrichmentService(unittest.IsolatedAsyncioTestCase):
         })
         self.mock_joplin.update_note.return_value = True
 
-        filter_func = lambda n: '---' not in n.get('body', '')
+        def filter_func(n: dict) -> bool:
+            return '---' not in n.get('body', '')
 
         stats = await self.service.enrich_notes_batch(
             notes=notes,

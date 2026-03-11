@@ -22,8 +22,8 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.joplin_client import JoplinClient
-from src.logging_service import LoggingService
+from src.joplin_client import JoplinClient  # noqa: E402
+from src.logging_service import LoggingService  # noqa: E402
 
 
 class TestApplyTagsAndTrackNew(unittest.TestCase):
@@ -228,9 +228,8 @@ class TestLogTagCreation(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures with temporary database"""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
-        self.temp_db.close()
-        self.db_path = self.temp_db.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as _f:
+            self.db_path = _f.name
 
         # Create logging service with temp database
         self.logging_service = LoggingService(db_path=self.db_path)
@@ -238,10 +237,9 @@ class TestLogTagCreation(unittest.TestCase):
     def tearDown(self):
         """Clean up temporary database"""
         if os.path.exists(self.db_path):
-            try:
+            import contextlib
+            with contextlib.suppress(BaseException):
                 os.unlink(self.db_path)
-            except:
-                pass
 
     def test_log_new_tag_creation(self):
         """Test logging a newly created tag"""
@@ -374,7 +372,7 @@ class TestLogTagCreation(unittest.TestCase):
         # Verify timestamp is a valid ISO format
         try:
             datetime.fromisoformat(timestamp)
-        except:
+        except ValueError:
             self.fail(f"Invalid timestamp format: {timestamp}")
 
 
@@ -383,18 +381,16 @@ class TestTagIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
-        self.temp_db.close()
-        self.db_path = self.temp_db.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as _f:
+            self.db_path = _f.name
         self.logging_service = LoggingService(db_path=self.db_path)
 
     def tearDown(self):
         """Clean up temporary database"""
         if os.path.exists(self.db_path):
-            try:
+            import contextlib
+            with contextlib.suppress(BaseException):
                 os.unlink(self.db_path)
-            except:
-                pass
 
     def test_complete_tag_workflow(self):
         """Test complete workflow: apply tags and log them"""

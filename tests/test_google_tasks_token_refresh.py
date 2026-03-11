@@ -190,10 +190,9 @@ class TestTaskServiceSavesRefreshedToken:
             assert saved.get("access_token") == "new_at"
             assert saved.get("refresh_token") == "refresh_123"
         finally:
-            try:
+            import contextlib
+            with contextlib.suppress(OSError):
                 os.unlink(db_path)
-            except OSError:
-                pass
 
     def test_get_user_tasks_saves_token_when_refreshed(self):
         """When get_user_tasks triggers a refresh, the new token is saved."""
@@ -234,10 +233,9 @@ class TestTaskServiceSavesRefreshedToken:
             assert saved is not None
             assert saved.get("access_token") == "new"
         finally:
-            try:
+            import contextlib
+            with contextlib.suppress(OSError):
                 os.unlink(db_path)
-            except OSError:
-                pass
 
     def test_get_available_task_lists_saves_token_when_refreshed(self):
         """When get_available_task_lists triggers a refresh, the new token is saved."""
@@ -273,7 +271,6 @@ class TestTaskServiceSavesRefreshedToken:
             assert saved is not None
             assert saved.get("access_token") == "new"
         finally:
-            try:
+            import contextlib
+            with contextlib.suppress(OSError):
                 os.unlink(db_path)
-            except OSError:
-                pass

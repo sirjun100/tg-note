@@ -34,7 +34,7 @@ def test_llm_providers():
         return False
 
     # Test each available provider
-    for name, provider in available_providers.items():
+    for name, _provider in available_providers.items():
         print(f"Testing {name}...")
         try:
             # Simple test message

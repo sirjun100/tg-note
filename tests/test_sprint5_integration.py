@@ -20,8 +20,8 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.joplin_client import JoplinClient
-from src.logging_service import LoggingService
+from src.joplin_client import JoplinClient  # noqa: E402
+from src.logging_service import LoggingService  # noqa: E402
 
 
 class TestSprintFiveIntegration(unittest.TestCase):
@@ -29,9 +29,8 @@ class TestSprintFiveIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
-        self.temp_db.close()
-        self.db_path = self.temp_db.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as _f:
+            self.db_path = _f.name
 
         self.logging_service = LoggingService(db_path=self.db_path)
         self.joplin_client = JoplinClient()
@@ -42,10 +41,9 @@ class TestSprintFiveIntegration(unittest.TestCase):
     def tearDown(self):
         """Clean up"""
         if os.path.exists(self.db_path):
-            try:
+            import contextlib
+            with contextlib.suppress(BaseException):
                 os.unlink(self.db_path)
-            except:
-                pass
 
     def test_complete_workflow_user_sends_message(self):
         """Test complete workflow when user sends a message with tags"""
@@ -150,7 +148,7 @@ class TestSprintFiveIntegration(unittest.TestCase):
         """Test workflow when all tags already exist"""
         print("\n=== Workflow with No New Tags ===")
 
-        user_id = 12345
+        _user_id = 12345
         note_id = "note_def456"
         tags_from_llm = ['urgent', 'important']
 
@@ -182,7 +180,7 @@ class TestSprintFiveIntegration(unittest.TestCase):
         """Test workflow when note has no tags"""
         print("\n=== Workflow with No Tags ===")
 
-        user_id = 12345
+        _user_id = 12345
         note_id = "note_ghi789"
         tags_from_llm = []
 
