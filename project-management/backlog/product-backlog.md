@@ -44,6 +44,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
+| [US-060](user-stories/US-060-us-060-world-class-project-report-full-portfolio-v.md) | US-060 - World-Class Project Report: Full Portfoli | 🟠 High | 8 | ⭕ | - | 2026-03-10 | 2026-03-10 |
 | [US-059](user-stories/US-059-us-059-world-class-gtd-dashboard-tasks_status-as-p.md) | US-059 - World-Class GTD Dashboard: /tasks_status  | 🟠 High | 5 | ⭕ | - | 2026-03-10 | 2026-03-10 |
 | [US-058](user-stories/US-058-bot-understands-natural-conversational-intent-from.md) | Bot understands natural conversational intent from | 🟡 Medium | 5 | ⭕ | - | 2026-03-10 | 2026-03-10 |
 | [US-057](user-stories/US-057-parse-health-data-from-garmin-fatsecret-and-arbole.md) | Parse health data from Garmin, FatSecret, and Arbo | 🟡 Medium | 8 | ⭕ | - | 2026-03-10 | 2026-03-10 |
