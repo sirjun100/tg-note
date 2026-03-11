@@ -117,7 +117,7 @@
 **Technical References**:
 - `src/handlers/core.py` — task display
 - `src/handlers/stoic.py` — note timestamp formatting
-- `src/utils.py` or equivalent — `get_user_timezone_aware_now()`
+- `src/timezone_utils.py` — `get_user_timezone_aware_now()`
 
 **Priority**: 🟡 Medium
 **Story Points**: 4
@@ -336,7 +336,7 @@
 - MCP lint passed clean; all links valid.
 
 ### What Could Be Improved
-- MCP-generated story/defect files contain `src/services/user_service.py` and `src/features/feature_service.py` template boilerplate — creates false positives in doc-code consistency report. Should update MCP templates to reference real files.
+- MCP-generated story/defect files contained obsolete template paths (since removed in Sprint 20 T-012). MCP templates now reference real code paths.
 - T-017 (CI guard for `_parse_variant_block`) keeps getting deferred — should be a firm commitment next sprint.
 
 ### Action Items for Sprint 20

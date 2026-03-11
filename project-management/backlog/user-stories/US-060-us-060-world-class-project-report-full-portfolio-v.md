@@ -110,7 +110,7 @@ The weekly review is the heartbeat of a GTD system. Without a project report tha
 - `src/handlers/core.py` — `_project_status()` handler (replace/extend → `_project_report()`)
 - `src/joplin_client.py` — `get_notes_with_tag()`, `get_all_notes()`, `get_folders()` — note activity per project
 - `src/task_service.py` — fetch open tasks per linked Google Tasks project list
-- `src/handlers/report.py` — weekly report integration point
+- `src/handlers/reports.py` — weekly report integration point
 - `src/timezone_utils.py` — `get_user_timezone_aware_now()` for "N days ago" calculation
 
 ---

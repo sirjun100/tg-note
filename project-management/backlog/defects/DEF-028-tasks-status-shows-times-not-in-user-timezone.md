@@ -51,7 +51,7 @@ Times appear in UTC or server timezone, not the user's timezone.
 ## References
 
 - [DEF-005: Stoic Journal Timezone](DEF-005-stoic-journal-timezone-and-data-loss.md) — similar timezone fix; reports use `report_configurations.timezone`
-- [US-014: Daily Report](user-stories/US-014-daily-priority-report.md) — report delivery timezone configuration
+- [US-014: Daily Report](../user-stories/US-014-daily-priority-report.md) — report delivery timezone configuration
 
 ## History
 

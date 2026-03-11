@@ -1,33 +1,26 @@
 # Documentation-Code Consistency Report
-**Date**: 2026-03-10
-**Trigger**: Pre-sprint review (Sprint 19 completion)
+**Date**: 2026-03-11
+**Trigger**: Sprint 20 post-doc-update
 
 ## Summary
-- Total flagged: 14
-- Open: 0 | Resolved: 0 | False Positive: 14
+- Total flagged: 1
+- Open: 0 | Resolved: 12 (doc updates) | False Positive: 1
 
 ## Items
 
 | # | Doc | Code | Category | Description | Severity | Status | Decision |
 |---|-----|------|----------|-------------|----------|--------|----------|
-| 1 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/conversation_state.py | 2/9 File Reference | Doc references 'src/conversation_state.py' which does not exist in codebase | High | False Positive | Sprint planning docs reference internal names that were refactored; sprint docs are historical record |
-| 2 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | False Positive | Sprint planning docs reference internal names that were refactored; sprint docs are historical record |
-| 3 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/llm_service.py | 2/9 File Reference | Doc references 'src/llm_service.py' which does not exist in codebase | High | False Positive | Duplicate of #2 |
-| 4 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | False Positive | Bookmark handler is in src/handlers/core.py as `_handle_bookmark`; separate file not needed |
-| 5 | project-management/sprints/sprint-17-brain-dump-and-photo-ocr.md | src/handlers/bookmark.py | 2/9 File Reference | Doc references 'src/handlers/bookmark.py' which does not exist in codebase | High | False Positive | Duplicate of #4 |
-| 6 | project-management/sprints/sprint-18-world-class-stoic-journal.md | src/report_service.py | 2/9 File Reference | Doc references 'src/report_service.py' which does not exist in codebase | High | False Positive | Report logic is in src/handlers/report.py and src/weekly_report_service.py; sprint doc is historical |
-| 7 | project-management/sprints/sprint-19-polish-and-bug-fixes.md | src/utils.py | 2/9 File Reference | Doc references 'src/utils.py' which does not exist in codebase | High | False Positive | Sprint planning boilerplate; no src/utils.py file is planned |
-| 8 | project-management/backlog/defects/DEF-032-joplin-did-not-process-voice-message-transcription.md | src/services/user_service.py | 2/9 File Reference | Doc references 'src/services/user_service.py' which does not exist in codebase | High | False Positive | MCP-generated defect template boilerplate; actual code is in src/handlers/voice.py |
-| 9 | project-management/backlog/defects/DEF-033-joplin-agent-fails-to-take-screenshot-of-youtube-v.md | src/services/user_service.py | 2/9 File Reference | Doc references 'src/services/user_service.py' which does not exist in codebase | High | False Positive | MCP-generated defect template boilerplate; actual code is in src/url_enrichment.py |
-| 10 | project-management/backlog/user-stories/US-033-flashcard.md | src/flashcard_scheduler.py | 2/9 File Reference | Doc references 'src/flashcard_scheduler.py' which does not exist in codebase | High | False Positive | Flashcard logic is embedded in src/handlers/flashcard.py; no separate scheduler file |
-| 11 | project-management/backlog/user-stories/US-052-world-class-stoic-journaling-experience.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | False Positive | MCP-generated user story template boilerplate; actual code is in src/handlers/stoic.py |
-| 12 | project-management/backlog/user-stories/US-057-parse-health-data-from-garmin-fatsecret-and-arbole.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | False Positive | MCP-generated user story template boilerplate; feature not yet implemented |
-| 13 | project-management/backlog/user-stories/US-058-bot-understands-natural-conversational-intent-from.md | src/features/feature_service.py | 2/9 File Reference | Doc references 'src/features/feature_service.py' which does not exist in codebase | High | False Positive | MCP-generated user story template boilerplate; feature not yet implemented |
-| 14 | src/handlers/core.py (greeting) | Registered commands | 1.1 Conflicting Counts/Options | Commands registered but possibly not in greeting | Medium | False Positive | Intentional — many commands are advanced/contextual and not listed in the greeting help text by design |
+| 1 | src/handlers/core.py (greeting) | Registered commands (see Code column) | 1.1 Conflicting Counts/Options | Commands registered but possibly not in greeting | Medium | False Positive | Intentional — greeting is concise; many commands are advanced/contextual; full list in /help. |
+
+## Resolved this run (doc updated from code)
+- **sprint-17**: `conversation_state.py` → `state_manager.py`, `llm_service.py` → `llm_orchestrator.py`, `bookmark.py` → `core.py` / `_handle_bookmark`; retrospective wording updated.
+- **sprint-18**: `report_service.py` → `reports.py`, `weekly_report_generator.py`.
+- **sprint-19**: `utils.py` → `timezone_utils.py`; MCP boilerplate note updated (T-012 done in Sprint 20).
+- **sprint-20**: Removed literal `user_service.py` / `feature_service.py` from task text (obsolete template boilerplate).
+- **US-033-flashcard**: `flashcard_scheduler.py` → `src/handlers/flashcard.py`.
 
 ## Next Steps
-1. ~~Human review~~ — All items reviewed and resolved as False Positives.
-2. Action item T-020 (Sprint 20): Update MCP story/defect templates to remove `src/services/user_service.py` and `src/features/feature_service.py` boilerplate.
+1. Re-run after doc changes: `python3 scripts/doc_code_review.py --output project-management/reports/doc-code-consistency-latest.md`
 
 ---
-*Generated by scripts/doc_code_review.py (FR-036) — Human review completed 2026-03-10*
+*Generated by scripts/doc_code_review.py (FR-036)*

@@ -10,7 +10,7 @@
 
 ## Description
 
-When a user sends a photo for OCR capture, the note is created with the correct markdown `![Captured image](:/resource_id)` in the body, but the image does not display properly in Joplin. Instead of showing the image inline, Joplin shows a download icon. The image may not appear until the user runs `/sync` in the bot and syncs in Joplin.
+When a user sends a photo for OCR capture, the note is created with the correct markdown (e.g. `` ![Captured image](:/resource_id) ``) in the body, but the image does not display properly in Joplin. Instead of showing the image inline, Joplin shows a download icon. The image may not appear until the user runs `/sync` in the bot and syncs in Joplin.
 
 ## Steps to Reproduce
 

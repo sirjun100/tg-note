@@ -6,6 +6,21 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ---
 
+## 2026-03-10 — Sprint 20: GTD Dashboard & Project Intelligence
+
+### New Features
+- **GTD Dashboard: `/tasks_status` as productivity cockpit** — Overdue, today, this week, inbox counts; motivating empty state; system health line. Old sync diagnostics moved to `/tasks_sync_detail`. [US-059](project-management/backlog/user-stories/US-059-us-059-world-class-gtd-dashboard-tasks_status-as-p.md)
+- **World-Class Project Report: `/project_report`** — Per-project portfolio view with next action, last activity, stall detection (14+ days), no-next-action alerts. Drill-down via `/project_report <name>`. [US-060](project-management/backlog/user-stories/US-060-us-060-world-class-project-report-full-portfolio-v.md)
+- **Project portfolio in weekly report** — Optional section in `/weekly_report` (gated by `/report_toggle_portfolio on|off`). Same portfolio view as `/project_report`. [US-060 T-007]
+- **Google Tasks duplicate check before add** — Before creating a task, the bot checks for an existing task with the same title (case-insensitive, punctuation stripped). If found: inline keyboard with Edit / Change Priority / Add Anyway / Cancel. Applies to `/task`, project selection, and content routing. [US-055](project-management/backlog/user-stories/US-055-google-tasks-duplicate-check-before-add.md)
+
+### Internal
+- **MCP template cleanup (T-012)** — Backlog user stories US-052, US-057, US-058 no longer reference non-existent `src/features/feature_service.py`; Technical References use real paths (`src/handlers/stoic.py`, `src/handlers/core.py`, etc.).
+- **Stoic slot boundary CI guard (T-013)** — `test_parse_variant_block_slot_boundary_three_variants_per_slot` asserts each morning/evening slot has exactly 3 variants (VARIANT_0/1/2) to prevent template regressions.
+- Unit tests: GTD dashboard, project report, task duplicate (14 tests), Stoic slot boundary.
+
+---
+
 ## 2026-03-10 — Hotfixes (post Sprint 19)
 
 ### Bug Fixes

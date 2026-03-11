@@ -198,11 +198,10 @@ Examples:
 [Links to specific code locations, classes, or technical specifications. Adapt format to your tech stack.]
 
 **Format examples**:
-- Class: `FeatureService`
-- Method: `FeatureService.processRequest()`
-- File: `src/features/feature_service.py`
-- API Endpoint: `POST /api/v1/feature`
-- Database Table: `feature_table`
+- Handler: `src/handlers/stoic.py` — `_format_morning_content()`, `_finish_stoic_session()`
+- Service: `src/task_service.py` — `create_task_with_metadata()`
+- Client: `src/joplin_client.py` — `get_note()`, `update_note()`
+- Tests: `tests/test_stoic_sprint18.py`
 
 ## Dependencies
 

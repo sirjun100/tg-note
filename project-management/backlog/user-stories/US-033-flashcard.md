@@ -320,7 +320,7 @@ Bot: 📌 Card 2/5
 | File | Purpose |
 |------|---------|
 | `src/flashcard_service.py` | Card CRUD, SM-2 scheduling, session logic, deck management |
-| `src/flashcard_scheduler.py` | Scheduled extraction job (e.g., nightly; time configurable per user) |
+| `src/handlers/flashcard.py` | Scheduled extraction job (e.g., nightly; time configurable per user) |
 | `src/handlers/flashcard.py` | Command handlers, inline keyboards, review queue UI |
 | `src/prompts/flashcard_extractor.txt` | LLM prompt for multi-format extraction |
 | `tests/test_flashcard.py` | Unit tests |

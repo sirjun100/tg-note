@@ -187,6 +187,7 @@ CREATE TABLE IF NOT EXISTS report_configurations (
     include_low BOOLEAN DEFAULT FALSE,
     include_google_tasks BOOLEAN DEFAULT TRUE,
     include_clarification_pending BOOLEAN DEFAULT TRUE,
+    include_project_portfolio BOOLEAN DEFAULT FALSE,
     detail_level VARCHAR(20) DEFAULT 'detailed',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

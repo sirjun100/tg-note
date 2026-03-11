@@ -85,6 +85,7 @@ def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None
     application.add_handler(CommandHandler("status", _status(orch)))
     application.add_handler(CommandHandler("status_projects", _project_status(orch)))
     application.add_handler(CommandHandler("project_status", _project_status(orch)))
+    application.add_handler(CommandHandler("project_report", _project_report(orch)))
     application.add_handler(CommandHandler("sync", _sync(orch)))
     application.add_handler(CommandHandler("note", _note(orch)))
     application.add_handler(CommandHandler("bookmark", _bookmark(orch)))
@@ -97,6 +98,7 @@ def register_core_handlers(application: Any, orch: TelegramOrchestrator) -> None
         MessageHandler(filters.TEXT & ~filters.COMMAND, _message(orch))
     )
     application.add_handler(CallbackQueryHandler(_project_selection_callback(orch), pattern="^project_sel_"))
+    application.add_handler(CallbackQueryHandler(_duplicate_task_callback(orch), pattern="^dup_"))
 
 
 # ---------------------------------------------------------------------------
@@ -726,6 +728,342 @@ def _project_status(orch: TelegramOrchestrator):
 
 
 # ---------------------------------------------------------------------------
+# US-060: World-Class Project Report
+# ---------------------------------------------------------------------------
+
+_STATUS_BADGES = {
+    "status/blocked": "🟠 Blocked",
+    "status/building": "🔵 Building",
+    "status/planning": "🟡 Planning",
+    "status/done": "✅ Done",
+    "untagged": "⚪ Untagged",
+}
+_STATUS_ORDER = ["status/blocked", "status/building", "status/planning", "untagged", "status/done"]
+_STALL_DAYS = 14
+
+
+def _ms_to_days_ago(ms: int) -> int:
+    """Convert a millisecond timestamp to days ago (0 = today)."""
+    import time
+    now_ms = int(time.time() * 1000)
+    diff_ms = now_ms - ms
+    return max(0, diff_ms // 86_400_000)
+
+
+async def build_project_portfolio_html(orch: TelegramOrchestrator, user_id: int) -> str:
+    """
+    Build the project portfolio section HTML (US-060). Used by /project_report and
+    optionally by /weekly_report when include_project_portfolio is enabled.
+    Returns empty string if no projects or Joplin unavailable.
+    """
+    cfg = orch.logging_service.get_google_tasks_config(user_id) or {}
+    proj_folder_id_override = cfg.get("projects_folder_id")
+    if not orch.reorg_orchestrator:
+        return ""
+    try:
+        project_list: list[tuple[str, str]] = await orch.reorg_orchestrator.get_project_folders(
+            projects_folder_id=proj_folder_id_override
+        )
+    except Exception:
+        return ""
+    if not project_list:
+        return ""
+
+    all_notes = await orch.joplin_client.get_all_notes(fields="id,parent_id,updated_time")
+    notes_by_folder: dict[str, list[dict]] = {}
+    for note in all_notes:
+        fid = note.get("parent_id") or ""
+        notes_by_folder.setdefault(fid, []).append(note)
+
+    tags = await orch.joplin_client.fetch_tags()
+    tag_id_by_name = {
+        (t.get("title") or "").strip().lower(): t.get("id")
+        for t in tags if t.get("id")
+    }
+    folder_status: dict[str, str] = {}
+    for status_name in ["status/blocked", "status/building", "status/planning", "status/done"]:
+        tag_id = tag_id_by_name.get(status_name)
+        if not tag_id:
+            continue
+        notes_with_tag = await orch.joplin_client.get_notes_with_tag(tag_id)
+        for note in notes_with_tag:
+            fid = note.get("parent_id") or ""
+            if fid and fid not in folder_status:
+                folder_status[fid] = status_name
+
+    tasks_by_project: dict[str, list[dict]] = {}
+    if orch.task_service and cfg.get("project_sync_enabled"):
+        tasks_by_project = orch.task_service.get_tasks_by_project(str(user_id))
+
+    projects = []
+    for folder_id, title in project_list:
+        notes = notes_by_folder.get(folder_id, [])
+        note_count = len(notes)
+        last_ms = max((n.get("updated_time") or 0 for n in notes), default=0)
+        days_since = _ms_to_days_ago(last_ms) if last_ms else 999
+        status = folder_status.get(folder_id, "untagged")
+        open_tasks = tasks_by_project.get(folder_id, [])
+        is_stalled = note_count > 0 and days_since >= _STALL_DAYS
+        has_next_action = len(open_tasks) > 0
+        projects.append({
+            "folder_id": folder_id, "title": title, "note_count": note_count,
+            "days_since": days_since, "status": status, "open_tasks": open_tasks,
+            "is_stalled": is_stalled, "has_next_action": has_next_action,
+        })
+
+    def _sort_key(p: dict) -> tuple:
+        s = p["status"]
+        if s == "status/blocked":
+            order = 0
+        elif p["is_stalled"]:
+            order = 1
+        elif s == "status/building":
+            order = 2
+        elif s == "status/planning":
+            order = 3
+        elif s == "untagged":
+            order = 4
+        else:
+            order = 5
+        return (order, p["title"].lower())
+
+    projects.sort(key=_sort_key)
+    active = [p for p in projects if p["status"] != "status/done"]
+    done = [p for p in projects if p["status"] == "status/done"]
+
+    blocked_c = sum(1 for p in active if p["status"] == "status/blocked")
+    stalled_c = sum(1 for p in active if p["is_stalled"])
+    no_next_c = sum(1 for p in active if not p["has_next_action"] and cfg.get("project_sync_enabled"))
+
+    header = f"📊 <b>Project Portfolio</b>  ({len(active)} active"
+    if done:
+        header += f" · {len(done)} done"
+    header += ")"
+    if blocked_c:
+        header += f"  🟠 {blocked_c} blocked"
+    if stalled_c:
+        header += f"  ⚠️ {stalled_c} stalled"
+    if no_next_c:
+        header += f"  📌 {no_next_c} no next action"
+    if len(active) > 15:
+        header += f"\n⚠️ You have {len(active)} active projects — GTD recommends keeping under 15"
+
+    lines = [header, ""]
+    if not active:
+        lines.append("✨ No active projects. Start one with /project_new")
+    else:
+        for p in active:
+            badge = _STATUS_BADGES.get(p["status"], "⚪")
+            stall_flag = " ⚠️ Stalled" if p["is_stalled"] else ""
+            lines.append(f"<b>{p['title']}</b>  {badge}{stall_flag}")
+            if cfg.get("project_sync_enabled"):
+                if p["open_tasks"]:
+                    next_t = p["open_tasks"][0]
+                    lines.append(f"  📌 Next: {next_t.get('title', 'Untitled')}")
+                else:
+                    lines.append("  ⚠️ No next action — use /task to add one")
+            if p["days_since"] < 999:
+                lines.append(f"  🕐 {p['days_since']}d ago  ·  📂 {p['note_count']} note(s)  ·  📋 {len(p['open_tasks'])} task(s)")
+            else:
+                lines.append(f"  📂 {p['note_count']} note(s)  ·  📋 {len(p['open_tasks'])} task(s)")
+            lines.append("")
+    if done:
+        titles = ", ".join(p["title"] for p in done[:5])
+        extra = f" +{len(done) - 5} more" if len(done) > 5 else ""
+        lines.append(f"✅ {len(done)} done: {titles}{extra}")
+    if not cfg.get("project_sync_enabled") and orch.task_service:
+        lines.append("")
+        lines.append("💡 Tip: Enable /tasks_toggle_project_sync to see next actions per project")
+    return "\n".join(lines)
+
+
+def _project_report(orch: TelegramOrchestrator):
+    """US-060: World-Class Project Report — per-project portfolio view."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        drill_query = " ".join(context.args).strip().lower() if context.args else ""
+
+        try:
+            await update.message.chat.send_action("typing")
+
+            # ── 1. Get project folders ──────────────────────────────────────
+            cfg = orch.logging_service.get_google_tasks_config(user.id) or {}
+            proj_folder_id_override = cfg.get("projects_folder_id")
+            if not orch.reorg_orchestrator:
+                await update.message.reply_text("❌ Joplin not available")
+                return
+            project_list: list[tuple[str, str]] = await orch.reorg_orchestrator.get_project_folders(
+                projects_folder_id=proj_folder_id_override
+            )
+            if not project_list:
+                await update.message.reply_text(
+                    "📂 No project folders found.\n\n"
+                    "Create folders under Projects in Joplin, then use /project_new to get started."
+                )
+                return
+
+            # ── 2. Notes: batch fetch with updated_time ─────────────────────
+            all_notes = await orch.joplin_client.get_all_notes(fields="id,parent_id,updated_time")
+            notes_by_folder: dict[str, list[dict]] = {}
+            for note in all_notes:
+                fid = note.get("parent_id") or ""
+                notes_by_folder.setdefault(fid, []).append(note)
+
+            # ── 3. Status tags: fetch once per status ───────────────────────
+            tags = await orch.joplin_client.fetch_tags()
+            tag_id_by_name = {
+                (t.get("title") or "").strip().lower(): t.get("id")
+                for t in tags if t.get("id")
+            }
+            # folder_id → best status (blocked > building > planning > done)
+            folder_status: dict[str, str] = {}
+            for status_name in ["status/blocked", "status/building", "status/planning", "status/done"]:
+                tag_id = tag_id_by_name.get(status_name)
+                if not tag_id:
+                    continue
+                notes_with_tag = await orch.joplin_client.get_notes_with_tag(tag_id)
+                for note in notes_with_tag:
+                    fid = note.get("parent_id") or ""
+                    if fid and fid not in folder_status:
+                        folder_status[fid] = status_name
+
+            # ── 4. Google Tasks: batch fetch per project ────────────────────
+            tasks_by_project: dict[str, list[dict]] = {}
+            if orch.task_service and cfg.get("project_sync_enabled"):
+                tasks_by_project = orch.task_service.get_tasks_by_project(str(user.id))
+
+            # ── 5. Build project records ────────────────────────────────────
+            projects = []
+            for folder_id, title in project_list:
+                notes = notes_by_folder.get(folder_id, [])
+                note_count = len(notes)
+                last_ms = max((n.get("updated_time") or 0 for n in notes), default=0)
+                days_since = _ms_to_days_ago(last_ms) if last_ms else 999
+                status = folder_status.get(folder_id, "untagged")
+                open_tasks = tasks_by_project.get(folder_id, [])
+                is_stalled = note_count > 0 and days_since >= _STALL_DAYS
+                has_next_action = len(open_tasks) > 0
+                projects.append({
+                    "folder_id": folder_id, "title": title, "note_count": note_count,
+                    "days_since": days_since, "status": status, "open_tasks": open_tasks,
+                    "is_stalled": is_stalled, "has_next_action": has_next_action,
+                })
+
+            # ── Drill-down mode ─────────────────────────────────────────────
+            if drill_query:
+                match = next(
+                    (p for p in projects if drill_query in p["title"].lower()), None
+                )
+                if not match:
+                    await update.message.reply_text(
+                        f"❌ No project matching '{drill_query}'\n\n"
+                        "Use /project_report without arguments for the full portfolio."
+                    )
+                    return
+                lines = [f"📋 <b>{match['title']}</b>  {_STATUS_BADGES.get(match['status'], '⚪')}"]
+                lines.append("")
+                if match["open_tasks"]:
+                    lines.append("📌 Open tasks:")
+                    for t in match["open_tasks"]:
+                        due = t.get("due", "")
+                        due_str = f" · due {due[:10]}" if due else ""
+                        lines.append(f"  • {t.get('title', 'Untitled')}{due_str}")
+                else:
+                    lines.append("📌 No open tasks — use /task to add one")
+                lines.append("")
+                lines.append(f"📂 {match['note_count']} note(s)")
+                if match["days_since"] < 999:
+                    lines.append(f"🕐 Last activity: {match['days_since']} day(s) ago")
+                else:
+                    lines.append("🕐 Last activity: unknown")
+                await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+                return
+
+            # ── Portfolio view ──────────────────────────────────────────────
+            # Sort: blocked → stalled → building → planning → untagged → done
+            def _sort_key(p: dict) -> tuple:
+                s = p["status"]
+                if s == "status/blocked":
+                    order = 0
+                elif p["is_stalled"]:
+                    order = 1
+                elif s == "status/building":
+                    order = 2
+                elif s == "status/planning":
+                    order = 3
+                elif s == "untagged":
+                    order = 4
+                else:  # done
+                    order = 5
+                return (order, p["title"].lower())
+
+            projects.sort(key=_sort_key)
+            active = [p for p in projects if p["status"] != "status/done"]
+            done = [p for p in projects if p["status"] == "status/done"]
+
+            # Portfolio header
+            blocked_c = sum(1 for p in active if p["status"] == "status/blocked")
+            stalled_c = sum(1 for p in active if p["is_stalled"])
+            no_next_c = sum(1 for p in active if not p["has_next_action"] and cfg.get("project_sync_enabled"))
+
+            header = f"📊 <b>Project Portfolio</b>  ({len(active)} active"
+            if done:
+                header += f" · {len(done)} done"
+            header += ")"
+            if blocked_c:
+                header += f"  🟠 {blocked_c} blocked"
+            if stalled_c:
+                header += f"  ⚠️ {stalled_c} stalled"
+            if no_next_c:
+                header += f"  📌 {no_next_c} no next action"
+            if len(active) > 15:
+                header += f"\n⚠️ You have {len(active)} active projects — GTD recommends keeping under 15"
+
+            lines = [header, ""]
+
+            if not active:
+                lines.append("✨ No active projects. Start one with /project_new")
+            else:
+                for p in active:
+                    badge = _STATUS_BADGES.get(p["status"], "⚪")
+                    stall_flag = " ⚠️ Stalled" if p["is_stalled"] else ""
+                    lines.append(f"<b>{p['title']}</b>  {badge}{stall_flag}")
+
+                    if cfg.get("project_sync_enabled"):
+                        if p["open_tasks"]:
+                            next_t = p["open_tasks"][0]
+                            lines.append(f"  📌 Next: {next_t.get('title', 'Untitled')}")
+                        else:
+                            lines.append("  ⚠️ No next action — use /task to add one")
+
+                    if p["days_since"] < 999:
+                        lines.append(f"  🕐 {p['days_since']}d ago  ·  📂 {p['note_count']} note(s)  ·  📋 {len(p['open_tasks'])} task(s)")
+                    else:
+                        lines.append(f"  📂 {p['note_count']} note(s)  ·  📋 {len(p['open_tasks'])} task(s)")
+                    lines.append("")
+
+            if done:
+                titles = ", ".join(p["title"] for p in done[:5])
+                extra = f" +{len(done) - 5} more" if len(done) > 5 else ""
+                lines.append(f"✅ {len(done)} done: {titles}{extra}")
+
+            if not cfg.get("project_sync_enabled") and orch.task_service:
+                lines.append("")
+                lines.append("💡 Tip: Enable /tasks_toggle_project_sync to see next actions per project")
+
+            await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+        except Exception as exc:
+            logger.error("Failed to compute project report: %s", exc, exc_info=True)
+            await update.message.reply_text("❌ Failed to load project report right now.")
+
+    return handler
+
+
+# ---------------------------------------------------------------------------
 # Message handler (the main routing logic)
 # ---------------------------------------------------------------------------
 
@@ -919,6 +1257,17 @@ async def _route_plain_message(
     # Task only
     if routing.content_type == "task" and routing.task and orch.task_service:
         task = routing.task
+        existing = orch.task_service.detect_duplicate_task(task.title, str(user_id))
+        if existing:
+            task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
+            if task_list_id:
+                await _show_duplicate_task_choice(
+                    orch, user_id, existing, task_list_id, task.title,
+                    proposed_notes=task.notes or "",
+                    proposed_due=task.due_date,
+                    message=message,
+                )
+                return True
         try:
             created = orch.task_service.create_task_with_metadata(
                 title=task.title,
@@ -1019,6 +1368,19 @@ async def _route_plain_message(
                 )
                 if proj:
                     parent_folder_id, parent_folder_title = proj
+            existing = orch.task_service.detect_duplicate_task(task.title, str(user_id))
+            if existing:
+                task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
+                if task_list_id:
+                    await _show_duplicate_task_choice(
+                        orch, user_id, existing, task_list_id, task.title,
+                        proposed_notes=task_notes,
+                        proposed_due=task.due_date,
+                        parent_folder_id=parent_folder_id,
+                        parent_folder_title=parent_folder_title,
+                        message=message,
+                    )
+                    return True
             try:
                 created = orch.task_service.create_task_with_metadata(
                     title=task.title,
@@ -1137,6 +1499,16 @@ async def _handle_new_request(
                     )
                     return
 
+            # US-055: Duplicate check before create
+            existing = orch.task_service.detect_duplicate_task(text, str(user_id))
+            if existing:
+                task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
+                if task_list_id:
+                    await _show_duplicate_task_choice(
+                        orch, user_id, existing, task_list_id, text,
+                        message=message,
+                    )
+                    return
             created = orch.task_service.create_task_directly(text, str(user_id))
             if created:
                 status_line = _task_sync_status_line(orch, user_id)
@@ -1277,31 +1649,47 @@ async def _handle_project_selection_reply(
 
     task_text = state.get("task_text", "")
     projects = state.get("projects", [])
-    orch.state_manager.clear_state(user_id)
-
     if not task_text or not orch.task_service:
+        orch.state_manager.clear_state(user_id)
         await message.reply_text(format_error_message("Could not create task."))
         return
 
     text_lower = text.strip().lower()
+    parent_folder_id: str | None = None
+    parent_folder_title: str | None = None
+    if text_lower not in ("no", "n", "skip", "top-level", "top level"):
+        try:
+            idx = int(text.strip())
+            if 1 <= idx <= len(projects):
+                parent_folder_id, parent_folder_title = projects[idx - 1]
+        except ValueError:
+            pass
+
+    # US-055: Duplicate check before create
+    existing = orch.task_service.detect_duplicate_task(task_text, str(user_id))
+    if existing:
+        task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
+        if task_list_id:
+            orch.state_manager.clear_state(user_id)
+            await _show_duplicate_task_choice(
+                orch, user_id, existing, task_list_id, task_text,
+                parent_folder_id=parent_folder_id,
+                parent_folder_title=parent_folder_title,
+                message=message,
+            )
+            return
+
+    orch.state_manager.clear_state(user_id)
     try:
-        if text_lower in ("no", "n", "skip", "top-level", "top level"):
-            created = orch.task_service.create_task_directly(task_text, str(user_id))
+        if parent_folder_id and parent_folder_title:
+            created = orch.task_service.create_task_with_metadata(
+                title=task_text,
+                user_id=str(user_id),
+                parent_folder_id=parent_folder_id,
+                parent_folder_title=parent_folder_title,
+            )
         else:
-            try:
-                idx = int(text.strip())
-                if 1 <= idx <= len(projects):
-                    fid, title = projects[idx - 1]
-                    created = orch.task_service.create_task_with_metadata(
-                        title=task_text,
-                        user_id=str(user_id),
-                        parent_folder_id=fid,
-                        parent_folder_title=title,
-                    )
-                else:
-                    created = orch.task_service.create_task_directly(task_text, str(user_id))
-            except ValueError:
-                created = orch.task_service.create_task_directly(task_text, str(user_id))
+            created = orch.task_service.create_task_directly(task_text, str(user_id))
     except AppError as exc:
         logger.warning("Failed to create task (project selection reply): %s", exc)
         await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
@@ -1389,31 +1777,47 @@ def _project_selection_callback(orch: TelegramOrchestrator):
 
         task_text = state.get("task_text", "")
         projects = state.get("projects", [])
-        orch.state_manager.clear_state(user.id)
-
         if not task_text or not orch.task_service:
+            orch.state_manager.clear_state(user.id)
             await query.edit_message_text(format_error_message("Could not create task."))
             return
 
         data = query.data
+        parent_folder_id: str | None = None
+        parent_folder_title: str | None = None
+        if data != "project_sel_no":
+            try:
+                idx = int(data.replace("project_sel_", ""))
+                if 0 <= idx < len(projects):
+                    parent_folder_id, parent_folder_title = projects[idx]
+            except (ValueError, IndexError):
+                pass
+
+        # US-055: Duplicate check before create
+        existing = orch.task_service.detect_duplicate_task(task_text, str(user.id))
+        if existing:
+            task_list_id = orch.task_service.get_task_list_id_for_user(str(user.id))
+            if task_list_id:
+                orch.state_manager.clear_state(user.id)
+                await _show_duplicate_task_choice(
+                    orch, user.id, existing, task_list_id, task_text,
+                    parent_folder_id=parent_folder_id,
+                    parent_folder_title=parent_folder_title,
+                    query=query,
+                )
+                return
+
+        orch.state_manager.clear_state(user.id)
         try:
-            if data == "project_sel_no":
-                created = orch.task_service.create_task_directly(task_text, str(user.id))
+            if parent_folder_id and parent_folder_title:
+                created = orch.task_service.create_task_with_metadata(
+                    title=task_text,
+                    user_id=str(user.id),
+                    parent_folder_id=parent_folder_id,
+                    parent_folder_title=parent_folder_title,
+                )
             else:
-                try:
-                    idx = int(data.replace("project_sel_", ""))
-                    if 0 <= idx < len(projects):
-                        fid, title = projects[idx]
-                        created = orch.task_service.create_task_with_metadata(
-                            title=task_text,
-                            user_id=str(user.id),
-                            parent_folder_id=fid,
-                            parent_folder_title=title,
-                        )
-                    else:
-                        created = orch.task_service.create_task_directly(task_text, str(user.id))
-                except (ValueError, IndexError):
-                    created = orch.task_service.create_task_directly(task_text, str(user.id))
+                created = orch.task_service.create_task_directly(task_text, str(user.id))
         except AppError as exc:
             logger.warning("Failed to create task (project selection callback): %s", exc)
             await query.edit_message_text(format_error_message(getattr(exc, "user_message", str(exc))))
@@ -1440,6 +1844,170 @@ def _project_selection_callback(orch: TelegramOrchestrator):
             msg = "Failed to create Google Task. Check /tasks_status." if has_token else "Failed to create Google Task. Use /tasks_connect first."
             await query.edit_message_text(format_error_message(msg))
 
+    return handler
+
+
+# ---------------------------------------------------------------------------
+# US-055: Duplicate task choice (Edit / Priority / Add Anyway / Cancel)
+# ---------------------------------------------------------------------------
+
+async def _show_duplicate_task_choice(
+    orch: TelegramOrchestrator,
+    user_id: int,
+    existing_task: dict,
+    task_list_id: str,
+    proposed_title: str,
+    *,
+    proposed_notes: str = "",
+    proposed_due: str | None = None,
+    parent_folder_id: str | None = None,
+    parent_folder_title: str | None = None,
+    message: Message | None = None,
+    query: Any = None,
+) -> None:
+    """Show duplicate-task inline keyboard and store state for callback."""
+    existing_title = (existing_task.get("title") or "").strip() or "Untitled"
+    state = {
+        "awaiting_duplicate_choice": True,
+        "duplicate_existing_task": {
+            "id": existing_task.get("id"),
+            "title": existing_title,
+            "task_list_id": task_list_id,
+        },
+        "duplicate_proposed_title": proposed_title,
+        "duplicate_proposed_notes": proposed_notes,
+        "duplicate_proposed_due": proposed_due,
+        "duplicate_parent_folder_id": parent_folder_id,
+        "duplicate_parent_folder_title": parent_folder_title,
+    }
+    orch.state_manager.update_state(user_id, state)
+    text = (
+        f"A similar task already exists: \"{existing_title[:80]}{'…' if len(existing_title) > 80 else ''}\".\n\n"
+        "What do you want to do?"
+    )
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✏️ Edit", callback_data="dup_edit"),
+            InlineKeyboardButton("⭐ Priority", callback_data="dup_priority"),
+        ],
+        [
+            InlineKeyboardButton("➕ Add Anyway", callback_data="dup_add"),
+            InlineKeyboardButton("❌ Cancel", callback_data="dup_cancel"),
+        ],
+    ])
+    if query:
+        await query.edit_message_text(text, reply_markup=keyboard)
+    else:
+        await message.reply_text(text, reply_markup=keyboard)
+
+
+def _duplicate_task_callback(orch: TelegramOrchestrator):
+    """US-055: Handle Edit / Priority / Add Anyway / Cancel for duplicate task."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        query = update.callback_query
+        if not query or not query.data:
+            return
+        await query.answer()
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        state = orch.state_manager.get_state(user.id)
+        if not state or not state.get("awaiting_duplicate_choice"):
+            await query.edit_message_text("❌ Selection expired. Use /task <item> to create a task.")
+            return
+
+        existing = state.get("duplicate_existing_task", {})
+        proposed_title = state.get("duplicate_proposed_title", "")
+        proposed_notes = state.get("duplicate_proposed_notes", "")
+        proposed_due = state.get("duplicate_proposed_due")
+        parent_folder_id = state.get("duplicate_parent_folder_id")
+        parent_folder_title = state.get("duplicate_parent_folder_title")
+        orch.state_manager.clear_state(user.id)
+
+        choice = query.data
+        if choice == "dup_cancel":
+            await query.edit_message_text("❌ Cancelled. No new task added.")
+            return
+
+        if choice == "dup_priority":
+            await query.edit_message_text(
+                "⭐ To change priority or star this task, open it in Google Tasks."
+            )
+            return
+
+        if choice == "dup_edit":
+            task_id = existing.get("id")
+            task_list_id = existing.get("task_list_id")
+            if task_id and task_list_id and orch.task_service:
+                try:
+                    token = orch.logging_service.load_google_token(str(user.id))
+                    if not token:
+                        await query.edit_message_text(
+                            format_error_message("Not connected. Use /tasks_connect first.")
+                        )
+                        return
+                    orch.task_service._set_client_token(str(user.id), token)
+                    patch: dict[str, Any] = {"title": proposed_title}
+                    if proposed_notes:
+                        patch["notes"] = proposed_notes
+                    if proposed_due:
+                        patch["due"] = proposed_due
+                    updated = orch.task_service.tasks_client.update_task(
+                        task_id, task_list_id, patch
+                    )
+                    if orch.task_service.tasks_client.token and orch.task_service.tasks_client.token != token:
+                        orch.logging_service.save_google_token(str(user.id), orch.task_service.tasks_client.token)
+                    if updated:
+                        await query.edit_message_text(
+                            format_success_message("✏️ Updated existing task with your new text.")
+                        )
+                    else:
+                        await query.edit_message_text(
+                            format_error_message("Could not update task. Try again or add as new.")
+                        )
+                except Exception as exc:
+                    logger.warning("Duplicate edit update failed: %s", exc)
+                    await query.edit_message_text(
+                        format_error_message("Failed to update task. Try again or add as new.")
+                    )
+            else:
+                await query.edit_message_text(
+                    format_error_message("Could not update task. Try again or add as new.")
+                )
+            return
+
+        if choice == "dup_add":
+            if not orch.task_service:
+                await query.edit_message_text(format_error_message("Could not create task."))
+                return
+            try:
+                if parent_folder_id and parent_folder_title:
+                    created = orch.task_service.create_task_with_metadata(
+                        title=proposed_title,
+                        user_id=str(user.id),
+                        notes=proposed_notes,
+                        due_date=proposed_due,
+                        parent_folder_id=parent_folder_id,
+                        parent_folder_title=parent_folder_title,
+                    )
+                else:
+                    created = orch.task_service.create_task_directly(proposed_title, str(user.id))
+            except Exception as exc:
+                logger.warning("Failed to create task (dup_add): %s", exc)
+                await query.edit_message_text(
+                    format_error_message("Failed to create task. Check /tasks_status.")
+                )
+                return
+            if created:
+                status_line = _task_sync_status_line(orch, user.id)
+                await query.edit_message_text(format_success_message(
+                    f"✅ Created Google Task: '{proposed_title[:80]}{'…' if len(proposed_title) > 80 else ''}'{status_line}"
+                ))
+            else:
+                await query.edit_message_text(
+                    format_error_message("Failed to create Google Task. Check /tasks_status.")
+                )
     return handler
 
 

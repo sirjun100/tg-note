@@ -89,6 +89,14 @@ class LoggingService:
                 conn.commit()
             except sqlite3.OperationalError:
                 pass  # Column already exists
+            # Sprint 20 T-007: optional project portfolio in weekly report
+            try:
+                conn.execute(
+                    "ALTER TABLE report_configurations ADD COLUMN include_project_portfolio BOOLEAN DEFAULT 0"
+                )
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # Column already exists
             conn.commit()
 
     def _dict_factory(self, cursor, row):
@@ -585,8 +593,8 @@ class LoggingService:
                 INSERT OR REPLACE INTO report_configurations
                 (user_id, enabled, delivery_time, timezone, include_critical, include_high,
                  include_medium, include_low, include_google_tasks, include_clarification_pending,
-                 detail_level, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 include_project_portfolio, detail_level, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
                 config.get('enabled', True),
@@ -598,6 +606,7 @@ class LoggingService:
                 config.get('include_low', False),
                 config.get('include_google_tasks', True),
                 config.get('include_clarification_pending', True),
+                config.get('include_project_portfolio', False),
                 config.get('detail_level', 'detailed'),
                 datetime.now()
             ))

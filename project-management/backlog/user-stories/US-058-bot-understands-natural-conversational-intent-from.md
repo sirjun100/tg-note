@@ -100,11 +100,9 @@ Examples:
 [Links to specific code locations, classes, or technical specifications. Adapt format to your tech stack.]
 
 **Format examples**:
-- Class: `FeatureService`
-- Method: `FeatureService.processRequest()`
-- File: `src/features/feature_service.py`
-- API Endpoint: `POST /api/v1/feature`
-- Database Table: `feature_table`
+- Handler: `src/handlers/core.py` — `_route_plain_message()`, message routing
+- Service: `src/llm_orchestrator.py` — intent classification, content routing
+- Tests: `tests/test_conversational_intent.py` (when implemented)
 
 ## Dependencies
 

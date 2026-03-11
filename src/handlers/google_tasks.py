@@ -77,6 +77,7 @@ def register_google_tasks_handlers(application: Any, orch: TelegramOrchestrator)
     application.add_handler(CommandHandler("set_projects_folder", _set_projects_folder(orch)))
     application.add_handler(CommandHandler("tasks_cleanup", _cleanup_completed_tasks(orch)))
     application.add_handler(CommandHandler("cleanup_completed_tasks", _cleanup_completed_tasks(orch)))
+    application.add_handler(CommandHandler("tasks_sync_detail", _tasks_sync_detail(orch)))
 
 
 def _authorize(orch: TelegramOrchestrator):
@@ -470,6 +471,144 @@ def _toggle_privacy(orch: TelegramOrchestrator):
 
 
 def _tasks_status(orch: TelegramOrchestrator):
+    """US-059: GTD personal productivity cockpit — replaces sync diagnostics."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+        try:
+            token = orch.logging_service.load_google_token(str(user.id))
+            if not token:
+                await update.message.reply_text(
+                    "📋 Google Tasks not connected yet.\nUse /tasks_connect to link your account."
+                )
+                return
+
+            if not orch.task_service:
+                await update.message.reply_text("❌ Google Tasks integration not available")
+                return
+
+            data = orch.task_service.get_dashboard_data(str(user.id))
+            if data is None:
+                await update.message.reply_text(
+                    "📋 Google Tasks not connected yet.\nUse /tasks_connect to link your account."
+                )
+                return
+
+            overdue = data["overdue"]
+            due_today = data["due_today"]
+            due_week = data["due_week"]
+            inbox_count = data["inbox_count"]
+            last_sync = data.get("last_sync", "")
+            next_task = data.get("next_task")
+
+            # Motivating empty state
+            if not overdue and not due_today and inbox_count == 0:
+                msg = "✅ <b>You're on top of everything.</b>\n"
+                msg += "Nothing overdue · Nothing due today · Inbox clear\n"
+                if next_task:
+                    next_title = next_task.get("title", "Untitled")
+                    next_due = next_task.get("due", "")[:10]
+                    msg += f"\n📆 Next: {next_title}"
+                    if next_due:
+                        msg += f" ({next_due})"
+                sync_line = "\n\n✅ Google Tasks connected"
+                if last_sync:
+                    sync_line += f" · last sync: {last_sync}"
+                msg += sync_line
+                await update.message.reply_text(msg, parse_mode="HTML")
+                return
+
+            lines: list[str] = []
+
+            # Section 1 — Action Required (overdue)
+            if overdue:
+                days_overdue_fn = _days_overdue_label
+                lines.append(f"⚠️ <b>{len(overdue)} overdue</b> — needs action now")
+                for task in overdue[:3]:
+                    title = task.get("title", "Untitled")
+                    due_str = task.get("due", "")
+                    label = days_overdue_fn(due_str) if due_str else ""
+                    lines.append(f"  • {title}{label}")
+                if len(overdue) > 3:
+                    lines.append(f"  +{len(overdue) - 3} more overdue")
+            else:
+                lines.append("✅ All clear — nothing overdue")
+
+            lines.append("")
+
+            # Section 2 — Today
+            if due_today:
+                lines.append(f"📅 <b>{len(due_today)} due today</b>")
+                for task in due_today[:5]:
+                    title = task.get("title", "Untitled")
+                    lines.append(f"  • {title}")
+                if len(due_today) > 5:
+                    lines.append(f"  +{len(due_today) - 5} more today")
+            else:
+                lines.append("📅 Nothing scheduled for today — /task to add one")
+
+            lines.append("")
+
+            # Section 3 — This Week
+            if due_week:
+                lines.append(f"📆 <b>{len(due_week)} due this week</b>")
+                for task in due_week[:5]:
+                    title = task.get("title", "Untitled")
+                    due_date = task.get("due", "")[:10]
+                    lines.append(f"  • {title} ({due_date})")
+                if len(due_week) > 5:
+                    lines.append(f"  +{len(due_week) - 5} more this week")
+            else:
+                lines.append("📆 Nothing else due this week")
+
+            lines.append("")
+
+            # Section 4 — Inbox
+            if inbox_count > 0:
+                if inbox_count > 5:
+                    lines.append(f"📥 <b>Inbox: {inbox_count} uncategorized tasks</b> — time for a quick review")
+                else:
+                    lines.append(f"📥 Inbox: {inbox_count} uncategorized task(s)")
+            # else: part of all-clear (already handled above)
+
+            # Section 5 — System Health (single line, always last)
+            failed_syncs = orch.logging_service.get_failed_syncs(user.id)
+            if failed_syncs:
+                health = f"⚠️ {len(failed_syncs)} sync error(s) — /tasks_sync_detail for more"
+            else:
+                health = "✅ Google Tasks connected"
+                if last_sync:
+                    health += f" · last sync: {last_sync}"
+            lines.append("")
+            lines.append(health)
+
+            await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+        except Exception as exc:
+            await update.message.reply_text(f"❌ Error: {exc}")
+            logger.error("Error in tasks_status cockpit: %s", exc)
+
+    return handler
+
+
+def _days_overdue_label(due_str: str) -> str:
+    """Return ' · N days overdue' string for a due date string."""
+    try:
+        from datetime import date
+        due_date = date.fromisoformat(due_str[:10])
+        delta = (date.today() - due_date).days
+        if delta == 1:
+            return " · 1 day overdue"
+        elif delta > 1:
+            return f" · {delta} days overdue"
+    except Exception:
+        pass
+    return ""
+
+
+def _tasks_sync_detail(orch: TelegramOrchestrator):
+    """Old /tasks_status diagnostic output, now at /tasks_sync_detail."""
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
@@ -482,7 +621,6 @@ def _tasks_status(orch: TelegramOrchestrator):
                 )
                 return
 
-            # Validate token by making a lightweight API call (refreshes if expired)
             valid, err = orch.task_service.validate_google_token(user.id)
             if not valid:
                 await update.message.reply_text(
@@ -491,7 +629,7 @@ def _tasks_status(orch: TelegramOrchestrator):
                 return
 
             status = orch.task_service.get_task_sync_status(user.id)
-            msg = "📊 Google Tasks Sync Status\n\n"
+            msg = "📊 Google Tasks Sync Detail\n\n"
             msg += f"Total synced: {status.get('total_synced', 0)}\n"
             msg += f"✅ Successful: {status.get('success_count', 0)}\n"
             msg += f"❌ Failed: {status.get('failed_count', 0)}\n\n"
@@ -510,7 +648,7 @@ def _tasks_status(orch: TelegramOrchestrator):
             await update.message.reply_text(msg)
         except Exception as exc:
             await update.message.reply_text(f"❌ Error: {exc}")
-            logger.error("Error in google_tasks_status: %s", exc)
+            logger.error("Error in tasks_sync_detail: %s", exc)
 
     return handler
 

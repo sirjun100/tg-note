@@ -254,6 +254,45 @@ class TaskService:
         Bypasses action-item extraction — the user explicitly asked to create this task."""
         return self.create_task_with_metadata(title=title, user_id=user_id)
 
+    def _normalize_title_for_duplicate_check(self, title: str) -> str:
+        """US-055: Normalize task title for duplicate detection (case-insensitive, strip punctuation)."""
+        if not title:
+            return ""
+        s = (title or "").strip().lower()
+        s = re.sub(r"[\W_]+", "", s)
+        return s
+
+    def detect_duplicate_task(self, title: str, user_id: str) -> dict[str, Any] | None:
+        """
+        US-055: Check if a task with the same or similar title already exists.
+        Uses exact match after normalization (case-insensitive, strip punctuation).
+        Returns the first matching task dict or None.
+        """
+        if not title or not (title or "").strip():
+            return None
+        task_list_id = self.get_task_list_id_for_user(user_id)
+        if not task_list_id:
+            return None
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return None
+        self._set_client_token(user_id, token)
+        try:
+            tasks = self.tasks_client.get_tasks(task_list_id, show_completed=False, max_results=100)
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+        except Exception as e:
+            logger.debug("detect_duplicate_task: failed to fetch tasks: %s", e)
+            return None
+        normalized_proposed = self._normalize_title_for_duplicate_check(title)
+        if not normalized_proposed:
+            return None
+        for task in tasks:
+            existing_title = (task.get("title") or "").strip()
+            if self._normalize_title_for_duplicate_check(existing_title) == normalized_proposed:
+                return task
+        return None
+
     def get_or_create_project_parent_task(
         self,
         user_id: str,
@@ -619,6 +658,59 @@ class TaskService:
         ]
         return stalled
 
+    def get_tasks_by_project(self, user_id: str) -> dict[str, list[dict[str, Any]]]:
+        """US-060: Fetch all open tasks and group by Joplin project folder ID.
+
+        Returns {joplin_folder_id: [task_dict, ...]} using the project sync mappings.
+        Returns empty dict if not connected or project sync is not configured.
+        Single API call for all projects (efficient for portfolio view).
+        """
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return {}
+
+        config = self.logging_service.get_google_tasks_config(int(user_id))
+        if not config or not config.get("enabled"):
+            return {}
+
+        mappings = self.logging_service.get_all_project_sync_mappings(int(user_id))
+        if not mappings:
+            return {}
+
+        google_to_folder: dict[str, str] = {
+            m["google_task_id"]: m["joplin_folder_id"]
+            for m in mappings
+            if m.get("google_task_id") and m.get("joplin_folder_id")
+        }
+        if not google_to_folder:
+            return {}
+
+        task_list_id = self.get_task_list_id_for_user(user_id)
+        if not task_list_id:
+            return {}
+
+        self._set_client_token(user_id, token)
+        try:
+            all_tasks = self.tasks_client.get_all_tasks(task_list_id, show_completed=False)
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+        except Exception as e:
+            logger.warning("US-060: Failed to fetch tasks for project grouping: %s", e)
+            return {}
+
+        result: dict[str, list[dict[str, Any]]] = {}
+        for task in all_tasks:
+            if task.get("status") == "completed":
+                continue
+            parent_id = task.get("parent")
+            if not parent_id:
+                continue
+            folder_id = google_to_folder.get(parent_id)
+            if folder_id:
+                result.setdefault(folder_id, []).append(task)
+
+        return result
+
     def get_task_list_id_for_user(self, user_id: str) -> str | None:
         """Get the task list ID used for the user (from config or default)."""
         config = self.logging_service.get_google_tasks_config(int(user_id))
@@ -806,6 +898,129 @@ class TaskService:
             if "token_expired" in err_str or "401" in err_str or "refresh" in err_str:
                 return False, "Token expired or revoked. Re-authorization required."
             return False, str(e)
+
+    def get_dashboard_data(self, user_id: str) -> dict[str, Any] | None:
+        """US-059: Return GTD dashboard data: overdue, today, this week, inbox count.
+
+        Returns None if Google Tasks is not connected/enabled.
+        Tasks are classified using the user's configured timezone.
+        """
+        import pytz
+
+        from src.timezone_utils import get_user_timezone, get_user_timezone_aware_now
+
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return None
+
+        config = self.logging_service.get_google_tasks_config(int(user_id))
+        if not config or not config.get("enabled"):
+            return None
+
+        self._set_client_token(user_id, token)
+
+        task_list_id = config.get("task_list_id")
+        if not task_list_id:
+            try:
+                task_list_id = self.tasks_client.get_default_task_list()
+            except Exception as e:
+                logger.warning("US-059: Failed to get task list for user %s: %s", user_id, e)
+                return None
+
+        try:
+            all_tasks = self.tasks_client.get_all_tasks(task_list_id, show_completed=False)
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+        except Exception as e:
+            logger.warning("US-059: Failed to fetch tasks for dashboard: %s", e)
+            return None
+
+        # Project parent task IDs — excluded from inbox count
+        project_task_ids: set[str] = set()
+        for m in self.logging_service.get_all_project_sync_mappings(int(user_id)):
+            gid = m.get("google_task_id")
+            if gid:
+                project_task_ids.add(gid)
+
+        # Timezone-aware date boundaries
+        now_local = get_user_timezone_aware_now(int(user_id), self.logging_service)
+        tz_str = get_user_timezone(int(user_id), self.logging_service)
+        tz = pytz.timezone(tz_str)
+        today_date = now_local.date()
+        week_end_date = today_date + timedelta(days=7)
+
+        overdue: list[dict[str, Any]] = []
+        due_today: list[dict[str, Any]] = []
+        due_week: list[dict[str, Any]] = []
+        inbox_count = 0
+
+        for task in all_tasks:
+            if task.get("status") == "completed":
+                continue
+
+            task_id = task.get("id", "")
+            parent = task.get("parent")
+            due_str = task.get("due", "")
+
+            # Google Tasks stores due dates as RFC3339 UTC midnight; use date part directly
+            if due_str:
+                try:
+                    task_date = datetime.strptime(due_str[:10], "%Y-%m-%d").date()
+                    if task_date < today_date:
+                        overdue.append(task)
+                    elif task_date == today_date:
+                        due_today.append(task)
+                    elif task_date <= week_end_date:
+                        due_week.append(task)
+                except Exception:
+                    pass
+
+            # Inbox: top-level tasks not serving as project parent stubs
+            if not parent and task_id not in project_task_ids:
+                inbox_count += 1
+
+        # Last sync time (relative string)
+        last_sync_str = ""
+        recent_syncs = self.logging_service.get_sync_history(int(user_id), limit=1)
+        if recent_syncs:
+            raw_ts = recent_syncs[0].get("created_at", "")
+            if raw_ts:
+                try:
+                    s = raw_ts.replace("Z", "+00:00").replace(" ", "T")
+                    dt_utc = datetime.fromisoformat(s)
+                    if dt_utc.tzinfo is None:
+                        import pytz as _pytz
+                        dt_utc = _pytz.utc.localize(dt_utc)
+                    dt_local = dt_utc.astimezone(tz)
+                    diff = now_local - dt_local
+                    mins = int(diff.total_seconds() / 60)
+                    if mins < 1:
+                        last_sync_str = "just now"
+                    elif mins < 60:
+                        last_sync_str = f"{mins} min ago"
+                    else:
+                        last_sync_str = f"{mins // 60}h ago"
+                except Exception:
+                    last_sync_str = raw_ts[:16]
+
+        # Find next upcoming task (for motivating empty state)
+        next_task: dict[str, Any] | None = None
+        upcoming = sorted(
+            [t for t in all_tasks if t.get("status") != "completed" and t.get("due")],
+            key=lambda t: t.get("due", ""),
+        )
+        if upcoming:
+            next_task = upcoming[0]
+
+        return {
+            "overdue": overdue,
+            "due_today": due_today,
+            "due_week": due_week,
+            "inbox_count": inbox_count,
+            "last_sync": last_sync_str,
+            "task_list_name": config.get("task_list_name", "My Tasks"),
+            "next_task": next_task,
+        }
 
     def get_task_sync_status(self, user_id: int) -> dict[str, Any]:
         """Get task synchronization status for a user"""

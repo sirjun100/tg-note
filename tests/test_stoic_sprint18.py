@@ -214,6 +214,138 @@ class TestLoadStoicTemplate(unittest.TestCase):
         self.assertIn("{{MORNING_CONTENT}}", body)
         self.assertIn("{{EVENING_CONTENT}}", body)
 
+    def test_parse_variant_block_slot_boundary_all_slots_present(self):
+        """T-013: All 3 variants must be present for each slot across both templates.
+
+        CI guard against _parse_variant_block regressions where multiple variants
+        get collapsed into a single slot (the Sprint 18 bug). Mirrors the exact
+        parsing logic used by _load_stoic_template() in stoic.py.
+        """
+        from pathlib import Path
+        template_path = Path(__file__).parent.parent / "src" / "prompts" / "stoic_journal_template.md"
+        self.assertTrue(template_path.exists(), "stoic_journal_template.md must exist")
+
+        raw = template_path.read_text(encoding="utf-8")
+        parts = raw.split("---", 1)
+        self.assertEqual(len(parts), 2, "Template must contain '---' separator before body template")
+
+        block = parts[0].strip()
+        morning_raw: list[str] = []
+        evening_raw: list[str] = []
+        current: list[str] | None = None
+        for line in block.splitlines():
+            stripped = line.strip()
+            if stripped.upper() == "MORNING_QUESTIONS:":
+                current = morning_raw
+                continue
+            if stripped.upper() == "EVENING_QUESTIONS:":
+                current = evening_raw
+                continue
+            if current is not None:
+                current.append(line)
+
+        morning_questions = _parse_variant_block(morning_raw)
+        evening_questions = _parse_variant_block(evening_raw)
+
+        self.assertEqual(
+            len(morning_questions), 7,
+            f"Morning should have 7 slots after variant resolution, got {len(morning_questions)}"
+        )
+        self.assertEqual(
+            len(evening_questions), 10,
+            f"Evening should have 10 slots after variant resolution, got {len(evening_questions)}"
+        )
+
+        # All resolved questions must be non-empty strings
+        for i, q in enumerate(morning_questions):
+            self.assertIsInstance(q, str, f"Morning slot {i} must be a string")
+            self.assertGreater(len(q.strip()), 0, f"Morning slot {i} must not be empty")
+        for i, q in enumerate(evening_questions):
+            self.assertIsInstance(q, str, f"Evening slot {i} must be a string")
+            self.assertGreater(len(q.strip()), 0, f"Evening slot {i} must not be empty")
+
+    def test_parse_variant_block_slot_boundary_three_variants_per_slot(self):
+        """T-013: Each variant slot must have exactly 3 variants (VARIANT_0, VARIANT_1, VARIANT_2).
+
+        CI guard: if the template is edited and a variant is removed or a slot
+        boundary is broken, this test fails. Ensures all 7 morning + 10 evening
+        slots have exactly 3 variant lines each.
+        """
+        from pathlib import Path
+        template_path = Path(__file__).parent.parent / "src" / "prompts" / "stoic_journal_template.md"
+        self.assertTrue(template_path.exists(), "stoic_journal_template.md must exist")
+        raw = template_path.read_text(encoding="utf-8")
+        parts = raw.split("---", 1)
+        self.assertEqual(len(parts), 2, "Template must contain '---' separator")
+        block = parts[0].strip()
+        morning_raw = []
+        evening_raw = []
+        current = None
+        for line in block.splitlines():
+            stripped = line.strip()
+            if stripped.upper() == "MORNING_QUESTIONS:":
+                current = morning_raw
+                continue
+            if stripped.upper() == "EVENING_QUESTIONS:":
+                current = evening_raw
+                continue
+            if current is not None:
+                current.append(line)
+
+        def slots_from_raw(lines: list[str]) -> list[list[str]]:
+            """Split raw lines into slots (same boundary logic as _parse_variant_block)."""
+            slots: list[list[str]] = []
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                if not line:
+                    i += 1
+                    continue
+                if line.startswith("VARIANT_"):
+                    variants = []
+                    while i < len(lines):
+                        text = lines[i].strip()
+                        if not text.startswith("VARIANT_"):
+                            break
+                        if text.startswith("VARIANT_0:") and variants:
+                            break
+                        variants.append(text)
+                        i += 1
+                    if variants:
+                        slots.append(variants)
+                else:
+                    slots.append([line])
+                    i += 1
+            return slots
+
+        morning_slots = slots_from_raw(morning_raw)
+        evening_slots = slots_from_raw(evening_raw)
+        self.assertEqual(len(morning_slots), 7, "Morning must have 7 slots")
+        self.assertEqual(len(evening_slots), 10, "Evening must have 10 slots")
+
+        for idx, slot in enumerate(morning_slots):
+            variant_lines = [s for s in slot if s.startswith("VARIANT_")]
+            self.assertEqual(
+                len(variant_lines), 3,
+                f"Morning slot {idx} must have exactly 3 variants (VARIANT_0/1/2), got {len(variant_lines)}"
+            )
+            for v in ("VARIANT_0:", "VARIANT_1:", "VARIANT_2:"):
+                self.assertTrue(
+                    any(s.startswith(v) for s in variant_lines),
+                    f"Morning slot {idx} missing {v.strip(':')}"
+                )
+        for idx, slot in enumerate(evening_slots):
+            variant_lines = [s for s in slot if s.startswith("VARIANT_")]
+            self.assertEqual(
+                len(variant_lines), 3,
+                f"Evening slot {idx} must have exactly 3 variants (VARIANT_0/1/2), got {len(variant_lines)}"
+            )
+            for v in ("VARIANT_0:", "VARIANT_1:", "VARIANT_2:"):
+                self.assertTrue(
+                    any(s.startswith(v) for s in variant_lines),
+                    f"Evening slot {idx} missing {v.strip(':')}"
+                )
+
 
 # ---------------------------------------------------------------------------
 # T-006: Streak tracking

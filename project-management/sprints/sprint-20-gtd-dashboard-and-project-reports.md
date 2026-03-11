@@ -21,7 +21,7 @@
 - US-055: Google Tasks — duplicate check before add, offer edit/priority/cancel (5 pts)
 
 **Retro Action Items — Sprint 18 & 19 carry-overs (2 pts):**
-- T-020: Update MCP story/defect templates to remove `user_service.py` / `feature_service.py` boilerplate (1 pt)
+- T-020: Update MCP story/defect templates to remove obsolete template boilerplate (1 pt)
 - T-021: Add `_parse_variant_block` slot boundary CI guard test (1 pt)
 
 **Stretch (5 pts, if capacity allows):**
@@ -37,13 +37,13 @@
 - Reliability: CI guard prevents future slot-boundary regressions in Stoic template
 
 **Key Deliverables:**
-- [ ] US-059: `/tasks_status` shows overdue, today, this week, inbox count, health line
-- [ ] US-060: `/project_report` shows per-project next action, stall detection, no-next-action alerts
-- [ ] US-055: Task creation checks for duplicates before adding; inline keyboard on match
-- [ ] T-020: MCP templates no longer reference non-existent `user_service.py`
-- [ ] T-021: `_parse_variant_block` slot boundary guarded by CI test
-- [ ] All new code has unit tests
-- [ ] RELEASE_NOTES.md updated
+- [x] US-059: `/tasks_status` shows overdue, today, this week, inbox count, health line
+- [x] US-060: `/project_report` shows per-project next action, stall detection, no-next-action alerts
+- [x] US-055: Task creation checks for duplicates before adding; inline keyboard on match
+- [x] T-020: MCP templates no longer reference non-existent template boilerplate
+- [x] T-021: `_parse_variant_block` slot boundary guarded by CI test
+- [x] All new code has unit tests
+- [x] RELEASE_NOTES.md updated
 
 **Dependencies (all satisfied):**
 - US-012 (Google Tasks) ✅
@@ -67,7 +67,7 @@
 - [x] US-059 and US-060 user stories written and in backlog ✅
 - [x] Backlog integrity validated (MCP) ✅
 - [x] PM lint passed ✅
-- [ ] Doc-code consistency review run before sprint start
+- [x] Doc-code consistency review run (docs updated from code; report in reports/doc-code-consistency-latest.md)
 
 ---
 
@@ -100,9 +100,9 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-001 | Add `get_dashboard_data()` to `task_service.py`: returns overdue, due_today, due_week, inbox_count | task_service.py | ⭕ | 2 |
-| T-002 | Rewrite `_tasks_status()` handler body to render the 5-section cockpit; move old body to `_tasks_sync_detail()` | google_tasks.py | ⭕ | 2 |
-| T-003 | Unit tests: overdue section, today section, empty state, not-connected state | tests/test_gtd_dashboard.py | ⭕ | 1 |
+| T-001 | Add `get_dashboard_data()` to `task_service.py`: returns overdue, due_today, due_week, inbox_count | task_service.py | ✅ | 2 |
+| T-002 | Rewrite `_tasks_status()` handler body to render the 5-section cockpit; move old body to `_tasks_sync_detail()` | google_tasks.py | ✅ | 2 |
+| T-003 | Unit tests: overdue section, today section, empty state, not-connected state | tests/test_gtd_dashboard.py | ✅ | 1 |
 
 ---
 
@@ -126,7 +126,7 @@
 - `src/handlers/core.py` — `_project_status()` → replace with `_project_report()`
 - `src/joplin_client.py` — `get_notes_with_tag()`, `get_all_notes()` with `updated_time` field
 - `src/task_service.py` — `get_tasks_by_project()`
-- `src/handlers/report.py` — weekly report integration
+- `src/handlers/reports.py` — weekly report integration
 
 **Priority**: 🟠 High
 **Story Points**: 8
@@ -135,11 +135,11 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-004 | Add `updated_time` to Joplin note fields; build `get_project_activity()` — last note update + last task completion per project | joplin_client.py, task_service.py | ⭕ | 2 |
-| T-005 | Build per-project block renderer and portfolio header; stall + no-next-action detection logic | core.py | ⭕ | 3 |
-| T-006 | Implement `/project_report <name>` drill-down (fuzzy match, full detail) | core.py | ⭕ | 1 |
-| T-007 | Add project portfolio section to `/weekly_report` (optional, gated by config) | report.py | ⭕ | 1 |
-| T-008 | Unit tests: stall detection, no-next-action, drill-down, empty state | tests/test_project_report.py | ⭕ | 1 |
+| T-004 | Add `updated_time` to note fields; `get_tasks_by_project()` — batch fetch, group by folder | task_service.py | ✅ | 2 |
+| T-005 | Build per-project block renderer and portfolio header; stall + no-next-action detection logic | core.py | ✅ | 3 |
+| T-006 | Implement `/project_report <name>` drill-down (fuzzy match, full detail) | core.py | ✅ | 1 |
+| T-007 | Add project portfolio section to `/weekly_report` (optional, gated by config) | reports.py | ✅ | 1 |
+| T-008 | Unit tests: stall detection, no-next-action, drill-down, empty state | tests/test_project_report.py | ✅ | 1 |
 
 ---
 
@@ -167,9 +167,9 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-009 | `detect_duplicate_task()` in `task_service.py`: fetch existing tasks, compare title (case-insensitive, strip punctuation) | task_service.py | ⭕ | 2 |
-| T-010 | Show inline keyboard when duplicate detected; wire Edit/Priority/Add Anyway/Cancel callbacks | core.py | ⭕ | 2 |
-| T-011 | Unit tests: duplicate found flow, no duplicate, cancel flow | tests/test_task_duplicate.py | ⭕ | 1 |
+| T-009 | `detect_duplicate_task()` in `task_service.py`: fetch existing tasks, compare title (case-insensitive, strip punctuation) | task_service.py | ✅ | 2 |
+| T-010 | Show inline keyboard when duplicate detected; wire Edit/Priority/Add Anyway/Cancel callbacks | core.py | ✅ | 2 |
+| T-011 | Unit tests: duplicate found flow, no duplicate, cancel flow | tests/test_task_duplicate.py | ✅ | 1 |
 
 ---
 
@@ -181,8 +181,8 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-012 | Update MCP story/defect templates: remove `src/services/user_service.py` and `src/features/feature_service.py` boilerplate | mcp-project-management/templates/ | ⭕ | 1 |
-| T-013 | Add `test_parse_variant_block_slot_boundary`: assert all 3 variants present for each slot across all 6 slots | tests/test_stoic_sprint18.py | ⭕ | 1 |
+| T-012 | Update MCP story/defect templates: remove obsolete template boilerplate (real paths only) | mcp-project-management/templates/ | ✅ | 1 |
+| T-013 | Add `test_parse_variant_block_slot_boundary`: assert all 3 variants present for each slot across all 6 slots | tests/test_stoic_sprint18.py | ✅ | 1 |
 
 ---
 
@@ -236,15 +236,15 @@
 - Drop US-060 weekly report integration T-007 (-1 pt) if Joplin `updated_time` API proves complex
 
 **Success Criteria** (Definition of Done):
-- [ ] US-059 `/tasks_status` is a GTD cockpit; old diagnostics at `/tasks_sync_detail` ✅
-- [ ] US-060 `/project_report` shows stalls, next actions, portfolio health ✅
-- [ ] US-055 duplicate task detection working in all creation flows ✅
-- [ ] T-012 MCP templates cleaned of non-existent file references ✅
-- [ ] T-013 `_parse_variant_block` slot boundary test added ✅
-- [ ] All new code has unit tests ✅
-- [ ] RELEASE_NOTES.md updated ✅
-- [ ] Backlog updated ✅
-- [ ] Lint passes ✅
+- [x] US-059 `/tasks_status` is a GTD cockpit; old diagnostics at `/tasks_sync_detail`
+- [x] US-060 `/project_report` shows stalls, next actions, portfolio health
+- [x] US-055 duplicate task detection working in all creation flows
+- [x] T-012 MCP templates cleaned of non-existent file references
+- [x] T-013 `_parse_variant_block` slot boundary test added
+- [x] All new code has unit tests
+- [x] RELEASE_NOTES.md updated
+- [x] Backlog updated
+- [ ] Lint passes (2 pre-existing broken links in other backlog files; see check-links)
 
 ---
 

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
+from src.handlers.core import build_project_portfolio_html
 from src.monthly_report_generator import MonthlyReportGenerator
 from src.report_generator import PriorityLevel
 from src.security_utils import check_whitelist
@@ -41,6 +42,7 @@ _DEFAULT_CONFIG = {
     "include_medium": False,
     "include_google_tasks": True,
     "include_clarification_pending": True,
+    "include_project_portfolio": False,
     "detail_level": "detailed",
 }
 
@@ -63,6 +65,7 @@ def register_report_handlers(application: Any, orch: TelegramOrchestrator) -> No
     application.add_handler(CommandHandler("show_report_config", _show_config(orch)))
     application.add_handler(CommandHandler("report_set_content", _configure_content(orch)))
     application.add_handler(CommandHandler("configure_report_content", _configure_content(orch)))
+    application.add_handler(CommandHandler("report_toggle_portfolio", _toggle_portfolio(orch)))
     application.add_handler(CommandHandler("report_help", _help(orch)))
 
 
@@ -196,6 +199,11 @@ def _weekly_report(orch: TelegramOrchestrator):
             )
             report = await generator.generate_weekly_report(user.id, ref_date)
             message = generator.format_weekly_report(report)
+            cfg = orch.logging_service.get_report_configuration(user.id) or _DEFAULT_CONFIG
+            if cfg.get("include_project_portfolio") and orch.reorg_orchestrator:
+                portfolio = await build_project_portfolio_html(orch, user.id)
+                if portfolio:
+                    message += "\n\n" + portfolio
             await progress_msg.delete()
             await update.message.reply_text(message, parse_mode="HTML")
 
@@ -303,6 +311,11 @@ async def send_scheduled_weekly_report(orch: TelegramOrchestrator, user_id: int)
         )
         report = await generator.generate_weekly_report(user_id)
         message = generator.format_weekly_report(report)
+        cfg = orch.logging_service.get_report_configuration(user_id) or _DEFAULT_CONFIG
+        if cfg.get("include_project_portfolio") and orch.reorg_orchestrator:
+            portfolio = await build_project_portfolio_html(orch, user_id)
+            if portfolio:
+                message += "\n\n" + portfolio
 
         from telegram import Bot
 
@@ -492,7 +505,8 @@ def _show_config(orch: TelegramOrchestrator):
                     "  • High Priority: Yes\n"
                     "  • Medium Priority: No\n"
                     "  • Google Tasks: Yes\n"
-                    "  • Clarifications: Yes\n\n"
+                    "  • Clarifications: Yes\n"
+                    "  • Project portfolio in weekly: No\n\n"
                     "Detail Level: detailed\n\n"
                     "No custom configuration set yet.\nUse commands to customize."
                 )
@@ -553,6 +567,40 @@ def _configure_content(orch: TelegramOrchestrator):
     return handler
 
 
+def _toggle_portfolio(orch: TelegramOrchestrator):
+    """Toggle project portfolio section in weekly report (T-007)."""
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.effective_user
+        if not user or not check_whitelist(user.id):
+            return
+
+        try:
+            if not context.args or context.args[0].lower() not in ("on", "off"):
+                await update.message.reply_text(
+                    "❌ Usage: /report_toggle_portfolio on|off\n"
+                    "  on  – Include project portfolio in weekly report\n"
+                    "  off – Omit project portfolio (default)"
+                )
+                return
+
+            enabled = context.args[0].lower() == "on"
+            cfg = orch.logging_service.get_report_configuration(user.id) or {**_DEFAULT_CONFIG}
+            cfg["include_project_portfolio"] = enabled
+            orch.logging_service.save_report_configuration(user.id, cfg)
+
+            status = "Yes" if enabled else "No"
+            await update.message.reply_text(
+                f"✅ Project portfolio in weekly report: {status}\n"
+                "Use /report_config to view all settings."
+            )
+            logger.info("User %d set report include_project_portfolio to %s", user.id, enabled)
+        except Exception as exc:
+            await update.message.reply_text("❌ Error updating setting.")
+            logger.error("Error in report_toggle_portfolio: %s", exc)
+
+    return handler
+
+
 def _help(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
@@ -580,6 +628,8 @@ def _help(orch: TelegramOrchestrator):
             "  /report_set_content <level> - Set minimum priority level\n"
             "    Options: critical, high, medium, all\n"
             "    Example: /report_set_content high\n\n"
+            "  /report_toggle_portfolio on|off - Include project portfolio in weekly report\n"
+            "    Example: /report_toggle_portfolio on\n\n"
             "View Settings:\n"
             "  /report_config - View your current configuration\n\n"
             "Help:\n"

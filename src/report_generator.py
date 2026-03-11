@@ -1291,6 +1291,7 @@ Response:"""
         lines.append(f"  • Medium Priority: {'Yes' if config.get('include_medium') else 'No'}")
         lines.append(f"  • Google Tasks: {'Yes' if config.get('include_google_tasks') else 'No'}")
         lines.append(f"  • Clarifications: {'Yes' if config.get('include_clarification_pending') else 'No'}")
+        lines.append(f"  • Project portfolio in weekly: {'Yes' if config.get('include_project_portfolio') else 'No'}")
 
         lines.append("")
         lines.append("Detail Level: " + config.get("detail_level", "detailed").capitalize())
@@ -1301,6 +1302,7 @@ Response:"""
         lines.append("  /report_set_timezone <timezone>")
         lines.append("  /report_toggle_schedule on|off")
         lines.append("  /report_set_content critical|high|medium|all")
+        lines.append("  /report_toggle_portfolio on|off  (weekly report)")
         lines.append("  /report_help")
 
         return "\n".join(lines)

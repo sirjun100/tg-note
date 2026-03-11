@@ -76,8 +76,8 @@
 
 **Technical References**:
 - `src/handlers/braindump.py` — core brain dump handler
-- `src/conversation_state.py` — session state
-- `src/llm_service.py` — prompts
+- `src/state_manager.py` — session state
+- `src/llm_orchestrator.py` — prompts
 - `tests/test_braindump.py`
 
 **Priority**: 🟠 High
@@ -89,7 +89,7 @@
 |---------|------------------|-----------|--------|--------|
 | T-001 | Define brain dump modes (quick/standard/thorough) and parse mode from command args | braindump.py | ✅ | 2 |
 | T-002 | Add elapsed time and day-phase context to LLM messages (morning, afternoon, evening) | braindump.py, gtd_expert.txt | ✅ | 2 |
-| T-003 | Session recovery: detect incomplete session on /braindump, offer resume or discard | conversation_state.py | ✅ | 3 |
+| T-003 | Session recovery: detect incomplete session on /braindump, offer resume or discard | state_manager.py | ✅ | 3 |
 | T-004 | Persist mode preference per user in DB | logging_service.py | ✅ | 2 |
 | T-005 | Unit tests: mode selection, time context, session recovery | tests/ | ✅ | 2 |
 | T-006 | Update help text and RELEASE_NOTES.md | core.py, RELEASE_NOTES.md | ✅ | 1 |
@@ -168,7 +168,7 @@
 
 **Technical References**:
 - `src/handlers/photo.py`
-- `src/llm_service.py` — OCR API call
+- `src/llm_orchestrator.py` — OCR API call
 
 **Priority**: 🟡 Medium
 **Story Points**: 2
@@ -177,7 +177,7 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-012 | Add retry decorator/logic for transient OCR errors (2 retries, exponential backoff) | photo.py / llm_service.py | ✅ | 1 |
+| T-012 | Add retry decorator/logic for transient OCR errors (2 retries, exponential backoff) | photo.py / llm_orchestrator.py | ✅ | 1 |
 | T-013 | Unit test: retry fires on transient, not on permanent errors | test_photo.py | ✅ | 1 |
 
 **Total Task Points**: 2
@@ -274,11 +274,11 @@
 - Doc-code consistency check caught one real issue (US-051 file ref) that was immediately resolved.
 
 ### What Could Be Improved
-- Sprint planning doc referenced non-existent module names (`conversation_state.py`, `llm_service.py`) — use actual filenames from the codebase during planning to avoid false positives in consistency checks.
-- US-051 was implemented inside `core.py` rather than a dedicated handler file; for a 5-pt story this is acceptable, but a dedicated `src/handlers/bookmark.py` would improve discoverability.
+- Sprint planning doc should reference actual modules: `src/state_manager.py`, `src/llm_orchestrator.py` (session and LLM).
+- US-051 was implemented inside `src/handlers/core.py` (`_handle_bookmark`) rather than a dedicated handler file; for a 5-pt story this is acceptable.
 
 ### Action Items
-- None — no blocking retrospective items. The `src/handlers/bookmark.py` separation can be addressed if the feature grows (e.g. when `/bookmarks list` is added).
+- None — no blocking retrospective items. Bookmark could be split to a dedicated handler (e.g. when `/bookmarks list` is added).
 
 ---
 

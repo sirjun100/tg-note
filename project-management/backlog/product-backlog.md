@@ -44,8 +44,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
-| [US-060](user-stories/US-060-us-060-world-class-project-report-full-portfolio-v.md) | US-060 - World-Class Project Report: Full Portfolio View | 🟠 High | 8 | ⭕ | Sprint 20 | 2026-03-10 | 2026-03-10 |
-| [US-059](user-stories/US-059-us-059-world-class-gtd-dashboard-tasks_status-as-p.md) | US-059 - World-Class GTD Dashboard: /tasks_status Cockpit | 🟠 High | 5 | ⭕ | Sprint 20 | 2026-03-10 | 2026-03-10 |
+| [US-060](user-stories/US-060-us-060-world-class-project-report-full-portfolio-v.md) | US-060 - World-Class Project Report: Full Portfolio View | 🟠 High | 8 | ✅ | Sprint 20 | 2026-03-10 | 2026-03-10 |
+| [US-059](user-stories/US-059-us-059-world-class-gtd-dashboard-tasks_status-as-p.md) | US-059 - World-Class GTD Dashboard: /tasks_status Cockpit | 🟠 High | 5 | ✅ | Sprint 20 | 2026-03-10 | 2026-03-10 |
 | [US-058](user-stories/US-058-bot-understands-natural-conversational-intent-from.md) | Bot understands natural conversational intent from user messages | 🟡 Medium | 5 | ⭕ | Sprint 20 | 2026-03-10 | 2026-03-10 |
 | [US-057](user-stories/US-057-parse-health-data-from-garmin-fatsecret-and-arbole.md) | Parse health data from Garmin, FatSecret, and Arbo | 🟡 Medium | 8 | ⭕ | - | 2026-03-10 | 2026-03-10 |
 | [US-052](user-stories/US-052-world-class-stoic-journaling-experience.md) | World-Class Stoic Journaling Experience | 🟠 High | 13 | ✅ | Sprint 18 | 2026-03-08 | 2026-03-08 |
@@ -102,7 +102,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [US-051](user-stories/US-051-bookmark-command.md) | /bookmark Command to Save URLs to Joplin | 🟡 Medium | 5 | ✅ | Sprint 17 | 2026-03-08 | 2026-03-08 |
 | [US-053](user-stories/US-053-stoic-quick-reply-for-each-answer.md) | Stoic Journal Quick Reply for Each Answer | 🟡 Medium | 3 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
 | [US-054](user-stories/US-054-note-creation-show-full-path-and-auto-sync.md) | Note Creation: Show Full Path and Auto-Sync | 🟡 Medium | 2 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
-| [US-055](user-stories/US-055-google-tasks-duplicate-check-before-add.md) | Google Tasks: Duplicate Check Before Add, Offer Edit/Priority/Cancel | 🟡 Medium | 5 | ⭕ | Sprint 20 | 2026-03-09 | 2026-03-10 |
+| [US-055](user-stories/US-055-google-tasks-duplicate-check-before-add.md) | Google Tasks: Duplicate Check Before Add, Offer Edit/Priority/Cancel | 🟡 Medium | 5 | ✅ | Sprint 20 | 2026-03-09 | 2026-03-10 |
 | [US-056](user-stories/US-056-grocery-shopping-price-and-store-search.md) | Grocery/Shopping: Find Stores Nearby and Compare Prices (Local + Online) | 🟡 Medium | 8 | ⭕ | Backlog | 2026-03-09 | 2026-03-09 |
 
 ## Defects

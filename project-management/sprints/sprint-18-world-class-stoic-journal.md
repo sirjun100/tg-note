@@ -169,7 +169,7 @@
 - [ ] Scheduled reports: no progress messages
 
 **Technical References**:
-- `src/report_service.py` — async parallelisation
+- `src/handlers/reports.py`, `src/weekly_report_generator.py` — async parallelisation
 - `src/handlers/core.py` — progress message send/delete pattern
 
 **Priority**: 🟡 Medium
@@ -179,7 +179,7 @@
 
 | Task ID | Task Description | Reference | Status | Points |
 |---------|------------------|-----------|--------|--------|
-| T-014 | Async parallelisation — daily, weekly, monthly: identify sequential awaits, refactor to `asyncio.gather` | report_service.py | ✅ | 3 |
+| T-014 | Async parallelisation — daily, weekly, monthly: identify sequential awaits, refactor to `asyncio.gather` | reports.py, weekly_report_generator.py | ✅ | 3 |
 | T-015 | Chat UI progress updates — send status message on report start, edit/delete when report arrives; on-demand only | core.py | ✅ | 2 |
 
 **Total Task Points**: 5

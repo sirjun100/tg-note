@@ -102,11 +102,9 @@ Examples:
 [Links to specific code locations, classes, or technical specifications. Adapt format to your tech stack.]
 
 **Format examples**:
-- Class: `FeatureService`
-- Method: `FeatureService.processRequest()`
-- File: `src/features/feature_service.py`
-- API Endpoint: `POST /api/v1/feature`
-- Database Table: `feature_table`
+- Handler: `src/handlers/core.py` (or new handler for health data) — adapt to your implementation
+- Service: `src/joplin_client.py` — for optional note saving
+- Tests: `tests/test_health_data.py` (when implemented)
 
 ## Dependencies
 
