@@ -7,7 +7,7 @@
 **Story Points**: 5
 **Created**: 2026-03-10
 **Updated**: 2026-03-10
-**Assigned Sprint**: Backlog
+**Assigned Sprint**: Sprint 20
 
 ---
 
@@ -116,3 +116,4 @@ The `/tasks_status` command is the user's most natural touchpoint for checking i
 ## History
 
 - 2026-03-10 - Created
+- 2026-03-10 - Assigned to Sprint 20

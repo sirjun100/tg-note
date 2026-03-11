@@ -9,13 +9,13 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-10 (Sprint 17 ✅, Sprint 18 ✅, Sprint 19 ✅)
+**Last Updated**: 2026-03-10 (Sprint 17 ✅, Sprint 18 ✅, Sprint 19 ✅, Sprint 20 ⏳)
 
 ## Project Overview
 
 **Project Name**: Intelligent Telegram-Joplin Bot
-**Current Sprint**: Sprint 19 (✅ Complete)
-**Status**: ✅ Sprint 19 Complete — Polish & Bug Fixes (DEF-028–033, US-053, US-054, DEF-032 voice handler)
+**Current Sprint**: Sprint 20 (⏳ In Progress)
+**Status**: ⏳ Sprint 20 In Progress — GTD Dashboard & Project Intelligence (US-059, US-060, US-055, US-058 stretch)
 **Timeline**: Sprint 10–16 ✅; Sprint 9 (US-016) ~55%
 **Quality**: Production Ready ✅
 
@@ -44,9 +44,9 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
-| [US-060](user-stories/US-060-us-060-world-class-project-report-full-portfolio-v.md) | US-060 - World-Class Project Report: Full Portfoli | 🟠 High | 8 | ⭕ | - | 2026-03-10 | 2026-03-10 |
-| [US-059](user-stories/US-059-us-059-world-class-gtd-dashboard-tasks_status-as-p.md) | US-059 - World-Class GTD Dashboard: /tasks_status  | 🟠 High | 5 | ⭕ | - | 2026-03-10 | 2026-03-10 |
-| [US-058](user-stories/US-058-bot-understands-natural-conversational-intent-from.md) | Bot understands natural conversational intent from | 🟡 Medium | 5 | ⭕ | - | 2026-03-10 | 2026-03-10 |
+| [US-060](user-stories/US-060-us-060-world-class-project-report-full-portfolio-v.md) | US-060 - World-Class Project Report: Full Portfolio View | 🟠 High | 8 | ⭕ | Sprint 20 | 2026-03-10 | 2026-03-10 |
+| [US-059](user-stories/US-059-us-059-world-class-gtd-dashboard-tasks_status-as-p.md) | US-059 - World-Class GTD Dashboard: /tasks_status Cockpit | 🟠 High | 5 | ⭕ | Sprint 20 | 2026-03-10 | 2026-03-10 |
+| [US-058](user-stories/US-058-bot-understands-natural-conversational-intent-from.md) | Bot understands natural conversational intent from user messages | 🟡 Medium | 5 | ⭕ | Sprint 20 | 2026-03-10 | 2026-03-10 |
 | [US-057](user-stories/US-057-parse-health-data-from-garmin-fatsecret-and-arbole.md) | Parse health data from Garmin, FatSecret, and Arbo | 🟡 Medium | 8 | ⭕ | - | 2026-03-10 | 2026-03-10 |
 | [US-052](user-stories/US-052-world-class-stoic-journaling-experience.md) | World-Class Stoic Journaling Experience | 🟠 High | 13 | ✅ | Sprint 18 | 2026-03-08 | 2026-03-08 |
 | [US-001](user-stories/US-001-git-commit-template.md) | Add Git Commit Message Template | 🟠 High | 5 | ✅ | Sprint 1 | 2026-01-01 | 2026-01-01 |
@@ -102,7 +102,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [US-051](user-stories/US-051-bookmark-command.md) | /bookmark Command to Save URLs to Joplin | 🟡 Medium | 5 | ✅ | Sprint 17 | 2026-03-08 | 2026-03-08 |
 | [US-053](user-stories/US-053-stoic-quick-reply-for-each-answer.md) | Stoic Journal Quick Reply for Each Answer | 🟡 Medium | 3 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
 | [US-054](user-stories/US-054-note-creation-show-full-path-and-auto-sync.md) | Note Creation: Show Full Path and Auto-Sync | 🟡 Medium | 2 | ✅ | Sprint 19 | 2026-03-09 | 2026-03-10 |
-| [US-055](user-stories/US-055-google-tasks-duplicate-check-before-add.md) | Google Tasks: Duplicate Check Before Add, Offer Edit/Priority/Cancel | 🟡 Medium | 5 | ⭕ | Backlog | 2026-03-09 | 2026-03-09 |
+| [US-055](user-stories/US-055-google-tasks-duplicate-check-before-add.md) | Google Tasks: Duplicate Check Before Add, Offer Edit/Priority/Cancel | 🟡 Medium | 5 | ⭕ | Sprint 20 | 2026-03-09 | 2026-03-10 |
 | [US-056](user-stories/US-056-grocery-shopping-price-and-store-search.md) | Grocery/Shopping: Find Stores Nearby and Compare Prices (Local + Online) | 🟡 Medium | 8 | ⭕ | Backlog | 2026-03-09 | 2026-03-09 |
 
 ## Defects
@@ -196,8 +196,10 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | **Sprint 16** | Mar 10-23 | US-034 (Project Sync) | 13 | ✅ Complete |
 | **Sprint 17** | Mar 24-Apr 6 | US-035 (Brain Dump), US-045/046/047 (Photo OCR), US-051 (/bookmark) | 24 | ✅ Complete |
 | **Sprint 18** | Mar 10-23 | US-052 (World-Class Stoic), US-042 (Learnings), US-050 (Photo hint) + US-043 stretch | 23 | ✅ Complete |
+| **Sprint 19** | Mar 10-23 | DEF-028–033, US-053 (Stoic quick replies), US-054 (full path + sync) | 19 | ✅ Complete |
+| **Sprint 20** | Mar 24-Apr 6 | US-059 (GTD Dashboard), US-060 (Project Report), US-055 (dup check), US-058 stretch | 20+5 | ⏳ In Progress |
 
-**Remaining Backlog**: 34 points (US-016 ~55%, US-018 ~30%, US-035, US-051, etc.)
+**Remaining Backlog**: ~68 points open (US-055–060, US-016, US-018, US-038, US-040, US-041, US-048, US-049, US-056, US-057)
 **Projected Completion**: TBD — CI/CD operational, new features added to backlog
 
 ## Notes

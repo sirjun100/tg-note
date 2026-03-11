@@ -7,7 +7,7 @@
 **Story Points**: 8
 **Created**: 2026-03-10
 **Updated**: 2026-03-10
-**Assigned Sprint**: Backlog
+**Assigned Sprint**: Sprint 20
 
 ---
 
@@ -129,3 +129,4 @@ The weekly review is the heartbeat of a GTD system. Without a project report tha
 ## History
 
 - 2026-03-10 - Created
+- 2026-03-10 - Assigned to Sprint 20

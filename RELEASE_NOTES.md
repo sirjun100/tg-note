@@ -6,6 +6,17 @@ Release notes for the Intelligent Joplin Librarian (Telegram-Joplin Bot). Date-b
 
 ---
 
+## 2026-03-10 — Hotfixes (post Sprint 19)
+
+### Bug Fixes
+- **DEF-030 re-fix: Stoic note timestamp LLM path** — The Sprint 19 fix only corrected the rule-based formatter. The LLM path (`_format_stoic_reflection_impl`) still called `datetime.now()` (UTC on server). Fixed by computing `ts` in `stoic.py` with `get_user_timezone_aware_now()` and passing it into the LLM formatter. Evening/morning section headers now always show local time.
+- **/tasks command registered** — `/tasks` (plural) was silently ignored — no handler was registered. Now aliases to `/tasks_list` (show pending Google Tasks).
+
+### Planning
+- **Sprint 20 planned** — GTD Dashboard (`/tasks_status` cockpit, US-059), World-Class Project Report (`/project_report`, US-060), Google Tasks duplicate check (US-055, deferred from Sprint 19), conversational intent stretch (US-058). 20 committed + 5 stretch pts.
+
+---
+
 ## 2026-03-10 (Sprint 19 — Polish & Bug Fixes)
 
 ### New Features

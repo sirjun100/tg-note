@@ -27,8 +27,8 @@ This is a generic template for creating user stories (Product Backlog Items). Co
 **Priority**: 🟡 Medium  
 **Story Points**: 5 (Fibonacci: 1, 2, 3, 5, 8, 13)  
 **Created**: 2026-03-10  
-**Updated**: 2026-03-10  
-**Assigned Sprint**: [Sprint Number or "Backlog"]
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 20
 
 ## Description
 
@@ -192,3 +192,4 @@ Before submitting, ensure:
 - [ ] Links to related documents are correct
 - [ ] File is saved with correct naming convention: `US-XXX-story-name.md`
 - [ ] Entry is added to product backlog table
+- 2026-03-10 - Assigned to Sprint 20

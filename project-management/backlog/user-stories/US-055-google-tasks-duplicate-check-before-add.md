@@ -6,8 +6,8 @@
 **Priority**: 🟡 Medium
 **Story Points**: 5
 **Created**: 2026-03-09
-**Updated**: 2026-03-09
-**Assigned Sprint**: Backlog
+**Updated**: 2026-03-10
+**Assigned Sprint**: Sprint 20
 
 ## Description
 
@@ -36,3 +36,4 @@ Reduces duplicate tasks. Users often re-send the same task or add similar items;
 ## Related
 
 - [US-040](US-040-check-existing-task-note-update-append.md) — Broader story: duplicate check for **both** notes and tasks, with Update/Append/Create new. US-055 is the **tasks-only** slice with Edit/Priority/Cancel options. Consider implementing US-040 for full scope, or US-055 as a task-focused first step.
+- 2026-03-10 - Assigned to Sprint 20
