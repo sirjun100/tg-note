@@ -649,9 +649,10 @@ async def _finish_stoic_session(
         return False
 
     await message.reply_text("📝 Formatting reflection...")
+    ts = get_user_timezone_aware_now(user_id, orch.logging_service).strftime("%H:%M")
     section_content: str | None = None
     try:
-        section_content = await orch.llm_orchestrator.format_stoic_reflection(mode, answers, is_quick=is_quick)
+        section_content = await orch.llm_orchestrator.format_stoic_reflection(mode, answers, is_quick=is_quick, ts=ts)
     except Exception as exc:
         logger.debug("Stoic LLM format failed, using rule-based: %s", exc)
     if not section_content:

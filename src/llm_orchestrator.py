@@ -606,20 +606,19 @@ class LLMOrchestrator:
             return None
 
     async def format_stoic_reflection(
-        self, mode: str, qa_pairs: list[dict[str, str]], is_quick: bool = False
+        self, mode: str, qa_pairs: list[dict[str, str]], is_quick: bool = False, ts: str | None = None
     ) -> str | None:
-        # Temporarily keep original signature working — is_quick flag not used in prompt
-        # (quick mode uses rule-based formatting in stoic.py)
-        return await self._format_stoic_reflection_impl(mode, qa_pairs)
+        # quick mode uses rule-based formatting in stoic.py; ts passed from caller for correct timezone
+        return await self._format_stoic_reflection_impl(mode, qa_pairs, ts=ts)
 
     async def _format_stoic_reflection_impl(
-        self, mode: str, qa_pairs: list[dict[str, str]]
+        self, mode: str, qa_pairs: list[dict[str, str]], ts: str | None = None
     ) -> str | None:
         """Internal implementation — kept to avoid breaking existing callers."""
-        # (original logic preserved below)
         if not qa_pairs:
             return None
-        ts = datetime.now().strftime("%H:%M")
+        if ts is None:
+            ts = datetime.now().strftime("%H:%M")
         if mode == "morning":
             structure = """Output ONLY valid markdown in this exact structure (use the timestamp given):
 ### 🌞 Morning (TIMESTAMP)
