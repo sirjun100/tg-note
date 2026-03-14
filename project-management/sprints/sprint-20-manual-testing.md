@@ -12,6 +12,7 @@ This document describes how to manually verify the Sprint 20 changes in Telegram
 - **Google Tasks connected**: `/tasks_connect` completed; at least one task list with some tasks (including tasks with and without due dates, and optionally tasks without a project / “inbox”).
 - **Joplin**: Projects folder with notes; some notes tagged with `status/planning`, `status/building`, `status/blocked`, or `status/done` (so `/project_report` has data). At least one project with a linked Google Tasks project (for next-action and stall detection).
 - **Timezone set** (for “today” / “this week” and report times): `/report_set_timezone` e.g. `America/Montreal`.
+- **Optional for duplicate check**: `GEMINI_API_KEY` in `.env` enables *semantic* duplicate detection (same embeddings as note search). If unset, the bot uses normalized string match only.
 
 ---
 
@@ -79,22 +80,22 @@ This document describes how to manually verify the Sprint 20 changes in Telegram
 
 ## 3. Duplicate task check (US-055)
 
-**Goal**: Before creating a task, the bot checks for an existing task with the same (normalized) title and offers Edit / Change Priority / Add Anyway / Cancel.
+**Goal**: Before creating a task, the bot checks for an existing task with a *semantically similar* title (Gemini embeddings; same infrastructure as note search). If none, it falls back to normalized string match. When a duplicate is found, the bot offers Edit / Change Priority / Add Anyway / Cancel.
 
 ### 3.1 Direct `/task` flow
 
-1. Create a task (e.g. **`/task Buy milk`**) and complete it so “Buy milk” exists in Google Tasks.
-2. Send **`/task Buy milk`** again (same title).
-3. **Check**: Bot does **not** create a second task immediately. It detects the duplicate and shows a message with an **inline keyboard**: **Edit** | **Change Priority** | **Add Anyway** | **Cancel**.
+1. Create a task (e.g. **`/task Buy milk`**) so “Buy milk” exists in Google Tasks.
+2. Send **`/task Buy milk`** again (same or very similar title).
+3. **Check**: Bot does **not** create a second task immediately. It detects the duplicate (by semantic similarity when GEMINI_API_KEY is set, else by normalized string match) and shows a message with an **inline keyboard**: **Edit** | **Change Priority** | **Add Anyway** | **Cancel**.
 4. **Edit**: Tap Edit; confirm you can update the existing task (e.g. notes or due date).
 5. **Add Anyway**: Start a new flow that adds a second task with the same title; confirm it appears in Google Tasks.
 6. **Cancel**: Dismiss without creating or changing anything.
 
-### 3.2 Case and punctuation
+### 3.2 Similar and normalized titles
 
 1. Add a task **`/task Call dentist`**.
-2. Try **`/task call dentist`** and **`/task Call dentist!`** (or “Call dentist.”).
-3. **Check**: Both are treated as duplicates (case-insensitive, punctuation stripped); inline keyboard appears.
+2. Try **`/task call dentist`** or **`/task Call dentist!`** — should be detected (normalized string match or semantic).
+3. With semantic search (GEMINI_API_KEY set), try **`/task Call the dentist`** or **`/task Phone dentist appointment`** — the bot may treat these as duplicates if similarity is above threshold (~0.9); inline keyboard appears.
 
 ### 3.3 No duplicate
 
@@ -106,7 +107,7 @@ This document describes how to manually verify the Sprint 20 changes in Telegram
 - **Braindump**: In a braindump session, add an action that matches an existing task title; duplicate check and keyboard should appear.
 - **Content routing**: Send a message that is routed to “task” or “both” and would create a task whose title matches an existing one; duplicate check and keyboard should appear.
 
-**Pass**: Duplicate is detected on same/similar title; all four options work; no duplicate when title is unique.
+**Pass**: Duplicate is detected on same or semantically similar title (or normalized match when Gemini is not configured); all four options work; no duplicate when title is clearly different.
 
 ---
 

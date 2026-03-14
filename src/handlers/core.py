@@ -795,7 +795,7 @@ async def build_project_portfolio_html(orch: TelegramOrchestrator, user_id: int)
     if orch.task_service and cfg.get("project_sync_enabled"):
         tasks_by_project = orch.task_service.get_tasks_by_project(str(user_id))
 
-    projects = []
+    projects: list[dict[str, Any]] = []
     for folder_id, title in project_list:
         notes = notes_by_folder.get(folder_id, [])
         note_count = len(notes)
@@ -936,7 +936,7 @@ def _project_report(orch: TelegramOrchestrator):
                 tasks_by_project = orch.task_service.get_tasks_by_project(str(user.id))
 
             # ── 5. Build project records ────────────────────────────────────
-            projects = []
+            projects: list[dict[str, Any]] = []
             for folder_id, title in project_list:
                 notes = notes_by_folder.get(folder_id, [])
                 note_count = len(notes)
@@ -1257,7 +1257,9 @@ async def _route_plain_message(
     # Task only
     if routing.content_type == "task" and routing.task and orch.task_service:
         task = routing.task
-        existing = orch.task_service.detect_duplicate_task(task.title, str(user_id))
+        existing = await orch.task_service.detect_duplicate_task(
+            task.title, str(user_id), note_index=getattr(orch, "note_index", None)
+        )
         if existing:
             task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
             if task_list_id:
@@ -1368,7 +1370,9 @@ async def _route_plain_message(
                 )
                 if proj:
                     parent_folder_id, parent_folder_title = proj
-            existing = orch.task_service.detect_duplicate_task(task.title, str(user_id))
+            existing = await orch.task_service.detect_duplicate_task(
+                task.title, str(user_id), note_index=getattr(orch, "note_index", None)
+            )
             if existing:
                 task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
                 if task_list_id:
@@ -1500,7 +1504,9 @@ async def _handle_new_request(
                     return
 
             # US-055: Duplicate check before create
-            existing = orch.task_service.detect_duplicate_task(text, str(user_id))
+            existing = await orch.task_service.detect_duplicate_task(
+                text, str(user_id), note_index=getattr(orch, "note_index", None)
+            )
             if existing:
                 task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
                 if task_list_id:
@@ -1666,7 +1672,9 @@ async def _handle_project_selection_reply(
             pass
 
     # US-055: Duplicate check before create
-    existing = orch.task_service.detect_duplicate_task(task_text, str(user_id))
+    existing = await orch.task_service.detect_duplicate_task(
+        task_text, str(user_id), note_index=getattr(orch, "note_index", None)
+    )
     if existing:
         task_list_id = orch.task_service.get_task_list_id_for_user(str(user_id))
         if task_list_id:
@@ -1794,7 +1802,9 @@ def _project_selection_callback(orch: TelegramOrchestrator):
                 pass
 
         # US-055: Duplicate check before create
-        existing = orch.task_service.detect_duplicate_task(task_text, str(user.id))
+        existing = await orch.task_service.detect_duplicate_task(
+            task_text, str(user.id), note_index=getattr(orch, "note_index", None)
+        )
         if existing:
             task_list_id = orch.task_service.get_task_list_id_for_user(str(user.id))
             if task_list_id:
@@ -2289,27 +2299,14 @@ async def create_note_in_joplin(
                 error_msg = url_context.get("error", "")
                 if error_msg:
                     await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")
-            # For recipe with URL: try screenshot first, fall back to LLM when it fails
+            # Recipe or generic URL: use AI-generated image from url context (no screenshot)
             if url_context and url_context.get("content_type") == "recipe":
                 has_url = url_context.get("url") and url_context.get("url") != "(pasted)"
-                if (
-                    has_url
-                    and not url_context.get("skip_screenshot")
-                ):
-                    from src.url_screenshot import capture_url_screenshot
-                    final_image_data_url = await capture_url_screenshot(url_context["url"])
-                    if final_image_data_url is None:
-                        image_failure_reasons.append("screenshot failed")
-                        logger.info(
-                            "Recipe screenshot failed for '%s'",
-                            normalized_note.get("title", "")[:60],
-                        )
-                        if message:
-                            await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
-                # Fallback: LLM-generated image when screenshot fails or no URL (pasted)
-                if final_image_data_url is None:
-                    from src.recipe_image import generate_recipe_image
-                    img_url, gemini_reason = await generate_recipe_image(normalized_note["title"])
+                if not has_url or not url_context.get("skip_screenshot"):
+                    from src.url_image import generate_url_image
+                    img_url, gemini_reason = await generate_url_image(
+                        url_context, normalized_note.get("title")
+                    )
                     final_image_data_url = img_url
                     if gemini_reason:
                         image_failure_reasons.append(f"AI generation ({gemini_reason})")
@@ -2325,16 +2322,20 @@ async def create_note_in_joplin(
                 and url_context.get("url") != "(pasted)"
                 and not url_context.get("skip_screenshot")
             ):
-                from src.url_screenshot import capture_url_screenshot
-                final_image_data_url = await capture_url_screenshot(url_context["url"])
-                if final_image_data_url is None:
-                    image_failure_reasons.append("screenshot failed")
+                from src.url_image import generate_url_image
+                img_url, gemini_reason = await generate_url_image(
+                    url_context, normalized_note.get("title")
+                )
+                final_image_data_url = img_url
+                if gemini_reason:
+                    image_failure_reasons.append(f"AI generation ({gemini_reason})")
                     logger.info(
-                        "URL screenshot failed for note '%s'",
+                        "URL image generation failed for note '%s': %s",
                         normalized_note.get("title", "")[:60],
+                        gemini_reason,
                     )
                     if message:
-                        await message.reply_text("⚠️ Couldn't capture screenshot for this link.")
+                        await message.reply_text("⚠️ Couldn't generate image for this link.")
             if final_image_data_url is None and url_context and url_context.get("content_type") in ("recipe", "media") and url_context.get("image_url"):
                 final_image_data_url = await _fetch_image_as_data_url(url_context["image_url"])
                 if final_image_data_url is None:

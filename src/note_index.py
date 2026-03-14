@@ -1,11 +1,12 @@
 """
 Note index for semantic search (FR-026).
 
-Chunks Joplin notes, embeds with OpenAI, stores in SQLite, supports cosine similarity search.
+Chunks Joplin notes, embeds with Gemini, stores in SQLite, supports cosine similarity search.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import sqlite3
@@ -170,6 +171,43 @@ class NoteIndex:
             if len(results) >= top_k:
                 break
         return results
+
+    async def find_most_similar_title(
+        self,
+        query: str,
+        candidates: list[str],
+        threshold: float = 0.90,
+    ) -> tuple[int, float] | None:
+        """
+        Find the candidate most semantically similar to the query (for duplicate task check).
+        Uses Gemini embeddings and cosine similarity. Returns (index, score) of best match
+        if score >= threshold, else None. Empty query or candidates returns None.
+        """
+        query = (query or "").strip()
+        candidates = [(c or "").strip() for c in candidates if (c or "").strip()]
+        if not query or not candidates:
+            return None
+        try:
+            query_emb = await self._get_embedding(query, task_type="RETRIEVAL_QUERY")
+            candidate_embs = await asyncio.gather(
+                *[
+                    self._get_embedding(c, task_type="RETRIEVAL_DOCUMENT")
+                    for c in candidates
+                ]
+            )
+        except RuntimeError as exc:
+            logger.debug("find_most_similar_title: embedding failed, %s", exc)
+            return None
+        best_idx = -1
+        best_score = 0.0
+        for i, c_emb in enumerate(candidate_embs):
+            s = _cosine_similarity(query_emb, c_emb)
+            if s > best_score:
+                best_score = s
+                best_idx = i
+        if best_idx >= 0 and best_score >= threshold:
+            return (best_idx, round(best_score, 4))
+        return None
 
     def get_stats(self) -> dict[str, Any]:
         """Return index statistics."""

@@ -5,14 +5,19 @@ Analyzes AI decisions and creates Google Tasks for action items.
 Integrates with the logging service to track task-note relationships.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.exceptions import GoogleAuthError, GoogleTasksConfigError
 from src.google_tasks_client import GoogleTasksClient
 from src.logging_service import Decision, LoggingService
+
+if TYPE_CHECKING:
+    from src.note_index import NoteIndex
 
 logger = logging.getLogger(__name__)
 
@@ -262,10 +267,18 @@ class TaskService:
         s = re.sub(r"[\W_]+", "", s)
         return s
 
-    def detect_duplicate_task(self, title: str, user_id: str) -> dict[str, Any] | None:
+    async def detect_duplicate_task(
+        self,
+        title: str,
+        user_id: str,
+        note_index: NoteIndex | None = None,
+        *,
+        semantic_threshold: float = 0.90,
+    ) -> dict[str, Any] | None:
         """
         US-055: Check if a task with the same or similar title already exists.
-        Uses exact match after normalization (case-insensitive, strip punctuation).
+        When note_index is provided, uses semantic similarity (Gemini embeddings).
+        Otherwise falls back to exact match after normalization (case-insensitive, strip punctuation).
         Returns the first matching task dict or None.
         """
         if not title or not (title or "").strip():
@@ -284,6 +297,21 @@ class TaskService:
         except Exception as e:
             logger.debug("detect_duplicate_task: failed to fetch tasks: %s", e)
             return None
+        if not tasks:
+            return None
+
+        # Semantic duplicate check when embedding is available
+        if note_index is not None:
+            candidates = [(t.get("title") or "").strip() for t in tasks]
+            result = await note_index.find_most_similar_title(
+                title, candidates, threshold=semantic_threshold
+            )
+            if result is not None:
+                idx, _score = result
+                return tasks[idx]
+            return None
+
+        # Fallback: normalized string match (no Gemini / or semantic disabled)
         normalized_proposed = self._normalize_title_for_duplicate_check(title)
         if not normalized_proposed:
             return None
