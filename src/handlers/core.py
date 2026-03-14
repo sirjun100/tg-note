@@ -1616,7 +1616,7 @@ async def _handle_new_request(
                 url_context["template_id"] = template["template_id"]
                 url_context["template_instructions"] = template["instructions"]
 
-    # DEF-025: Only show "Screenshot skipped" when URL was primary input (user sent link, not pasted text)
+    # Image for URL notes: always AI-generated (no screenshot, no skip)
     if url_context and url_context.get("url") and url_context.get("url") != "(pasted)":
         url_context["url_was_primary"] = len(text.strip()) < 200
 
@@ -2078,7 +2078,7 @@ async def _handle_clarification_reply(
         await _send_typing(message, context)
         await message.reply_text("🔗 Fetching link...")
     url_context = await _build_url_context(validated_text=combined)
-    # DEF-025: Only show "Screenshot skipped" when URL was primary input
+    # URL notes: always use AI image generation (never skip)
     if url_context and url_context.get("url") and url_context.get("url") != "(pasted)":
         url_context["url_was_primary"] = len(combined.strip()) < 200
     if url_context and url_context.get("content_type") == "recipe":
@@ -2271,12 +2271,13 @@ async def create_note_in_joplin(
         image_skipped_reason: str | None = None
         image_failure_reasons: list[str] = []
         if final_image_data_url is None:
+            # Always try AI-generated image for URL-based notes (never screenshot, never skip)
             needs_image = (
                 (url_context and url_context.get("content_type") == "recipe")
                 or (
                     url_context
                     and url_context.get("url")
-                    and not url_context.get("skip_screenshot")
+                    and url_context.get("url") != "(pasted)"
                 )
                 or (
                     url_context
@@ -2286,41 +2287,25 @@ async def create_note_in_joplin(
             )
             if needs_image and message:
                 await message.reply_text("🖼️ Adding image...")
-            # DEF-025: Only show screenshot-skipped when URL was primary input (user sent link, not pasted text)
-            # DEF-026: Guard when url_context is None (braindump, photo OCR)
-            url_was_primary = url_context.get("url_was_primary", True) if url_context else True
-            if (
-                url_context
-                and url_context.get("url")
-                and url_context.get("skip_screenshot")
-                and url_was_primary
-                and message
-            ):
-                error_msg = url_context.get("error", "")
-                if error_msg:
-                    await message.reply_text(f"⚠️ Screenshot skipped: {error_msg}")
-            # Recipe or generic URL: use AI-generated image from url context (no screenshot)
+            # Recipe or generic URL: always use AI-generated image from url context
             if url_context and url_context.get("content_type") == "recipe":
-                has_url = url_context.get("url") and url_context.get("url") != "(pasted)"
-                if not has_url or not url_context.get("skip_screenshot"):
-                    from src.url_image import generate_url_image
-                    img_url, gemini_reason = await generate_url_image(
-                        url_context, normalized_note.get("title")
+                from src.url_image import generate_url_image
+                img_url, gemini_reason = await generate_url_image(
+                    url_context, normalized_note.get("title")
+                )
+                final_image_data_url = img_url
+                if gemini_reason:
+                    image_failure_reasons.append(f"AI generation ({gemini_reason})")
+                    logger.info(
+                        "Recipe AI image generation failed for '%s': %s",
+                        normalized_note.get("title", "")[:60],
+                        gemini_reason,
                     )
-                    final_image_data_url = img_url
-                    if gemini_reason:
-                        image_failure_reasons.append(f"AI generation ({gemini_reason})")
-                        logger.info(
-                            "Recipe AI image generation failed for '%s': %s",
-                            normalized_note.get("title", "")[:60],
-                            gemini_reason,
-                        )
             elif (
                 final_image_data_url is None
                 and url_context
                 and url_context.get("url")
                 and url_context.get("url") != "(pasted)"
-                and not url_context.get("skip_screenshot")
             ):
                 from src.url_image import generate_url_image
                 img_url, gemini_reason = await generate_url_image(
