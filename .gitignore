@@ -47,6 +47,7 @@ client-id.json
 credentials.json
 token.json
 /gtd-*.md
+.cursor/mcp.json
 
 # Joplin local data
 joplin-data/

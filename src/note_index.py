@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
-EMBEDDING_MODEL = "text-embedding-004"  # Gemini
+EMBEDDING_MODEL = "gemini-embedding-001"  # Gemini (text-embedding-004 deprecated)
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 TOP_K_DEFAULT = 8
 
@@ -95,7 +95,8 @@ class NoteIndex:
             )
         url = f"{GEMINI_BASE}/models/{EMBEDDING_MODEL}:embedContent?key={api_key}"
         payload = {
-            "contents": [{"parts": [{"text": text[:8000]}]}],
+            "model": f"models/{EMBEDDING_MODEL}",
+            "content": {"parts": [{"text": text[:8000]}]},
             "taskType": task_type,
         }
         async with httpx.AsyncClient(timeout=30.0) as client:

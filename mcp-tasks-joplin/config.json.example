@@ -1,0 +1,20 @@
+{
+  "joplin": {
+    "request_timeout_seconds": 30,
+    "ping_timeout_seconds": 5
+  },
+  "google_tasks": {
+    "default_list_id": null,
+    "redirect_uri": "urn:ietf:wg:oauth:2.0:oob"
+  },
+  "semantic_search": {
+    "enabled": false,
+    "chunk_size": 500,
+    "chunk_overlap": 50,
+    "top_k_default": 8
+  },
+  "pagination": {
+    "default_limit": 20,
+    "max_limit": 100
+  }
+}
