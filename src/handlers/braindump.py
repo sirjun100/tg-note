@@ -277,16 +277,16 @@ async def _finish_session(
                     final_note = {
                         "title": f"Brain Dump Session - {date_str}",
                         "body": "\n".join(f"{h['role']}: {h['content']}" for h in history),
-                        "parent_id": "Inbox",
+                        "parent_id": "00 - Inbox",
                         "tags": ["brain-dump", "mindsweep"],
                     }
 
         if final_note:
-            if not final_note.get("parent_id") or final_note.get("parent_id") == "Inbox":
+            if not final_note.get("parent_id") or final_note.get("parent_id") in ("Inbox", "00 - Inbox"):
                 folders = await orch.joplin_client.get_folders()
                 inbox_id = None
                 for f in folders:
-                    if f["title"].lower() in ("inbox", "brain dump", "capture"):
+                    if f["title"].lower() in ("inbox", "00 - inbox", "brain dump", "capture"):
                         inbox_id = f["id"]
                         break
                 if inbox_id:

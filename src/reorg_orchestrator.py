@@ -181,14 +181,22 @@ class ReorgOrchestrator:
 
             folders_created = 0
             # Ensure Inbox exists first (root folder; parent_id None vs "" can prevent match in Joplin)
-            if "Inbox" in template:
-                await self.joplin_client.get_or_create_folder_by_path(["Inbox"])
+            inbox_key = next(
+                (
+                    k
+                    for k in template
+                    if normalize_folder_title_for_match(k) == "inbox"
+                ),
+                None,
+            )
+            if inbox_key:
+                await self.joplin_client.get_or_create_folder_by_path([inbox_key])
                 folders_created += 1
-                logger.debug("✓ Created main folder: Inbox")
+                logger.debug("✓ Created main folder: %s", inbox_key)
 
             for main_folder, sub_folders in template.items():
                 try:
-                    if main_folder == "Inbox":
+                    if inbox_key and main_folder == inbox_key:
                         # Already created above
                         continue
                     # Create main folder
