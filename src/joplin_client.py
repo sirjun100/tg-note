@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
@@ -20,6 +21,19 @@ from src.exceptions import JoplinAuthError, JoplinConnectionError, JoplinError
 from src.settings import JoplinSettings, get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_folder_title_for_match(title: str) -> str:
+    """Normalize folder title for comparison: strip optional 'NN - ' prefix, then strip and lower.
+
+    Supports Joplin notebook names like '00 - Inbox', '01 - Areas', '02 - Projects'.
+    Non-prefixed names (e.g. 'Scratch Paper', 'Trash') are just lowercased.
+    """
+    if not title:
+        return ""
+    t = (title or "").strip()
+    t = re.sub(r"^\d{1,3}\s*-\s*", "", t).strip()
+    return t.lower()
 
 
 class JoplinClient:
@@ -221,16 +235,24 @@ class JoplinClient:
         return result
 
     async def get_folder_id_by_path(self, path_parts: list[str]) -> str | None:
-        """Return folder id if path exists; else None. Does not create."""
+        """Return folder id if path exists; else None. Does not create.
+
+        Matches folder by exact title or by normalized name (handles 'NN - Name' prefixes).
+        """
         current_parent = ""
         for part in path_parts:
             folders = await self.get_folders()
             want_parent = current_parent or ""
+            part_norm = normalize_folder_title_for_match(part)
             found = next(
                 (
                     f
                     for f in folders
-                    if f.get("title") == part and (f.get("parent_id") or "") == want_parent
+                    if (f.get("parent_id") or "") == want_parent
+                    and (
+                        f.get("title") == part
+                        or normalize_folder_title_for_match(f.get("title") or "") == part_norm
+                    )
                 ),
                 None,
             )
@@ -240,17 +262,21 @@ class JoplinClient:
         return current_parent
 
     async def get_or_create_folder_by_path(self, path_parts: list[str]) -> str:
+        """Resolve or create folder path. Matches by exact title or normalized name (e.g. 'NN - Name')."""
         current_parent = ""
         for part in path_parts:
             folders = await self.get_folders()
-            # Normalize parent_id: Joplin may use None or "" for root
             want_parent = current_parent or ""
+            part_norm = normalize_folder_title_for_match(part)
             found = next(
                 (
                     f
                     for f in folders
-                    if f.get("title") == part
-                    and (f.get("parent_id") or "") == want_parent
+                    if (f.get("parent_id") or "") == want_parent
+                    and (
+                        f.get("title") == part
+                        or normalize_folder_title_for_match(f.get("title") or "") == part_norm
+                    )
                 ),
                 None,
             )

@@ -21,6 +21,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, Mes
 from src.constants import is_action_item
 from src.exceptions import AppError, GoogleAuthError
 from src.handlers.profile import get_user_profile_context
+from src.joplin_client import normalize_folder_title_for_match
 from src.logging_service import Decision, TelegramMessage
 from src.security_utils import (
     check_whitelist,
@@ -344,7 +345,10 @@ def _bookmark(orch: TelegramOrchestrator):
         bookmark_folder_id: str | None = None
         try:
             folders = await orch.joplin_client.get_folders()
-            bm = next((f for f in folders if f.get("title", "").lower() == "bookmarks"), None)
+            bm = next(
+                (f for f in folders if normalize_folder_title_for_match(f.get("title", "")) == "bookmarks"),
+                None,
+            )
             if bm:
                 bookmark_folder_id = bm["id"]
             else:
@@ -653,8 +657,8 @@ def _project_status(orch: TelegramOrchestrator):
 
             project_root_id = None
             for f in folders:
-                title_lower = (f.get("title") or "").strip().lower()
-                if title_lower in ("01 - projects", "projects"):
+                norm = normalize_folder_title_for_match(f.get("title") or "")
+                if norm in ("projects", "project"):
                     project_root_id = f.get("id")
                     break
 
@@ -2668,8 +2672,8 @@ async def _ensure_project_status_tag(
     by_id = {f.get("id"): f for f in folders if f.get("id")}
     project_root_id = None
     for f in folders:
-        title_lower = (f.get("title") or "").strip().lower()
-        if title_lower in ("01 - projects", "projects"):
+        norm = normalize_folder_title_for_match(f.get("title") or "")
+        if norm in ("projects", "project"):
             project_root_id = f.get("id")
             break
     if not project_root_id:

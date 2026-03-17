@@ -24,7 +24,7 @@ os.chdir(_REPO_ROOT)
 
 async def main() -> None:
     from src.settings import get_settings
-    from src.joplin_client import JoplinClient
+    from src.joplin_client import JoplinClient, normalize_folder_title_for_match
 
     settings = get_settings()
     client = JoplinClient(settings=settings.joplin)
@@ -35,15 +35,11 @@ async def main() -> None:
         print(f"Failed to fetch folders: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Find Resources folder (common names)
-    candidates = ["Resources", "resources"]
+    # Find Resources folder (supports "03 - Resources", "Resources", etc.)
     resources_folder = None
-    for title in candidates:
-        for f in folders:
-            if f.get("title") == title:
-                resources_folder = f
-                break
-        if resources_folder:
+    for f in folders:
+        if normalize_folder_title_for_match(f.get("title") or "") == "resources":
+            resources_folder = f
             break
 
     if not resources_folder:

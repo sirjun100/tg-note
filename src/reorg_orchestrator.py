@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from src.joplin_client import JoplinClient
+from src.joplin_client import JoplinClient, normalize_folder_title_for_match
 from src.llm_orchestrator import LLMOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,8 @@ class ReorgOrchestrator:
         folders = await self.joplin_client.get_folders()
         projects_id = None
         for f in folders:
-            if (f.get("title") or "").lower() == "projects" and (f.get("parent_id") or "") == "":
+            norm = normalize_folder_title_for_match(f.get("title") or "")
+            if norm in ("projects", "project") and (f.get("parent_id") or "") == "":
                 projects_id = f["id"]
                 break
         if not projects_id:
@@ -473,20 +474,20 @@ class ReorgOrchestrator:
             folders = await self.joplin_client.get_folders()
             folders_by_id = {f["id"]: f for f in folders}
 
-            # Locate the Projects root
+            # Locate the Projects root (supports '02 - Projects', 'Projects', etc.)
             project_root_id = projects_folder_id
             if not project_root_id:
                 for f in folders:
-                    title_lower = (f.get("title") or "").strip().lower()
+                    norm = normalize_folder_title_for_match(f.get("title") or "")
                     is_root = not (f.get("parent_id") or "")
-                    if title_lower in ("01 - projects", "projects", "project") and is_root:
+                    if norm in ("projects", "project") and is_root:
                         project_root_id = f["id"]
                         break
                 # Fallback: non-root folder with matching name
                 if not project_root_id:
                     for f in folders:
-                        title_lower = (f.get("title") or "").strip().lower()
-                        if title_lower in ("01 - projects", "projects", "project"):
+                        norm = normalize_folder_title_for_match(f.get("title") or "")
+                        if norm in ("projects", "project"):
                             project_root_id = f["id"]
                             break
             if not project_root_id:
@@ -550,8 +551,8 @@ class ReorgOrchestrator:
             project_root_id = projects_folder_id
             if not project_root_id:
                 for f in folders:
-                    title_lower = (f.get("title") or "").strip().lower()
-                    if title_lower in ("01 - projects", "projects", "project"):
+                    norm = normalize_folder_title_for_match(f.get("title") or "")
+                    if norm in ("projects", "project"):
                         project_root_id = f["id"]
                         break
             if not project_root_id:
