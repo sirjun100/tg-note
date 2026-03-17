@@ -48,7 +48,7 @@ PROJECT_STATUS_TAGS = {
 }
 
 # Recipe notes go in Resources/🍽️ Recipe (try Resources first, Ressources as fallback for French)
-RECIPE_FOLDER_PATHS = (["Resources", "🍽️ Recipe"], ["Ressources", "🍽️ Recipe"])
+RECIPE_FOLDER_PATHS = (["03 - Resources", "🍽️ Recipe"], ["Ressources", "🍽️ Recipe"])
 
 GREETING_PATTERNS = [
     r"^(hi|hello|hey|howdy|greetings|yo)[\s!?.]*$",
@@ -386,7 +386,7 @@ def _learnings(orch: TelegramOrchestrator):
 
         await update.message.reply_text("📚 Fetching your learnings from this week...")
 
-        STOIC_PATH = ["Areas", "📓 Journaling", "Stoic Journal"]
+        STOIC_PATH = ["01 - Areas", "📓 Journaling", "Stoic Journal"]
         from datetime import UTC, datetime, timedelta
         try:
             folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_PATH)

@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Pending image generation tasks (user_id -> Task). Not persisted in state.
 _pending_dream_image_tasks: dict[int, asyncio.Task] = {}
 
-DREAM_JOURNAL_PATH = ["Areas", "📓 Journaling", "Dream Journal"]
+DREAM_JOURNAL_PATH = ["01 - Areas", "📓 Journaling", "Dream Journal"]
 DREAM_TAGS = ["dream-journal", "jungian"]
 DREAM_DISCLAIMER = (
     "\n\n🌙 *Note: This analysis is for self-reflection and personal growth. "

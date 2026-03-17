@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-STOIC_JOURNAL_PATH = ["Areas", "📓 Journaling", "Stoic Journal"]
+STOIC_JOURNAL_PATH = ["01 - Areas", "📓 Journaling", "Stoic Journal"]
 STOIC_TAGS = ["stoic", "journal", "daily"]
 
 # Preference keys

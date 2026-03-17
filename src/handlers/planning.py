@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-PLANNING_PATH = ["Areas", "📓 Journaling", "Weekly Planning"]
+PLANNING_PATH = ["01 - Areas", "📓 Journaling", "Weekly Planning"]
 PLANNING_TAGS = ["planning", "weekly", "gtd"]
 PHASES = ["review", "priorities", "obstacles", "commit"]
 

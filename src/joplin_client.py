@@ -33,7 +33,11 @@ def normalize_folder_title_for_match(title: str) -> str:
         return ""
     t = (title or "").strip()
     t = re.sub(r"^\d{1,3}\s*-\s*", "", t).strip()
-    return t.lower()
+    t = t.lower()
+    # Common alias: some users name the PARA root as "Archive" vs "Archives".
+    if t == "archives":
+        return "archive"
+    return t
 
 
 class JoplinClient:

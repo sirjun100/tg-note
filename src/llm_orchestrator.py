@@ -741,14 +741,14 @@ Output nothing else: no preamble, no explanation, only the markdown block. Use t
         if user_profile and isinstance(user_profile, str):
             user_profile_block = f"## User Profile\n{user_profile}\n\n---\n\n"
 
-        # Build folder list, excluding Archive and its children
+        # Build folder list, excluding Archive/Archives and their children
         folders = context.get('folders', [])
         folder_list = ""
         if folders:
             for f in folders:
                 title = f.get('title', 'Unknown').lower()
                 if 'archive' in title:
-                    continue  # Skip Archive folder and any with 'archive' in name
+                    continue  # Skip Archive/Archives folder and any with 'archive' in name
                 fid = f.get('id', 'unknown')
                 folder_list += f"- {fid}: {title.title()}\n"  # title() to capitalize
         else:
@@ -764,11 +764,11 @@ Your task is to analyze user messages and either:
 The user organizes notes in these folders:
 {folder_list}
 The system follows a Second Brain/PARA structure with these main roots:
-- Inbox
-- Projects
-- Areas
-- Resources
-- Archive
+- 00 - Inbox
+- 01 - Areas
+- 02 - Projects
+- 03 - Resources
+- 04 - Archives
 
 Folder selection policy:
 - You MUST choose the best folder from the provided folder list above.

@@ -61,11 +61,11 @@ class ReorgOrchestrator:
 
     PARA_TEMPLATES = {
         "status": {
-            "Inbox": [],
-            "Projects": [
+            "00 - Inbox": [],
+            "02 - Projects": [
                 {"Project Template": PROJECT_SUBFOLDERS},
             ],
-            "Areas": [
+            "01 - Areas": [
                 "💼 Work & Career",
                 "💪 Health & Fitness",
                 "💰 Finance & Investing",
@@ -73,35 +73,35 @@ class ReorgOrchestrator:
                 "🏠 Home",
                 {"📓 Journaling": ["Dream Journal", "Stoic Journal", "Other"]},
             ],
-            "Resources": [
+            "03 - Resources": [
                 "📖 Books & Articles",
                 "🛠️ Tools & Software",
                 "📋 Templates & Checklists",
                 "🔗 Reference Materials",
                 "🎓 Learning Materials",
             ],
-            "Archive": [
+            "04 - Archives": [
                 {"Completed Projects (by year)": ["2026", "2025", "2024", "2023", "2022"]},
                 "Historical Areas",
             ],
         },
         "roles": {
-            "Inbox": [],
-            "Projects": [
+            "00 - Inbox": [],
+            "02 - Projects": [
                 "Professional",
                 "Personal",
                 "Volunteer",
                 {"Project Template": PROJECT_SUBFOLDERS},
             ],
-            "Areas": [
+            "01 - Areas": [
                 "Work",
                 "Life",
                 "Creative",
                 "Health",
                 {"📓 Journaling": ["Dream Journal", "Stoic Journal", "Other"]},
             ],
-            "Resources": ["Tools", "Templates", "Knowledge"],
-            "Archive": []
+            "03 - Resources": ["Tools", "Templates", "Knowledge"],
+            "04 - Archives": []
         }
     }
 
@@ -133,18 +133,18 @@ class ReorgOrchestrator:
                 projects_id = f["id"]
                 break
         if not projects_id:
-            projects_id = await self.joplin_client.get_or_create_folder_by_path(["Projects"])
+            projects_id = await self.joplin_client.get_or_create_folder_by_path(["02 - Projects"])
 
         for f in folders:
             if f.get("parent_id") == projects_id and (f.get("title") or "").lower() == normalized:
                 raise ReorgException(f"Project '{project_name}' already exists")
 
-        project_folder_id = await self.joplin_client.get_or_create_folder_by_path(["Projects", normalized])
-        overview_id = await self.joplin_client.get_or_create_folder_by_path(["Projects", normalized, "Overview"])
+        project_folder_id = await self.joplin_client.get_or_create_folder_by_path(["02 - Projects", normalized])
+        overview_id = await self.joplin_client.get_or_create_folder_by_path(["02 - Projects", normalized, "Overview"])
 
         for sub in self.PROJECT_SUBFOLDERS:
             if sub != "Overview":
-                await self.joplin_client.get_or_create_folder_by_path(["Projects", normalized, sub])
+                await self.joplin_client.get_or_create_folder_by_path(["02 - Projects", normalized, sub])
 
         now = datetime.now().strftime("%Y-%m-%d")
         body = f"""# {project_name}
