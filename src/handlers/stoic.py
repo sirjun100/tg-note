@@ -8,6 +8,9 @@ streak tracking, /stoic quick mode, /stoic review weekly synthesis, US-042
 
 from __future__ import annotations
 
+import asyncio
+import base64
+import contextlib
 import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -27,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 STOIC_JOURNAL_PATH = ["01 - Areas", "📓 Journaling", "Stoic Journal"]
 STOIC_TAGS = ["stoic", "journal", "daily"]
+
+_STOIC_IMAGE_MARKER = "<!-- stoic-image -->"
+_pending_stoic_image_tasks: dict[int, asyncio.Task] = {}
 
 # Preference keys
 _PREF_STREAK = "stoic_streak"
@@ -555,6 +561,82 @@ def _check_section_exists(note_body: str, mode: str) -> bool:
     return False
 
 
+def _embed_stoic_image_in_body(note_body: str, resource_id: str) -> str:
+    """Insert Stoic image below the top title, idempotently via marker."""
+    if not note_body:
+        return note_body
+    if _STOIC_IMAGE_MARKER in note_body:
+        return note_body
+    image_block = f"{_STOIC_IMAGE_MARKER}\n\n![Stoic reflection](:/{resource_id})"
+    lines = note_body.split("\n", 2)
+    if not lines:
+        return note_body
+    if lines[0].lstrip().startswith("#"):
+        head = lines[0]
+        rest = "\n".join(lines[1:]) if len(lines) > 1 else ""
+        rest = rest.lstrip("\n")
+        return f"{head}\n\n{image_block}\n\n{rest}".rstrip() + "\n"
+    return f"{image_block}\n\n{note_body}".rstrip() + "\n"
+
+
+async def _add_stoic_image_async(
+    orch: TelegramOrchestrator,
+    user_id: int,
+    note_id: str,
+    mode: str,
+    reflection_markdown: str,
+    message: Message,
+) -> None:
+    """Background task: generate image, upload resource, embed into note body."""
+    try:
+        from src.stoic_image import generate_stoic_image
+
+        img_msg = await message.reply_text("🖼️ Generating Stoic image…")
+        data_url, reason = await generate_stoic_image(mode, reflection_markdown)
+        if not data_url or "," not in data_url:
+            await img_msg.edit_text("⚠️ Couldn't generate an image for this reflection.")
+            if reason:
+                logger.info("Stoic image skipped (%s)", reason)
+            return
+
+        header, b64_data = data_url.split(",", 1)
+        mime = "image/png"
+        if "image/" in header:
+            mime = header.split(":", 1)[1].split(";", 1)[0].strip()
+        image_bytes = base64.b64decode(b64_data)
+        resource = await orch.joplin_client.create_resource(
+            image_bytes,
+            filename=f"stoic_{mode}.png",
+            mime_type=mime,
+        )
+        resource_id = resource.get("id")
+        if not resource_id:
+            await img_msg.edit_text("⚠️ Couldn't attach the image to Joplin.")
+            return
+
+        full_note = await orch.joplin_client.get_note(note_id)
+        body = (full_note.get("body") or "").strip()
+        new_body = _embed_stoic_image_in_body(body, resource_id)
+        await orch.joplin_client.update_note(note_id, {"body": new_body})
+
+        try:
+            from src.handlers.core import _schedule_joplin_sync
+
+            _schedule_joplin_sync()
+        except Exception as exc:
+            logger.debug("Could not schedule sync after stoic image: %s", exc)
+
+        await img_msg.edit_text("✅ Added image to your Stoic note.")
+    except Exception as exc:
+        logger.warning("Stoic image generation failed: %s", exc)
+        with contextlib.suppress(Exception):
+            await message.reply_text("⚠️ Couldn't generate an image for this reflection.")
+    finally:
+        task = _pending_stoic_image_tasks.get(user_id)
+        if task and task.done():
+            _pending_stoic_image_tasks.pop(user_id, None)
+
+
 # ---------------------------------------------------------------------------
 # Apply replace / append actions (duplicate detection)
 # ---------------------------------------------------------------------------
@@ -585,6 +667,12 @@ async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, messag
         except Exception as exc:
             logger.debug("Could not schedule sync: %s", exc)
         answers = state.get("answers", [])
+        # US-061: add image after reflection is finalized
+        _pending_stoic_image_tasks[user_id] = asyncio.create_task(
+            _add_stoic_image_async(
+                orch, user_id, note_id, mode, new_section, message
+            )
+        )
         await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
     except Exception as exc:
@@ -619,6 +707,12 @@ async def _apply_append_action(orch: TelegramOrchestrator, user_id: int, message
             logger.debug("Could not schedule sync: %s", exc)
         mode = state.get("mode", "morning")
         answers = state.get("answers", [])
+        # US-061: add image after reflection is finalized
+        _pending_stoic_image_tasks[user_id] = asyncio.create_task(
+            _add_stoic_image_async(
+                orch, user_id, note_id, mode, new_section, message
+            )
+        )
         await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
     except Exception as exc:
@@ -734,6 +828,12 @@ async def _finish_stoic_session(
             return False
         await orch.joplin_client.apply_tags(note_id, tags)
         logger.info("Stoic save: updated note %s (%s mode)", note_id, mode)
+        # US-061: generate image after finalizing note content
+        _pending_stoic_image_tasks[user_id] = asyncio.create_task(
+            _add_stoic_image_async(
+                orch, user_id, note_id, mode, section_content, message
+            )
+        )
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()
@@ -759,6 +859,12 @@ async def _finish_stoic_session(
             await message.reply_text("❌ Failed to create note in Stoic Journal.")
             return False
         logger.info("Stoic save: created note %s (%s mode)", note_id, mode)
+        # US-061: generate image after finalizing note content
+        _pending_stoic_image_tasks[user_id] = asyncio.create_task(
+            _add_stoic_image_async(
+                orch, user_id, note_id, mode, section_content, message
+            )
+        )
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()

@@ -27,6 +27,9 @@
 **Stretch (5 pts, if capacity allows):**
 - US-058: Conversational intent — bot understands natural phrasing without explicit commands (5 pts)
 
+**Bonus shipped (unplanned, 5 pts):**
+- US-061: Stoic Journal — LLM-generated image after `/stoic_done` (5 pts)
+
 **Hotfixes shipped since Sprint 19 close (not counted in velocity):**
 - fix(DEF-030 re-open): Stoic note timestamp UTC bug — LLM path still used `datetime.now()` — fixed by passing `ts` from stoic.py
 - fix: `/tasks` (plural) command registered as alias for `/tasks_list`
@@ -39,6 +42,7 @@
 **Key Deliverables:**
 - [x] US-059: `/tasks_status` shows overdue, today, this week, inbox count, health line
 - [x] US-060: `/project_report` shows per-project next action, stall detection, no-next-action alerts
+- [x] US-061: `/stoic_done` generates and embeds a symbolic image into the Stoic note; backfill script available
 - [x] US-055: Task creation checks for duplicates before adding; inline keyboard on match
 - [x] T-020: MCP templates no longer reference non-existent template boilerplate
 - [x] T-021: `_parse_variant_block` slot boundary guarded by CI test
@@ -183,6 +187,37 @@
 |---------|------------------|-----------|--------|--------|
 | T-012 | Update MCP story/defect templates: remove obsolete template boilerplate (real paths only) | mcp-project-management/templates/ | ✅ | 1 |
 | T-013 | Add `test_parse_variant_block_slot_boundary`: assert all 3 variants present for each slot across all 6 slots | tests/test_stoic_sprint18.py | ✅ | 1 |
+
+---
+
+## Story 5: Stoic Journal — LLM Image After Save — 5 Points (Bonus)
+
+**User Story**: [US-061](../backlog/user-stories/US-061-stoic-llm-image-after-reflection.md)
+
+**Description**: After `/stoic_done`, generate a symbolic image (Gemini) representing the reflection and embed it into the saved Joplin note. Provide a backfill script for existing Stoic notes.
+
+**Acceptance Criteria**:
+- [x] Image generated after save (including replace/append flows)
+- [x] Uploaded as Joplin resource and embedded in note body
+- [x] Safe/tasteful prompt (no text, journal-appropriate)
+- [x] Failure does not break save flow
+- [x] Backfill script available for existing notes
+
+**Technical References**:
+- `src/handlers/stoic.py` — generate and embed after save
+- `src/stoic_image.py` — Gemini image prompt/call
+- `scripts/backfill_stoic_images.py` — backfill existing notes
+
+**Priority**: 🟠 High
+**Story Points**: 5
+
+**Tasks**:
+
+| Task ID | Task Description | Reference | Status | Points |
+|---------|------------------|-----------|--------|--------|
+| T-017 | Generate + embed image after `/stoic_done` (new note + update + replace/append) | stoic.py | ✅ | 3 |
+| T-018 | Add Gemini image generator for Stoic reflections | stoic_image.py | ✅ | 1 |
+| T-019 | Backfill script for existing Stoic notes (dry-run, limit) | scripts/backfill_stoic_images.py | ✅ | 1 |
 
 ---
 

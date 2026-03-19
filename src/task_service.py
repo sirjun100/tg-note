@@ -739,6 +739,79 @@ class TaskService:
 
         return result
 
+    def get_project_task_activity(self, user_id: str) -> tuple[dict[str, list[dict[str, Any]]], dict[str, int]]:
+        """US-060: Return (open_tasks_by_folder, last_completed_ms_by_folder).
+
+        Uses project sync mappings to associate Google parent tasks with Joplin project folders.
+        Makes a single Google Tasks API call (show_completed=True) and derives:
+        - Open tasks grouped by Joplin folder_id
+        - Latest completion timestamp (ms) per project folder
+
+        Returns ({}, {}) if not connected or project sync is not configured.
+        """
+        token = self.logging_service.load_google_token(user_id)
+        if not token:
+            return {}, {}
+
+        config = self.logging_service.get_google_tasks_config(int(user_id))
+        if not config or not config.get("enabled") or not config.get("project_sync_enabled"):
+            return {}, {}
+
+        mappings = self.logging_service.get_all_project_sync_mappings(int(user_id))
+        if not mappings:
+            return {}, {}
+
+        google_to_folder: dict[str, str] = {
+            m["google_task_id"]: m["joplin_folder_id"]
+            for m in mappings
+            if m.get("google_task_id") and m.get("joplin_folder_id")
+        }
+        if not google_to_folder:
+            return {}, {}
+
+        task_list_id = self.get_task_list_id_for_user(user_id)
+        if not task_list_id:
+            return {}, {}
+
+        self._set_client_token(user_id, token)
+        try:
+            all_tasks = self.tasks_client.get_all_tasks(task_list_id, show_completed=True)
+            if self.tasks_client.token and self.tasks_client.token != token:
+                self.logging_service.save_google_token(user_id, self.tasks_client.token)
+        except Exception as exc:
+            logger.warning("US-060: Failed to fetch tasks for project activity: %s", exc)
+            return {}, {}
+
+        open_tasks_by_folder: dict[str, list[dict[str, Any]]] = {}
+        last_completed_ms_by_folder: dict[str, int] = {}
+
+        from datetime import datetime
+
+        for task in all_tasks or []:
+            parent_id = task.get("parent")
+            if not parent_id:
+                continue
+            folder_id = google_to_folder.get(parent_id)
+            if not folder_id:
+                continue
+
+            if task.get("status") == "completed":
+                completed_str = task.get("completed") or ""
+                if completed_str:
+                    try:
+                        dt = datetime.fromisoformat(completed_str.replace("Z", "+00:00"))
+                        ms = int(dt.timestamp() * 1000)
+                        prev = last_completed_ms_by_folder.get(folder_id, 0)
+                        if ms > prev:
+                            last_completed_ms_by_folder[folder_id] = ms
+                    except (ValueError, TypeError):
+                        pass
+                continue
+
+            open_tasks_by_folder.setdefault(folder_id, []).append(task)
+
+        return open_tasks_by_folder, last_completed_ms_by_folder
+
     def get_task_list_id_for_user(self, user_id: str) -> str | None:
         """Get the task list ID used for the user (from config or default)."""
         config = self.logging_service.get_google_tasks_config(int(user_id))

@@ -2,7 +2,7 @@
 
 This document describes how to manually verify the Sprint 20 changes in Telegram: **GTD Dashboard** (`/tasks_status`), **Project Report** (`/project_report`), **Duplicate task check** (before adding tasks), and **Weekly report project portfolio**.
 
-**Stories**: US-059 (GTD Dashboard), US-060 (Project Report), US-055 (Duplicate check).
+**Stories**: US-059 (GTD Dashboard), US-060 (Project Report), US-055 (Duplicate check), US-061 (Stoic image).
 
 ---
 
@@ -108,6 +108,38 @@ This document describes how to manually verify the Sprint 20 changes in Telegram
 - **Content routing**: Send a message that is routed to “task” or “both” and would create a task whose title matches an existing one; duplicate check and keyboard should appear.
 
 **Pass**: Duplicate is detected on same or semantically similar title (or normalized match when Gemini is not configured); all four options work; no duplicate when title is clearly different.
+
+---
+
+## 4. Stoic Journal image after save (US-061)
+
+**Goal**: After `/stoic_done`, the saved Stoic note gets a symbolic image embedded near the top.
+
+### 4.1 New Stoic entry image
+
+1. Run **`/stoic morning`**, answer prompts, then **`/stoic_done`**.
+2. **Check**:
+   - Reflection is saved as usual (no regressions).
+   - Bot says it is generating an image and then confirms it was added.
+   - In Joplin, the note has an embedded image near the top (no text in the image).
+
+3. Repeat with **`/stoic evening`**.
+
+### 4.2 Duplicate flows
+
+1. Run `/stoic morning` twice on the same day.
+2. Choose **`/stoic_replace`** and verify an image is still added/updated.
+3. Choose **`/stoic_append`** and verify an image is added (and not duplicated on re-run).
+
+### 4.3 Backfill existing notes (script)
+
+1. Export your Joplin token and run a dry-run:
+   - `export JOPLIN_TOKEN='...'`
+   - `./venv/bin/python scripts/backfill_stoic_images.py --dry-run`
+2. Run a small batch:
+   - `./venv/bin/python scripts/backfill_stoic_images.py --limit 5`
+
+**Pass**: Stoic notes get an image without breaking the save flow; backfill works with dry-run/limit.
 
 ---
 

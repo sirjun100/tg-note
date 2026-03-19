@@ -744,14 +744,32 @@ _STATUS_BADGES = {
 }
 _STATUS_ORDER = ["status/blocked", "status/building", "status/planning", "untagged", "status/done"]
 _STALL_DAYS = 14
+_DONE_THIS_WEEK_DAYS = 7
 
 
 def _ms_to_days_ago(ms: int) -> int:
-    """Convert a millisecond timestamp to days ago (0 = today)."""
+    """Convert a millisecond timestamp to days ago (0 = today) using system time.
+
+    Kept for backward compatibility and unit tests; prefer `_ms_to_days_ago_user`.
+    """
     import time
+
+    if not ms:
+        return 999
     now_ms = int(time.time() * 1000)
     diff_ms = now_ms - ms
     return max(0, diff_ms // 86_400_000)
+
+
+def _ms_to_days_ago_user(ms: int, user_id: int, orch: TelegramOrchestrator) -> int:
+    """Convert a millisecond timestamp to whole days ago (0 = today) in user's timezone."""
+    from datetime import UTC, datetime
+
+    if not ms:
+        return 999
+    now = get_user_timezone_aware_now(user_id, orch.logging_service)
+    then = datetime.fromtimestamp(ms / 1000.0, tz=UTC).astimezone(now.tzinfo)
+    return max(0, (now.date() - then.date()).days)
 
 
 async def build_project_portfolio_html(orch: TelegramOrchestrator, user_id: int) -> str:
@@ -773,7 +791,7 @@ async def build_project_portfolio_html(orch: TelegramOrchestrator, user_id: int)
     if not project_list:
         return ""
 
-    all_notes = await orch.joplin_client.get_all_notes(fields="id,parent_id,updated_time")
+    all_notes = await orch.joplin_client.get_all_notes(fields="id,title,parent_id,updated_time")
     notes_by_folder: dict[str, list[dict]] = {}
     for note in all_notes:
         fid = note.get("parent_id") or ""
@@ -796,23 +814,26 @@ async def build_project_portfolio_html(orch: TelegramOrchestrator, user_id: int)
                 folder_status[fid] = status_name
 
     tasks_by_project: dict[str, list[dict]] = {}
+    last_completed_ms_by_project: dict[str, int] = {}
     if orch.task_service and cfg.get("project_sync_enabled"):
-        tasks_by_project = orch.task_service.get_tasks_by_project(str(user_id))
+        tasks_by_project, last_completed_ms_by_project = orch.task_service.get_project_task_activity(str(user_id))
 
     projects: list[dict[str, Any]] = []
     for folder_id, title in project_list:
         notes = notes_by_folder.get(folder_id, [])
         note_count = len(notes)
         last_ms = max((n.get("updated_time") or 0 for n in notes), default=0)
-        days_since = _ms_to_days_ago(last_ms) if last_ms else 999
+        days_since = _ms_to_days_ago_user(last_ms, user_id, orch) if last_ms else 999
         status = folder_status.get(folder_id, "untagged")
         open_tasks = tasks_by_project.get(folder_id, [])
-        is_stalled = note_count > 0 and days_since >= _STALL_DAYS
+        task_days_since = _ms_to_days_ago_user(last_completed_ms_by_project.get(folder_id, 0), user_id, orch)
+        is_stalled = note_count > 0 and days_since >= _STALL_DAYS and task_days_since >= _STALL_DAYS
         has_next_action = len(open_tasks) > 0
         projects.append({
             "folder_id": folder_id, "title": title, "note_count": note_count,
             "days_since": days_since, "status": status, "open_tasks": open_tasks,
             "is_stalled": is_stalled, "has_next_action": has_next_action,
+            "task_days_since": task_days_since,
         })
 
     def _sort_key(p: dict) -> tuple:
@@ -856,6 +877,23 @@ async def build_project_portfolio_html(orch: TelegramOrchestrator, user_id: int)
     if not active:
         lines.append("✨ No active projects. Start one with /project_new")
     else:
+        needs_attention = [
+            p for p in active
+            if (p["is_stalled"] or (cfg.get("project_sync_enabled") and not p["has_next_action"]))
+        ]
+        if needs_attention:
+            lines.append("🚨 <b>Needs attention</b>")
+            for p in needs_attention[:10]:
+                badge = _STATUS_BADGES.get(p["status"], "⚪")
+                flags: list[str] = []
+                if p["is_stalled"]:
+                    flags.append(f"⚠️ stalled ({p['days_since']}d)")
+                if cfg.get("project_sync_enabled") and not p["has_next_action"]:
+                    flags.append("📌 no next action")
+                suffix = f" — {' · '.join(flags)}" if flags else ""
+                lines.append(f"  • <b>{p['title']}</b>  {badge}{suffix}")
+            lines.append("")
+
         for p in active:
             badge = _STATUS_BADGES.get(p["status"], "⚪")
             stall_flag = " ⚠️ Stalled" if p["is_stalled"] else ""
@@ -872,9 +910,11 @@ async def build_project_portfolio_html(orch: TelegramOrchestrator, user_id: int)
                 lines.append(f"  📂 {p['note_count']} note(s)  ·  📋 {len(p['open_tasks'])} task(s)")
             lines.append("")
     if done:
-        titles = ", ".join(p["title"] for p in done[:5])
-        extra = f" +{len(done) - 5} more" if len(done) > 5 else ""
-        lines.append(f"✅ {len(done)} done: {titles}{extra}")
+        done_this_week = [p for p in done if p["days_since"] <= _DONE_THIS_WEEK_DAYS]
+        if done_this_week:
+            titles = ", ".join(p["title"] for p in done_this_week[:5])
+            extra = f" +{len(done_this_week) - 5} more" if len(done_this_week) > 5 else ""
+            lines.append(f"✅ {len(done_this_week)} completed this week: {titles}{extra}")
     if not cfg.get("project_sync_enabled") and orch.task_service:
         lines.append("")
         lines.append("💡 Tip: Enable /tasks_toggle_project_sync to see next actions per project")
@@ -910,7 +950,7 @@ def _project_report(orch: TelegramOrchestrator):
                 return
 
             # ── 2. Notes: batch fetch with updated_time ─────────────────────
-            all_notes = await orch.joplin_client.get_all_notes(fields="id,parent_id,updated_time")
+            all_notes = await orch.joplin_client.get_all_notes(fields="id,title,parent_id,updated_time")
             notes_by_folder: dict[str, list[dict]] = {}
             for note in all_notes:
                 fid = note.get("parent_id") or ""
@@ -936,8 +976,9 @@ def _project_report(orch: TelegramOrchestrator):
 
             # ── 4. Google Tasks: batch fetch per project ────────────────────
             tasks_by_project: dict[str, list[dict]] = {}
+            last_completed_ms_by_project: dict[str, int] = {}
             if orch.task_service and cfg.get("project_sync_enabled"):
-                tasks_by_project = orch.task_service.get_tasks_by_project(str(user.id))
+                tasks_by_project, last_completed_ms_by_project = orch.task_service.get_project_task_activity(str(user.id))
 
             # ── 5. Build project records ────────────────────────────────────
             projects: list[dict[str, Any]] = []
@@ -945,15 +986,17 @@ def _project_report(orch: TelegramOrchestrator):
                 notes = notes_by_folder.get(folder_id, [])
                 note_count = len(notes)
                 last_ms = max((n.get("updated_time") or 0 for n in notes), default=0)
-                days_since = _ms_to_days_ago(last_ms) if last_ms else 999
+                days_since = _ms_to_days_ago_user(last_ms, user.id, orch) if last_ms else 999
                 status = folder_status.get(folder_id, "untagged")
                 open_tasks = tasks_by_project.get(folder_id, [])
-                is_stalled = note_count > 0 and days_since >= _STALL_DAYS
+                task_days_since = _ms_to_days_ago_user(last_completed_ms_by_project.get(folder_id, 0), user.id, orch)
+                is_stalled = note_count > 0 and days_since >= _STALL_DAYS and task_days_since >= _STALL_DAYS
                 has_next_action = len(open_tasks) > 0
                 projects.append({
                     "folder_id": folder_id, "title": title, "note_count": note_count,
                     "days_since": days_since, "status": status, "open_tasks": open_tasks,
                     "is_stalled": is_stalled, "has_next_action": has_next_action,
+                    "task_days_since": task_days_since,
                 })
 
             # ── Drill-down mode ─────────────────────────────────────────────
@@ -979,6 +1022,20 @@ def _project_report(orch: TelegramOrchestrator):
                     lines.append("📌 No open tasks — use /task to add one")
                 lines.append("")
                 lines.append(f"📂 {match['note_count']} note(s)")
+                # Last 3 notes updated (by updated_time)
+                folder_notes = notes_by_folder.get(match["folder_id"], [])
+                folder_notes_sorted = sorted(
+                    folder_notes,
+                    key=lambda n: int(n.get("updated_time") or 0),
+                    reverse=True,
+                )
+                recent = [n for n in folder_notes_sorted if n.get("title")][:3]
+                if recent:
+                    lines.append("")
+                    lines.append("🗂️ Recently updated notes:")
+                    for n in recent:
+                        d = _ms_to_days_ago_user(int(n.get("updated_time") or 0), user.id, orch)
+                        lines.append(f"  • {n.get('title', 'Untitled')} · {d}d ago")
                 if match["days_since"] < 999:
                     lines.append(f"🕐 Last activity: {match['days_since']} day(s) ago")
                 else:
@@ -1031,6 +1088,23 @@ def _project_report(orch: TelegramOrchestrator):
             if not active:
                 lines.append("✨ No active projects. Start one with /project_new")
             else:
+                needs_attention = [
+                    p for p in active
+                    if (p["is_stalled"] or (cfg.get("project_sync_enabled") and not p["has_next_action"]))
+                ]
+                if needs_attention:
+                    lines.append("🚨 <b>Needs attention</b>")
+                    for p in needs_attention[:10]:
+                        badge = _STATUS_BADGES.get(p["status"], "⚪")
+                        flags: list[str] = []
+                        if p["is_stalled"]:
+                            flags.append(f"⚠️ stalled ({p['days_since']}d)")
+                        if cfg.get("project_sync_enabled") and not p["has_next_action"]:
+                            flags.append("📌 no next action")
+                        suffix = f" — {' · '.join(flags)}" if flags else ""
+                        lines.append(f"  • <b>{p['title']}</b>  {badge}{suffix}")
+                    lines.append("")
+
                 for p in active:
                     badge = _STATUS_BADGES.get(p["status"], "⚪")
                     stall_flag = " ⚠️ Stalled" if p["is_stalled"] else ""
@@ -1050,9 +1124,11 @@ def _project_report(orch: TelegramOrchestrator):
                     lines.append("")
 
             if done:
-                titles = ", ".join(p["title"] for p in done[:5])
-                extra = f" +{len(done) - 5} more" if len(done) > 5 else ""
-                lines.append(f"✅ {len(done)} done: {titles}{extra}")
+                done_this_week = [p for p in done if p["days_since"] <= _DONE_THIS_WEEK_DAYS]
+                if done_this_week:
+                    titles = ", ".join(p["title"] for p in done_this_week[:5])
+                    extra = f" +{len(done_this_week) - 5} more" if len(done_this_week) > 5 else ""
+                    lines.append(f"✅ {len(done_this_week)} completed this week: {titles}{extra}")
 
             if not cfg.get("project_sync_enabled") and orch.task_service:
                 lines.append("")
