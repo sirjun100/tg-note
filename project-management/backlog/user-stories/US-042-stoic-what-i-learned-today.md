@@ -2,7 +2,7 @@
 
 **Status**: ✅ Completed
 **Priority**: 🟡 Medium
-**Story Points**: 4
+**Story Points**: 5
 **Created**: 2026-03-06
 **Updated**: 2026-03-08
 **Assigned Sprint**: Sprint 18

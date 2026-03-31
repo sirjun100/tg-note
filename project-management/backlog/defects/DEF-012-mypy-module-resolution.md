@@ -2,7 +2,7 @@
 
 **Status**: ✅ Completed
 **Priority**: 🟡 Medium
-**Story Points**: 0.5
+**Story Points**: 1
 **Created**: 2026-03-05
 **Updated**: 2026-03-05
 **Assigned Sprint**: Backlog

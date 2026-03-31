@@ -23,11 +23,11 @@ This is a generic template for creating user stories (Product Backlog Items). Co
 
 [← Back to Product Backlog](../product-backlog.md)
 
-**Status**: ⭕ To Do  
+**Status**: ✅ Done
 **Priority**: 🟡 Medium  
 **Story Points**: 5 (Fibonacci: 1, 2, 3, 5, 8, 13)  
 **Created**: 2026-03-10  
-**Updated**: 2026-03-10
+**Updated**: 2026-03-24
 **Assigned Sprint**: Sprint 20
 
 ## Description
@@ -51,11 +51,11 @@ As a user, I want the bot to understand what I mean even when I phrase things ca
 
 ## Acceptance Criteria
 
-- [ ] - Bot correctly identifies intent from informal or ambiguous phrasing
-- [ ] - Bot handles partial sentences and colloquial expressions
-- [ ] - When intent is unclear, bot asks a clarifying question rather than failing
-- [ ] - Works across supported languages (English and French)
-- [ ] - No need for explicit command syntax for common actions
+- [x] - Bot correctly identifies intent from informal or ambiguous phrasing
+- [x] - Bot handles partial sentences and colloquial expressions
+- [x] - When intent is unclear, bot asks a clarifying question rather than failing
+- [x] - Works across supported languages (English and French)
+- [x] - No need for explicit command syntax for common actions
 
 **Tips for Good Acceptance Criteria**:
 - Be specific and testable
@@ -137,8 +137,8 @@ Examples:
 
 **Complete before marking status as Done.** Verify each acceptance criterion is met, then mark with `[x]`.
 
-- [ ] All acceptance criteria above verified as met
-- [ ] Each criterion tested or inspected and confirmed
+- [x] All acceptance criteria above verified as met
+- [x] Each criterion tested or inspected and confirmed
 
 ## History
 

@@ -1,6 +1,6 @@
 ---
 template_version: 1.1.0
-last_updated: 2026-03-17
+last_updated: 2026-03-24
 compatible_with: [feature-request, sprint-planning, product-backlog]
 requires: [markdown-support]
 ---
@@ -9,11 +9,11 @@ requires: [markdown-support]
 
 [← Back to Product Backlog](../product-backlog.md)
 
-**Status**: ⏳ In Progress
+**Status**: ✅ Done
 **Priority**: 🟠 High
 **Story Points**: 5
 **Created**: 2026-03-17
-**Updated**: 2026-03-19
+**Updated**: 2026-03-24
 **Assigned Sprint**: Sprint 20
 
 ## Description
@@ -28,21 +28,21 @@ so that my journal entries feel more meaningful and memorable when I review them
 
 ## Acceptance Criteria
 
-- [ ] **AC-1: Generate image after save**
-  - [ ] When the user completes a Stoic session and runs `/stoic_done`, the bot generates an image based on the reflection content (and mode: `morning` or `evening`).
-  - [ ] The image generation happens after the note content is finalized (including replace/append flows).
+- [x] **AC-1: Generate image after save**
+  - [x] When the user completes a Stoic session and runs `/stoic_done`, the bot generates an image based on the reflection content (and mode: `morning` or `evening`).
+  - [x] The image generation happens after the note content is finalized (including replace/append flows).
 
-- [ ] **AC-2: Attach image to the Joplin note**
-  - [ ] The generated image is uploaded as a Joplin resource and embedded into the saved note body.
-  - [ ] The note remains valid Markdown and renders the image in Joplin.
+- [x] **AC-2: Attach image to the Joplin note**
+  - [x] The generated image is uploaded as a Joplin resource and embedded into the saved note body.
+  - [x] The note remains valid Markdown and renders the image in Joplin.
 
-- [ ] **AC-3: Safe, tasteful prompt**
-  - [ ] Prompt produces a non-photorealistic, journal-appropriate visual (e.g., minimal illustration / watercolor / ink style).
-  - [ ] Prompt must avoid including personally identifying details, medical claims, or explicit content.
+- [x] **AC-3: Safe, tasteful prompt**
+  - [x] Prompt produces a non-photorealistic, journal-appropriate visual (e.g., minimal illustration / watercolor / ink style).
+  - [x] Prompt must avoid including personally identifying details, medical claims, or explicit content.
 
-- [ ] **AC-4: UX and failure handling**
-  - [ ] User sees a short “Generating image…” message, then a success confirmation when the note is updated.
-  - [ ] If image generation fails, the reflection is still saved; the bot reports a concise error and does not break the Stoic flow.
+- [x] **AC-4: UX and failure handling**
+  - [x] User sees a short “Generating image…” message, then a success confirmation when the note is updated.
+  - [x] If image generation fails, the reflection is still saved; the bot reports a concise error and does not break the Stoic flow.
 
 ## Notes
 

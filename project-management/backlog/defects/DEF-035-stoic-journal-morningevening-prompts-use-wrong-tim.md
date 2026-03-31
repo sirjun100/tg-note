@@ -2,7 +2,7 @@
 
 [← Back to Product Backlog](../product-backlog.md)
 
-**Status**: ⭕ To Do
+**Status**: ✅ Done
 **Priority**: 🟠 High
 **Story Points**: 5
 **Created**: 2026-03-29
