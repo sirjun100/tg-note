@@ -2,7 +2,7 @@
 Timezone utilities for timezone-aware datetime operations.
 
 Provides centralized timezone handling based on user configuration,
-with fallback to US/Eastern for users without a configured timezone.
+with fallback to the DEFAULT_TIMEZONE setting (default: America/Montreal).
 """
 
 from __future__ import annotations
@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 
 import pytz
 
+from src.settings import get_settings
+
 if TYPE_CHECKING:
     from src.logging_service import LoggingService
 
@@ -22,12 +24,15 @@ logger = logging.getLogger(__name__)
 _TIMEZONE_CACHE: dict[int, tuple[str, float]] = {}
 _CACHE_TTL = 300  # 5 minutes
 
-DEFAULT_TIMEZONE = "US/Eastern"
+
+def _default_timezone() -> str:
+    """Get default timezone from app settings."""
+    return get_settings().default_timezone
 
 
 def get_user_timezone(user_id: int, logging_service: LoggingService | None) -> str:
     """
-    Get user's configured timezone, with fallback to US/Eastern.
+    Get user's configured timezone, with fallback to DEFAULT_TIMEZONE setting.
 
     Caches timezone lookups for 5 minutes to minimize DB queries.
 
@@ -45,7 +50,7 @@ def get_user_timezone(user_id: int, logging_service: LoggingService | None) -> s
             return tz_str
 
     if not logging_service:
-        return DEFAULT_TIMEZONE
+        return _default_timezone()
 
     try:
         # Get timezone from report configuration
@@ -61,14 +66,14 @@ def get_user_timezone(user_id: int, logging_service: LoggingService | None) -> s
             except Exception as exc:
                 logger.warning(
                     "Invalid timezone '%s' for user %d: %s. Using default %s",
-                    tz_str, user_id, exc, DEFAULT_TIMEZONE
+                    tz_str, user_id, exc, _default_timezone()
                 )
     except Exception as exc:
-        logger.warning("Failed to get timezone for user %d: %s. Using default %s", user_id, exc, DEFAULT_TIMEZONE)
+        logger.warning("Failed to get timezone for user %d: %s. Using default %s", user_id, exc, _default_timezone())
 
     # Cache the fallback result
-    _TIMEZONE_CACHE[user_id] = (DEFAULT_TIMEZONE, datetime.now().timestamp())
-    return DEFAULT_TIMEZONE
+    _TIMEZONE_CACHE[user_id] = (_default_timezone(), datetime.now().timestamp())
+    return _default_timezone()
 
 
 def get_user_timezone_aware_now(user_id: int, logging_service: LoggingService | None) -> datetime:
@@ -134,6 +139,24 @@ def get_current_date_str(user_id: int, logging_service: LoggingService | None) -
     """
     now = get_user_timezone_aware_now(user_id, logging_service)
     return now.strftime("%Y-%m-%d")
+
+
+def get_today_in_default_tz() -> str:
+    """Get today's date string (YYYY-MM-DD) in the configured default timezone."""
+    try:
+        tz = pytz.timezone(_default_timezone())
+        return datetime.now(tz=tz).strftime("%Y-%m-%d")
+    except Exception:
+        return datetime.now(tz=pytz.UTC).strftime("%Y-%m-%d")
+
+
+def get_now_in_default_tz() -> datetime:
+    """Get current datetime in the configured default timezone."""
+    try:
+        tz = pytz.timezone(_default_timezone())
+        return datetime.now(tz=tz)
+    except Exception:
+        return datetime.now(tz=pytz.UTC)
 
 
 def clear_timezone_cache(user_id: int | None = None) -> None:

@@ -22,6 +22,7 @@ from src.reading_service import (
     mark_as_read,
 )
 from src.security_utils import check_whitelist, format_error_message, format_success_message
+from src.timezone_utils import get_now_in_default_tz
 from src.url_enrichment import URL_PATTERN
 
 if TYPE_CHECKING:
@@ -85,7 +86,7 @@ def _readlater_cmd(orch: TelegramOrchestrator):
         url = urls[0]
         await msg.reply_text("📚 Fetching article...")
         try:
-            result = await add_to_queue(orch.joplin_client, url, datetime.utcnow())
+            result = await add_to_queue(orch.joplin_client, url, get_now_in_default_tz())
             if result.get("duplicate"):
                 await msg.reply_text(
                     format_success_message(f"Already in queue: {result.get('title', 'Untitled')}")

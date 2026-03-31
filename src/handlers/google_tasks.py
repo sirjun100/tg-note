@@ -596,8 +596,10 @@ def _days_overdue_label(due_str: str) -> str:
     """Return ' · N days overdue' string for a due date string."""
     try:
         from datetime import date
+
+        from src.timezone_utils import get_now_in_default_tz
         due_date = date.fromisoformat(due_str[:10])
-        delta = (date.today() - due_date).days
+        delta = (get_now_in_default_tz().date() - due_date).days
         if delta == 1:
             return " · 1 day overdue"
         elif delta > 1:

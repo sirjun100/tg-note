@@ -75,6 +75,7 @@ def _daily_quote(mode: str) -> str:
     pool = quotes.get(mode, quotes["morning"])
     if not pool:
         return ""
+    # Use UTC ordinal for consistent daily rotation across timezones
     idx = datetime.now(UTC).toordinal() % len(pool)
     return pool[idx]
 
@@ -1043,7 +1044,8 @@ def _stoic_review(orch: TelegramOrchestrator):
             return
 
         # Filter to past 7 days (exclude existing review notes)
-        cutoff = (datetime.now(UTC) - timedelta(days=7)).date()
+        now_local = get_user_timezone_aware_now(user.id, orch.logging_service)
+        cutoff = (now_local - timedelta(days=7)).date()
         daily_notes = [
             n for n in notes_in_folder
             if "Weekly Stoic Review" not in n.get("title", "")
@@ -1088,7 +1090,7 @@ def _stoic_review(orch: TelegramOrchestrator):
             return
 
         # Save review note
-        week_label = datetime.now(UTC).strftime("%Y-W%W")
+        week_label = now_local.strftime("%Y-W%W")
         review_title = f"{week_label} - Weekly Stoic Review"
         review_body = f"# {review_title}\n\n{synthesis}\n\n---\n*Generated from {len(recent)} journal entries.*"
         try:

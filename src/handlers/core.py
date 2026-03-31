@@ -387,7 +387,9 @@ def _learnings(orch: TelegramOrchestrator):
         await update.message.reply_text("📚 Fetching your learnings from this week...")
 
         STOIC_PATH = ["01 - Areas", "📓 Journaling", "Stoic Journal"]
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timedelta
+
+        from src.timezone_utils import get_user_timezone_aware_now
         try:
             folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_PATH)
             notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
@@ -396,7 +398,8 @@ def _learnings(orch: TelegramOrchestrator):
             await update.message.reply_text("❌ Could not access Stoic Journal in Joplin.")
             return
 
-        cutoff = (datetime.now(UTC) - timedelta(days=7)).date()
+        now_local = get_user_timezone_aware_now(user.id, orch.logging_service)
+        cutoff = (now_local - timedelta(days=7)).date()
         daily_notes = [
             n for n in notes_in_folder
             if "Daily Stoic Reflection" in n.get("title", "")

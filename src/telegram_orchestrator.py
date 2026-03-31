@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
 from config import TELEGRAM_BOT_TOKEN
 from src.enrichment_service import EnrichmentService
+from src.health.health_service import HealthService
+from src.health.health_store import HealthStore
 from src.joplin_client import JoplinClient
 from src.llm_orchestrator import LLMOrchestrator
 from src.logging_service import LoggingService
@@ -53,10 +55,12 @@ class TelegramOrchestrator:
         self.joplin_client = JoplinClient()
         self.llm_orchestrator = LLMOrchestrator()
 
-        from config import LOGS_DB_PATH, STATE_DB_PATH
+        settings = get_settings()
 
-        self.state_manager = StateManager(db_path=STATE_DB_PATH)
-        self.logging_service = LoggingService(db_path=LOGS_DB_PATH)
+        self.state_manager = StateManager(db_path=settings.database.state_db_path)
+        self.logging_service = LoggingService(db_path=settings.database.logs_db_path)
+        self.health_store = HealthStore(db_path=settings.database.health_db_path)
+        self.health_service = HealthService(store=self.health_store)
 
         self.task_service: TaskService | None = None
         if GOOGLE_TASKS_AVAILABLE:
@@ -171,6 +175,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
         register_flashcard_handlers,
         register_google_tasks_handlers,
         register_habit_handlers,
+        register_health_handlers,
         register_photo_handlers,
         register_planning_handlers,
         register_profile_handlers,
@@ -193,6 +198,7 @@ def _build_application(orchestrator: TelegramOrchestrator) -> Application:
     register_photo_handlers(application, orchestrator)
     register_reading_handlers(application, orchestrator)
     register_habit_handlers(application, orchestrator)
+    register_health_handlers(application, orchestrator)
     register_flashcard_handlers(application, orchestrator)
     register_planning_handlers(application, orchestrator)
     register_profile_handlers(application, orchestrator)

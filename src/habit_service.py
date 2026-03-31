@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from src.settings import get_settings
+from src.timezone_utils import get_now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +204,7 @@ def delete_today_entry(user_id: int, habit_id: str, entry_date: date) -> bool:
 
 def get_entries_for_habit(user_id: int, habit_id: str, limit_days: int = 365) -> list[dict[str, Any]]:
     """Get entries for a habit, most recent first."""
-    cutoff = (date.today() - timedelta(days=limit_days)).isoformat()
+    cutoff = (get_now_in_default_tz().date() - timedelta(days=limit_days)).isoformat()
 
     def do(conn):
         cursor = conn.cursor()

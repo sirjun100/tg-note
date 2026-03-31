@@ -35,9 +35,9 @@ class TestGetUserTimezone(unittest.TestCase):
         clear_timezone_cache()
 
     def test_returns_default_when_no_logging_service(self):
-        """Should return US/Eastern when logging_service is None."""
+        """Should return America/Montreal when logging_service is None."""
         tz = get_user_timezone(123, None)
-        self.assertEqual(tz, "US/Eastern")
+        self.assertEqual(tz, "America/Montreal")
 
     def test_returns_configured_timezone(self):
         """Should return timezone from report configuration."""
@@ -50,32 +50,32 @@ class TestGetUserTimezone(unittest.TestCase):
         self.assertEqual(tz, "Europe/London")
 
     def test_returns_default_when_no_config(self):
-        """Should return US/Eastern when user has no configuration."""
+        """Should return America/Montreal when user has no configuration."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = None
 
         tz = get_user_timezone(123, mock_logging)
-        self.assertEqual(tz, "US/Eastern")
+        self.assertEqual(tz, "America/Montreal")
 
     def test_returns_default_when_timezone_missing(self):
-        """Should return US/Eastern when timezone key missing from config."""
+        """Should return America/Montreal when timezone key missing from config."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
             "enabled": True
         }
 
         tz = get_user_timezone(123, mock_logging)
-        self.assertEqual(tz, "US/Eastern")
+        self.assertEqual(tz, "America/Montreal")
 
     def test_returns_default_for_invalid_timezone(self):
-        """Should return US/Eastern when timezone string is invalid."""
+        """Should return America/Montreal when timezone string is invalid."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
             "timezone": "Invalid/Timezone"
         }
 
         tz = get_user_timezone(123, mock_logging)
-        self.assertEqual(tz, "US/Eastern")
+        self.assertEqual(tz, "America/Montreal")
 
     def test_caches_timezone_lookup(self):
         """Should cache timezone lookups to avoid repeated DB queries."""
@@ -110,12 +110,12 @@ class TestGetUserTimezoneAwareNow(unittest.TestCase):
         """Should return timezone-aware datetime object."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
-            "timezone": "US/Eastern"
+            "timezone": "America/Montreal"
         }
 
         now = get_user_timezone_aware_now(123, mock_logging)
         self.assertIsNotNone(now.tzinfo)
-        self.assertEqual(str(now.tzinfo), "US/Eastern")
+        self.assertEqual(str(now.tzinfo), "America/Montreal")
 
     def test_returns_correct_time_in_user_timezone(self):
         """Should return time in user's timezone, not UTC."""
@@ -166,14 +166,14 @@ class TestFormatDateForUser(unittest.TestCase):
         """Should convert to user's timezone before formatting."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
-            "timezone": "US/Eastern"
+            "timezone": "America/Montreal"
         }
 
         # Create a UTC datetime at 11:30 PM UTC on March 15
         dt_utc = datetime(2025, 3, 15, 23, 30, 0, tzinfo=pytz.UTC)
         formatted = format_date_for_user(123, mock_logging, dt_utc)
 
-        # US/Eastern is UTC-4 (EDT), so 11:30 PM UTC is 7:30 PM EDT on same day
+        # America/Montreal is UTC-4 (EDT), so 11:30 PM UTC is 7:30 PM EDT on same day
         self.assertEqual(formatted, "2025-03-15")
 
     def test_handles_naive_datetime(self):
@@ -191,23 +191,23 @@ class TestFormatDateForUser(unittest.TestCase):
         """Should handle midnight boundary when crossing timezones."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
-            "timezone": "US/Eastern"
+            "timezone": "America/Montreal"
         }
 
         # Create a UTC datetime at 7:30 AM UTC on March 16
-        # In US/Eastern (EDT, UTC-4), this is 3:30 AM on March 16
+        # In America/Montreal (EDT, UTC-4), this is 3:30 AM on March 16
         dt_utc = datetime(2025, 3, 16, 7, 30, 0, tzinfo=pytz.UTC)
         formatted = format_date_for_user(123, mock_logging, dt_utc)
         self.assertEqual(formatted, "2025-03-16")
 
         # Create a UTC datetime at 4:00 AM UTC on March 16
-        # In US/Eastern (EDT, UTC-4), this is 12:00 AM (midnight) on March 16
+        # In America/Montreal (EDT, UTC-4), this is 12:00 AM (midnight) on March 16
         dt_utc = datetime(2025, 3, 16, 4, 0, 0, tzinfo=pytz.UTC)
         formatted = format_date_for_user(123, mock_logging, dt_utc)
         self.assertEqual(formatted, "2025-03-16")
 
         # Create a UTC datetime at 3:59 AM UTC on March 16
-        # In US/Eastern (EDT, UTC-4), this is 11:59 PM on March 15
+        # In America/Montreal (EDT, UTC-4), this is 11:59 PM on March 15
         dt_utc = datetime(2025, 3, 16, 3, 59, 0, tzinfo=pytz.UTC)
         formatted = format_date_for_user(123, mock_logging, dt_utc)
         self.assertEqual(formatted, "2025-03-15")
@@ -240,13 +240,13 @@ class TestGetCurrentDateStr(unittest.TestCase):
         """Should use user's timezone for current date."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
-            "timezone": "US/Eastern"
+            "timezone": "America/Montreal"
         }
 
         date_str = get_current_date_str(123, mock_logging)
 
-        # Should return today's date in US/Eastern timezone
-        eastern = pytz.timezone("US/Eastern")
+        # Should return today's date in America/Montreal timezone
+        eastern = pytz.timezone("America/Montreal")
         today_eastern = datetime.now(tz=eastern).strftime("%Y-%m-%d")
 
         self.assertEqual(date_str, today_eastern)
@@ -263,12 +263,12 @@ class TestClearTimezoneCache(unittest.TestCase):
         """Should clear cache for specific user."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
-            "timezone": "US/Eastern"
+            "timezone": "America/Montreal"
         }
 
         # Populate cache
         tz1 = get_user_timezone(123, mock_logging)
-        self.assertEqual(tz1, "US/Eastern")
+        self.assertEqual(tz1, "America/Montreal")
 
         # Clear specific user
         clear_timezone_cache(123)
@@ -286,7 +286,7 @@ class TestClearTimezoneCache(unittest.TestCase):
         """Should clear cache for all users when user_id is None."""
         mock_logging = MagicMock()
         mock_logging.get_report_configuration.return_value = {
-            "timezone": "US/Eastern"
+            "timezone": "America/Montreal"
         }
 
         # Populate cache for multiple users

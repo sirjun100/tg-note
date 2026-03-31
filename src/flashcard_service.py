@@ -10,11 +10,12 @@ import logging
 import sqlite3
 import threading
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 from src.settings import get_settings
+from src.timezone_utils import get_now_in_default_tz, get_today_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +200,7 @@ def get_due_cards(
     limit: int = 10,
 ) -> list[dict[str, Any]]:
     """Get cards due for review: new cards + cards with next_review <= today."""
-    today = date.today().isoformat()
+    today = get_today_in_default_tz()
 
     def do(conn):
         cursor = conn.cursor()
@@ -248,7 +249,8 @@ def record_review(
         ef = prev["easiness_factor"]
 
     new_interval, new_ef = _schedule_card(rating, interval, ef)
-    next_review = (date.today() + timedelta(days=new_interval)).isoformat()
+    today = get_now_in_default_tz().date()
+    next_review = (today + timedelta(days=new_interval)).isoformat()
 
     def do(conn):
         cursor = conn.cursor()
@@ -285,7 +287,7 @@ def update_session(session_id: str, cards_shown: int, cards_correct: int) -> Non
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE flashcard_sessions SET cards_shown = ?, cards_correct = ?, ended_at = ? WHERE id = ?",
-            (cards_shown, cards_correct, datetime.utcnow().isoformat(), session_id),
+            (cards_shown, cards_correct, get_now_in_default_tz().isoformat(), session_id),
         )
         conn.commit()
 
@@ -296,7 +298,7 @@ def get_stats(user_id: int) -> dict[str, Any]:
     """Get flashcard stats: due count, total cards."""
     def do(conn):
         cursor = conn.cursor()
-        today = date.today().isoformat()
+        today = get_today_in_default_tz()
 
         cursor.execute("SELECT COUNT(*) FROM flashcards WHERE user_id = ?", (user_id,))
         total = cursor.fetchone()[0]
@@ -325,6 +327,19 @@ def get_stats(user_id: int) -> dict[str, Any]:
         due_count = new_count + reviewed_due
 
         return {"total": total, "due": due_count}
+
+    return _with_conn(do)
+
+
+def get_extracted_note_ids(user_id: int) -> set[str]:
+    """Return the set of note_ids that already have flashcards for this user."""
+    def do(conn):
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT note_id FROM flashcards WHERE user_id = ?",
+            (user_id,),
+        )
+        return {row[0] for row in cursor.fetchall()}
 
     return _with_conn(do)
 

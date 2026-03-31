@@ -90,6 +90,7 @@ class DatabaseSettings(BaseSettings):
 
     logs_db_path: str = Field(default="data/bot/bot_logs.db", alias="LOGS_DB_PATH")
     state_db_path: str = Field(default="data/bot/conversation_state.db", alias="STATE_DB_PATH")
+    health_db_path: str = Field(default="data/bot/health.db", alias="HEALTH_DB_PATH")
 
 
 class AppSettings(BaseSettings):
@@ -102,6 +103,7 @@ class AppSettings(BaseSettings):
     )
 
     debug: bool = Field(default=False, alias="DEBUG")
+    default_timezone: str = Field(default="America/Montreal", alias="DEFAULT_TIMEZONE")
 
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)  # type: ignore[arg-type]
     joplin: JoplinSettings = Field(default_factory=JoplinSettings)  # type: ignore[arg-type]
