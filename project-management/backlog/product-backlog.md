@@ -9,13 +9,13 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-10 (Sprint 17 ✅, Sprint 18 ✅, Sprint 19 ✅, Sprint 20 ⏳)
+**Last Updated**: 2026-03-29 (Sprint 17 ✅, Sprint 18 ✅, Sprint 19 ✅, Sprint 20 ⏳)
 
 ## Project Overview
 
 **Project Name**: Intelligent Telegram-Joplin Bot
 **Current Sprint**: Sprint 20 (⏳ In Progress)
-**Status**: ⏳ Sprint 20 In Progress — GTD Dashboard & Project Intelligence (US-059, US-060, US-055, US-058 stretch)
+**Status**: ⏳ Sprint 20 In Progress — GTD Dashboard & Project Intelligence (US-059, US-060, US-055, US-061 ✅; US-058 ✅; US-057 in progress in codebase)
 **Timeline**: Sprint 10–16 ✅; Sprint 9 (US-016) ~55%
 **Quality**: Production Ready ✅
 
@@ -44,6 +44,8 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
+| [US-062](user-stories/US-062-web-interface-for-telegram-joplin-app-laravel-vuej.md) | Web interface for Telegram-Joplin app (Laravel + V | 🟠 High | 13 | ⭕ | - | 2026-03-29 | 2026-03-29 |
+| [US-062](user-stories/US-062-stoic-session-create-google-tasks-from-top-3-prior.md) | Stoic Session: Create Google Tasks from Top 3 Prio | 🟠 High | 5 | ⭕ | - | 2026-03-24 | 2026-03-24 |
 | [US-001](user-stories/US-001-git-commit-template.md) | Add Git Commit Message Template | 🟠 High | 5 | ✅ | Sprint 1 | 2026-01-01 | 2026-01-01 |
 | [US-002](user-stories/US-002-mermaid-workflow-diagrams.md) | Add Mermaid Workflow Diagrams for Backlog Management | 🟠 High | 5 | ✅ | Sprint 1 | 2026-01-01 | 2026-01-01 |
 | [US-003](user-stories/US-003-update-quick-start-with-setup-script.md) | Update Quick Start Guide to Use Setup Script | 🟠 High | 3 | ✅ | Sprint 3 | 2026-01-01 | 2025-01-27 |
@@ -101,16 +103,17 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 | [US-055](user-stories/US-055-google-tasks-duplicate-check-before-add.md) | Google Tasks: Duplicate Check Before Add, Offer Edit/Priority/Cancel | 🟡 Medium | 5 | ✅ | Sprint 20 | 2026-03-09 | 2026-03-10 |
 | [US-056](user-stories/US-056-grocery-shopping-price-and-store-search.md) | Grocery/Shopping: Find Stores Nearby and Compare Prices (Local + Online) | 🟡 Medium | 8 | ⭕ | Backlog | 2026-03-09 | 2026-03-09 |
 | [US-057](user-stories/US-057-parse-health-data-from-garmin-fatsecret-and-arbole.md) | Parse health data from Garmin, FatSecret, and Arbo | 🟡 Medium | 8 | ⭕ | - | 2026-03-10 | 2026-03-10 |
-| [US-058](user-stories/US-058-bot-understands-natural-conversational-intent-from.md) | Bot understands natural conversational intent from user messages | 🟡 Medium | 5 | ⭕ | Sprint 20 | 2026-03-10 | 2026-03-10 |
+| [US-058](user-stories/US-058-bot-understands-natural-conversational-intent-from.md) | Bot understands natural conversational intent from user messages | 🟡 Medium | 5 | ✅ | Sprint 20 | 2026-03-10 | 2026-03-28 |
 | [US-059](user-stories/US-059-us-059-world-class-gtd-dashboard-tasks_status-as-p.md) | US-059 - World-Class GTD Dashboard: /tasks_status Cockpit | 🟠 High | 5 | ✅ | Sprint 20 | 2026-03-10 | 2026-03-10 |
 | [US-060](user-stories/US-060-us-060-world-class-project-report-full-portfolio-v.md) | US-060 - World-Class Project Report: Full Portfolio View | 🟠 High | 8 | ✅ | Sprint 20 | 2026-03-10 | 2026-03-19 |
-| [US-061](user-stories/US-061-stoic-llm-image-after-reflection.md) | LLM-generated image after Stoic reflection | 🟠 High | 5 | ⏳ | Sprint 20 | 2026-03-17 | 2026-03-19 |
+| [US-061](user-stories/US-061-stoic-llm-image-after-reflection.md) | LLM-generated image after Stoic reflection | 🟠 High | 5 | ✅ | Sprint 20 | 2026-03-17 | 2026-03-24 |
 
 ## Defects
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
-| [DEF-034](defects/DEF-034-stoic-morning-saved-to-areas-instead-of-numbered.md) | /stoic morning saved to Areas instead of numbered | 🟠 High | 2 | ⭕ | - | 2026-03-17 | 2026-03-17 |
+| [DEF-035](defects/DEF-035-stoic-journal-morningevening-prompts-use-wrong-tim.md) | Stoic Journal morning/evening prompts use wrong ti | 🟠 High | 3 | ⭕ | - | 2026-03-29 | 2026-03-29 |
+| [DEF-034](defects/DEF-034-stoic-morning-saved-to-areas-instead-of-numbered.md) | /stoic morning saved to Areas instead of numbered | 🟠 High | 2 | ✅ | - | 2026-03-17 | 2026-03-24 |
 | [DEF-033](defects/DEF-033-joplin-agent-fails-to-take-screenshot-of-youtube-v.md) | Joplin agent fails to take screenshot of YouTube v | 🟠 High | 3 | ✅ | Sprint 19 | 2026-03-10 | 2026-03-10 |
 | [DEF-032](defects/DEF-032-joplin-did-not-process-voice-message-transcription.md) | Joplin did not process voice message transcription | 🟠 High | 3 | ✅ | Sprint 19 | 2026-03-10 | 2026-03-10 |
 | [DEF-001](defects/DEF-001-google-tasks-sync-no-token.md) | Google Tasks Sync Fails: No Google token found for user | 🟠 High | 2 | ✅ | Backlog | 2026-03-01 | 2026-03-01 |

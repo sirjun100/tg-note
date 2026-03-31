@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram-Joplin Web App — Questionnaire</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface-hover: #222636;
+            --border: #2a2e3d;
+            --text: #e4e6ed;
+            --text-muted: #8b8fa3;
+            --accent: #6c63ff;
+            --accent-hover: #5a52d5;
+            --accent-glow: rgba(108, 99, 255, 0.15);
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, 0.1);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #6c63ff, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .progress-bar {
+            background: var(--surface);
+            border-radius: 20px;
+            height: 6px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #6c63ff, #a78bfa);
+            height: 100%;
+            width: 0%;
+            transition: width 0.4s ease;
+            border-radius: 20px;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-icon {
+            font-size: 1.3rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .question {
+            margin-bottom: 1.2rem;
+        }
+
+        .question:last-child {
+            margin-bottom: 0;
+        }
+
+        .question label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+        }
+
+        .question .hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .question textarea,
+        .question input[type="text"] {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 0.6rem 0.8rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+        .question textarea:focus,
+        .question input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .question textarea {
+            min-height: 60px;
+        }
+
+        /* Radio/checkbox options */
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.3rem;
+        }
+
+        .option-btn {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 0.45rem 0.9rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .option-btn:hover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .option-btn.selected {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            color: #a78bfa;
+            font-weight: 500;
+        }
+
+        .option-btn.multi.selected {
+            border-color: var(--green);
+            background: var(--green-bg);
+            color: var(--green);
+        }
+
+        /* Copy section */
+        .copy-section {
+            background: var(--surface);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        .copy-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .copy-section p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-copy {
+            background: linear-gradient(135deg, #6c63ff, #5a52d5);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-copy:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
+        }
+
+        .btn-copy:active {
+            transform: translateY(0);
+        }
+
+        .btn-copy.copied {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        .preview {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            text-align: left;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            display: none;
+        }
+
+        .toggle-preview {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: 0.8rem;
+            text-decoration: underline;
+        }
+
+        .toggle-preview:hover {
+            color: var(--text);
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem 0.5rem; }
+            .section { padding: 1rem; }
+            .options { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Telegram-Joplin Web App</h1>
+            <p>Answer the questions below, then copy your answers to paste back into Claude.</p>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-text" id="progressText">0 / 0 answered</div>
+        </header>
+
+        <!-- Section 1: Core Purpose -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🎯</span>
+                <span class="section-title">Core Purpose</span>
+            </div>
+
+            <div class="question" data-id="q1">
+                <label>What is the primary goal of the web interface?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Dashboard to monitor/configure the bot">Dashboard to monitor/configure the bot</button>
+                    <button class="option-btn" data-value="Full alternative UI to interact with Joplin">Full alternative UI to interact with Joplin</button>
+                    <button class="option-btn" data-value="Both — dashboard + Joplin interaction">Both</button>
+                </div>
+                <div class="hint" style="margin-top:0.4rem">Or describe in your own words:</div>
+                <input type="text" data-custom="true" placeholder="e.g., A personal knowledge hub that...">
+            </div>
+
+            <div class="question" data-id="q2">
+                <label>Should users be able to send messages to the bot from the web?</label>
+                <div class="hint">Like a web-based Telegram chat, or is it more of a read/manage layer?</div>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Yes — web-based chat with the bot">Yes — web chat with bot</button>
+                    <button class="option-btn" data-value="No — management/analytics only, chat stays in Telegram">No — management only</button>
+                    <button class="option-btn" data-value="Maybe later — not for v1">Maybe later</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Users & Access -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">👤</span>
+                <span class="section-title">Users & Access</span>
+            </div>
+
+            <div class="question" data-id="q3">
+                <label>Who will use this web app?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Single-user (just me)">Single-user (just me)</button>
+                    <button class="option-btn" data-value="Multi-user (other people on the bot too)">Multi-user</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q4">
+                <label>How should authentication work?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Telegram OAuth (login with Telegram)">Telegram OAuth</button>
+                    <button class="option-btn" data-value="Laravel auth (email/password)">Laravel auth (email/password)</button>
+                    <button class="option-btn" data-value="Integrate with existing Telegram whitelist">Use existing whitelist</button>
+                    <button class="option-btn" data-value="No auth needed (local/private network only)">No auth (local only)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Features -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">✨</span>
+                <span class="section-title">Features — What should the web app expose?</span>
+            </div>
+            <div class="hint" style="margin-bottom:1rem">Select all that are must-have. You can add nice-to-haves in the text box.</div>
+
+            <div class="question" data-id="q5">
+                <label>Must-have features (select all that apply)</label>
+                <div class="options" data-type="multi">
+                    <button class="option-btn multi" data-value="Flashcards — review, practice, manage decks">Flashcards</button>
+                    <button class="option-btn multi" data-value="Stoic Journal — read/write entries, weekly reviews">Stoic Journal</button>
+                    <button class="option-btn multi" data-value="Notes — browse/search/create Joplin notes">Notes</button>
+                    <button class="option-btn multi" data-value="Health data — view imports, charts, trends">Health data</button>
+                    <button class="option-btn multi" data-value="Habits — manage and track habits">Habits</button>
+                    <button class="option-btn multi" data-value="Bot configuration — settings, prompts, logs">Bot config</button>
+                    <button class="option-btn multi" data-value="Analytics dashboard — usage stats, patterns">Analytics</button>
+                    <button class="option-btn multi" data-value="Conversation history — view past bot chats">Chat history</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q6">
+                <label>Nice-to-have features or other ideas?</label>
+                <textarea placeholder="e.g., Calendar view of journal entries, search across all data, export tools..."></textarea>
+            </div>
+        </div>
+
+        <!-- Section 4: Architecture -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🏗️</span>
+                <span class="section-title">Architecture</span>
+            </div>
+
+            <div class="question" data-id="q7">
+                <label>How should Laravel connect to the data?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Laravel talks directly to Joplin API + SQLite DB">Direct — Laravel talks to Joplin API + DB</button>
+                    <button class="option-btn" data-value="Laravel goes through the Python bot as middleman">Through Python bot</button>
+                    <button class="option-btn" data-value="Not sure — you decide">You decide</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q8">
+                <label>Frontend approach?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="SPA — Vue.js frontend with Laravel API backend (Inertia.js or pure API)">SPA (Vue + Laravel API)</button>
+                    <button class="option-btn" data-value="Hybrid — Blade templates with Vue components">Hybrid (Blade + Vue)</button>
+                    <button class="option-btn" data-value="Not sure — you decide">You decide</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q9">
+                <label>Same server as the bot, or separate?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Same server/Docker setup as the bot">Same server</button>
+                    <button class="option-btn" data-value="Separate deployment">Separate</button>
+                    <button class="option-btn" data-value="Not sure yet">Not sure</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q10">
+                <label>Should the web app share the same SQLite database the bot uses?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Yes — share the same SQLite DB">Yes — same DB</button>
+                    <button class="option-btn" data-value="No — own DB with sync mechanism">Own DB with sync</button>
+                    <button class="option-btn" data-value="Not sure — you decide">You decide</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Design & UX -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🎨</span>
+                <span class="section-title">Design & UX</span>
+            </div>
+
+            <div class="question" data-id="q11">
+                <label>UI framework / style preference?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Tailwind CSS">Tailwind CSS</button>
+                    <button class="option-btn" data-value="Vuetify (Material Design)">Vuetify</button>
+                    <button class="option-btn" data-value="PrimeVue">PrimeVue</button>
+                    <button class="option-btn" data-value="Naive UI">Naive UI</button>
+                    <button class="option-btn" data-value="No preference — you pick">You pick</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q12">
+                <label>Mobile-responsive?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Yes — mobile-first responsive design">Yes — mobile-first</button>
+                    <button class="option-btn" data-value="Desktop-focused, basic mobile support">Desktop-focused</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q13">
+                <label>Dark mode?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Dark mode only">Dark only</button>
+                    <button class="option-btn" data-value="Light mode only">Light only</button>
+                    <button class="option-btn" data-value="Both — with toggle">Both (toggle)</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q14">
+                <label>Any apps or dashboards you admire as design inspiration?</label>
+                <textarea placeholder="e.g., Notion, Linear, Obsidian, Grafana, a specific website..."></textarea>
+            </div>
+        </div>
+
+        <!-- Section 6: Real-time -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">⚡</span>
+                <span class="section-title">Real-time & Notifications</span>
+            </div>
+
+            <div class="question" data-id="q15">
+                <label>Do you want real-time updates on the web?</label>
+                <div class="hint">e.g., see bot messages appear live via WebSockets</div>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Yes — real-time updates via WebSockets">Yes — real-time</button>
+                    <button class="option-btn" data-value="No — polling or manual refresh is fine">No — refresh is fine</button>
+                    <button class="option-btn" data-value="Nice-to-have for later">Later</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q16">
+                <label>Push notifications from the web app?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Yes — browser push notifications">Yes</button>
+                    <button class="option-btn" data-value="No — Telegram stays the notification channel">No — Telegram is enough</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 7: Deployment -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🚀</span>
+                <span class="section-title">Deployment & Infrastructure</span>
+            </div>
+
+            <div class="question" data-id="q17">
+                <label>Where will this run?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Same Docker setup as the bot">Same Docker as bot</button>
+                    <button class="option-btn" data-value="VPS (DigitalOcean, Linode, etc.)">VPS</button>
+                    <button class="option-btn" data-value="Laravel Forge">Laravel Forge</button>
+                    <button class="option-btn" data-value="Cloud (AWS, GCP, etc.)">Cloud</button>
+                    <button class="option-btn" data-value="Local development only for now">Local only for now</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q18">
+                <label>Do you need CI/CD?</label>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Yes — GitHub Actions">GitHub Actions</button>
+                    <button class="option-btn" data-value="Yes — other CI">Other CI</button>
+                    <button class="option-btn" data-value="No — manual deploy is fine for now">Not now</button>
+                </div>
+            </div>
+
+            <div class="question" data-id="q19">
+                <label>Custom domain?</label>
+                <input type="text" placeholder="e.g., app.mydomain.com or 'no, not yet'">
+            </div>
+        </div>
+
+        <!-- Section 8: Data & Privacy -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🔒</span>
+                <span class="section-title">Data & Privacy</span>
+            </div>
+
+            <div class="question" data-id="q20">
+                <label>Any data that should NOT be exposed in the web UI?</label>
+                <textarea placeholder="e.g., API keys, certain note folders, health records..."></textarea>
+            </div>
+
+            <div class="question" data-id="q21">
+                <label>Do you need audit logging?</label>
+                <div class="hint">Track who accessed what, when</div>
+                <div class="options" data-type="single">
+                    <button class="option-btn" data-value="Yes — full audit trail">Yes</button>
+                    <button class="option-btn" data-value="No — not needed">No</button>
+                    <button class="option-btn" data-value="Maybe later">Later</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 9: Anything else -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">💬</span>
+                <span class="section-title">Anything Else</span>
+            </div>
+
+            <div class="question" data-id="q22">
+                <label>Any other requirements, ideas, or constraints?</label>
+                <textarea rows="4" placeholder="e.g., Must work offline, need i18n for French, want a specific landing page..."></textarea>
+            </div>
+        </div>
+
+        <!-- Copy section -->
+        <div class="copy-section">
+            <h2>All done?</h2>
+            <p>Click the button below to copy your answers, then paste them back into Claude.</p>
+            <button class="btn-copy" id="copyBtn" onclick="copyAnswers()">
+                <span id="copyIcon">📋</span>
+                <span id="copyText">Copy answers to clipboard</span>
+            </button>
+            <br>
+            <button class="toggle-preview" onclick="togglePreview()">Toggle preview</button>
+            <div class="preview" id="preview"></div>
+        </div>
+    </div>
+
+    <script>
+        // Handle option button clicks
+        document.querySelectorAll('.options').forEach(group => {
+            const type = group.dataset.type; // 'single' or 'multi'
+            group.querySelectorAll('.option-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (type === 'single') {
+                        group.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+                        btn.classList.toggle('selected');
+                    } else {
+                        btn.classList.toggle('selected');
+                    }
+                    updateProgress();
+                });
+            });
+        });
+
+        // Track text inputs for progress
+        document.querySelectorAll('.question textarea, .question input[type="text"]').forEach(el => {
+            el.addEventListener('input', updateProgress);
+        });
+
+        function updateProgress() {
+            const questions = document.querySelectorAll('.question');
+            let answered = 0;
+            questions.forEach(q => {
+                const hasSelected = q.querySelector('.option-btn.selected');
+                const textInputs = q.querySelectorAll('textarea, input[type="text"]');
+                let hasText = false;
+                textInputs.forEach(t => {
+                    if (t.value.trim()) hasText = true;
+                });
+                if (hasSelected || hasText) answered++;
+            });
+            const total = questions.length;
+            const pct = Math.round((answered / total) * 100);
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressText').textContent = `${answered} / ${total} answered`;
+        }
+
+        function getAnswers() {
+            const sections = [
+                { title: 'Core Purpose', ids: ['q1', 'q2'] },
+                { title: 'Users & Access', ids: ['q3', 'q4'] },
+                { title: 'Features', ids: ['q5', 'q6'] },
+                { title: 'Architecture', ids: ['q7', 'q8', 'q9', 'q10'] },
+                { title: 'Design & UX', ids: ['q11', 'q12', 'q13', 'q14'] },
+                { title: 'Real-time & Notifications', ids: ['q15', 'q16'] },
+                { title: 'Deployment', ids: ['q17', 'q18', 'q19'] },
+                { title: 'Data & Privacy', ids: ['q20', 'q21'] },
+                { title: 'Other', ids: ['q22'] },
+            ];
+
+            let output = '## Web App Questionnaire Answers\n\n';
+
+            sections.forEach(section => {
+                let sectionText = '';
+                section.ids.forEach(id => {
+                    const q = document.querySelector(`[data-id="${id}"]`);
+                    if (!q) return;
+                    const label = q.querySelector('label').textContent;
+
+                    // Get selected options
+                    const selected = [];
+                    q.querySelectorAll('.option-btn.selected').forEach(btn => {
+                        selected.push(btn.dataset.value);
+                    });
+
+                    // Get text inputs (skip custom inputs if an option is selected)
+                    const texts = [];
+                    q.querySelectorAll('textarea, input[type="text"]').forEach(t => {
+                        const isCustom = t.dataset.custom === 'true';
+                        if (t.value.trim()) {
+                            if (isCustom && selected.length > 0) return; // skip custom if option selected
+                            texts.push(t.value.trim());
+                        }
+                    });
+
+                    const allAnswers = [...selected, ...texts];
+                    if (allAnswers.length > 0) {
+                        sectionText += `**${label}**\n${allAnswers.join(', ')}\n\n`;
+                    }
+                });
+
+                if (sectionText) {
+                    output += `### ${section.title}\n\n${sectionText}`;
+                }
+            });
+
+            return output.trim();
+        }
+
+        function copyAnswers() {
+            const text = getAnswers();
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const icon = document.getElementById('copyIcon');
+                const label = document.getElementById('copyText');
+                btn.classList.add('copied');
+                icon.textContent = '✅';
+                label.textContent = 'Copied! Paste into Claude';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    icon.textContent = '📋';
+                    label.textContent = 'Copy answers to clipboard';
+                }, 3000);
+            });
+        }
+
+        function togglePreview() {
+            const preview = document.getElementById('preview');
+            if (preview.style.display === 'block') {
+                preview.style.display = 'none';
+            } else {
+                preview.textContent = getAnswers();
+                preview.style.display = 'block';
+            }
+        }
+
+        updateProgress();
+    </script>
+</body>
+</html>

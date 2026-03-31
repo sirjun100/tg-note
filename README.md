@@ -6,6 +6,10 @@
 
 Send a message. The AI figures out the rest.
 
+<p align="center">
+  <img src="docs/images/gtd-second-brain-workflow.png" alt="GTD + Second Brain: The Unified Productivity Workflow" width="600">
+</p>
+
 ---
 
 ## The Problem
