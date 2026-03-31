@@ -52,6 +52,10 @@ class ContentDecision(BaseModel):
         default=None,
         description="Task data (title, due_date, notes) when content_type is 'task' or 'both'",
     )
+    feature_redirect: str | None = Field(
+        default=None,
+        description="Feature to redirect to instead of creating note/task (e.g. 'stoic', 'braindump', 'dream')",
+    )
 
 class LLMOrchestrator:
     """Orchestrates LLM interactions for note generation"""
@@ -1002,6 +1006,46 @@ Return a ContentDecision with:
 For task.due_date: extract from "tomorrow", "by Friday", "next week", "March 15" etc. Use ISO format. Omit if no date mentioned.
 
 For task: Star at **beginning** of task text means priority — * or ⭐ = important (HIGH), ** = critical (CRITICAL), *** = urgent (URGENT). Include the star in the task title when user intends priority.
+
+## Feature Redirect
+
+Before creating a note or task, check if the user's message is actually requesting one of these bot features. If so, set `feature_redirect` to the feature name and `content_type` to "note" (placeholder — it won't be used).
+
+| feature_redirect | Example triggers (EN) | Example triggers (FR) |
+|---|---|---|
+| stoic | "journal", "let me reflect", "time to journal", "stoic reflection" | "journal stoïque", "réflexion", "journaliser" |
+| braindump | "brain dump", "capture thoughts", "GTD capture", "dump my thoughts" | "vider ma tête", "brain dump", "capturer mes pensées" |
+| dream | "I had a dream", "analyze my dream", "dream journal" | "j'ai rêvé", "analyser mon rêve", "journal de rêves" |
+| plan | "weekly planning", "plan my week", "planning session" | "planifier ma semaine", "session de planification" |
+| flashcard | "quiz me", "flashcards", "study session", "review cards" | "réviser", "cartes mémoire", "quiz" |
+| find | "search for", "find my note about", "look up" | "chercher", "trouver ma note sur" |
+| ask | "what do I know about", "question about my notes" | "question sur mes notes", "qu'est-ce que je sais sur" |
+| readlater | "read later", "save to reading list", "bookmark this" | "lire plus tard", "sauvegarder pour lecture" |
+| habits | "habit check", "check my habits", "habit tracker" | "mes habitudes", "suivi d'habitudes" |
+| report_daily | "daily report", "today's summary", "what did I do today" | "rapport du jour", "résumé quotidien" |
+| report_weekly | "weekly report", "week summary" | "rapport de la semaine", "résumé hebdomadaire" |
+| report_monthly | "monthly report", "month summary" | "rapport mensuel", "résumé du mois" |
+| tasks_status | "show my tasks", "task dashboard", "my tasks" | "mes tâches", "état des tâches" |
+| project_report | "project report", "project status" | "rapport de projets", "état des projets" |
+
+## Conversational Examples
+
+Informal phrasing should map naturally:
+- "remind me to pick up groceries" → task (title: "Pick up groceries")
+- "oh yeah I should call mom" → task (title: "Call mom")
+- "here's what happened at the meeting" → note
+- "on fait un brain dump?" → feature_redirect: braindump
+- "montre-moi mes tâches" → feature_redirect: tasks_status
+- "I want to journal" → feature_redirect: stoic
+- "j'ai fait un rêve bizarre" → feature_redirect: dream
+- "let's do a weekly review" → feature_redirect: plan
+- "quiz me on my notes" → feature_redirect: flashcard
+
+## NEED_INFO Guidance
+
+When you need clarification (confidence < 0.8), ask in the user's language using a friendly, conversational tone. Examples:
+- English: "I'd love to help! Could you tell me a bit more about what you'd like me to do with this?"
+- French: "Je veux bien t'aider ! Peux-tu me donner un peu plus de détails sur ce que tu veux que je fasse ?"
 """
 
         url_ctx = context.get("url_context")

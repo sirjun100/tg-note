@@ -47,10 +47,13 @@ def check_gemini_api_key_available() -> tuple[bool, str]:
     Returns (available, masked_repr for logging).
     """
     settings = get_settings()
-    api_key = settings.google.gemini_api_key or os.environ.get("GEMINI_API_KEY")
+    settings_key = settings.google.gemini_api_key
+    # Respect an explicitly configured settings value (including empty string).
+    # Fall back to env only when settings value is truly unset (None).
+    api_key = settings_key if settings_key is not None else os.environ.get("GEMINI_API_KEY")
     if not api_key or not api_key.strip():
         return False, "N/A"
-    source = "settings" if settings.google.gemini_api_key else "env"
+    source = "settings" if settings_key is not None else "env"
     return True, f"{_mask_api_key(api_key)} (from {source})"
 _GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 _MAX_RETRIES_429 = 2
@@ -96,7 +99,8 @@ async def extract_text_from_image(
     status_callback: optional async callable(msg) to update user during long OCR (e.g. every 15s).
     """
     settings = get_settings()
-    api_key = settings.google.gemini_api_key or os.environ.get("GEMINI_API_KEY")
+    settings_key = settings.google.gemini_api_key
+    api_key = settings_key if settings_key is not None else os.environ.get("GEMINI_API_KEY")
     if not api_key or not api_key.strip():
         logger.info(
             "GEMINI_API_KEY not set; skipping OCR. Set GEMINI_API_KEY in .env or environment."

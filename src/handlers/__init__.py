@@ -9,6 +9,7 @@ from src.handlers.dream import register_dream_handlers
 from src.handlers.flashcard import register_flashcard_handlers
 from src.handlers.google_tasks import register_google_tasks_handlers
 from src.handlers.habits import register_habit_handlers
+from src.handlers.health import register_health_handlers
 from src.handlers.photo import register_photo_handlers
 from src.handlers.planning import register_planning_handlers
 from src.handlers.profile import register_profile_handlers
@@ -26,6 +27,7 @@ __all__ = [
     "register_flashcard_handlers",
     "register_google_tasks_handlers",
     "register_habit_handlers",
+    "register_health_handlers",
     "register_planning_handlers",
     "register_profile_handlers",
     "register_photo_handlers",
