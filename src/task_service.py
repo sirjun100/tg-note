@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta
+from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
 from src.exceptions import GoogleAuthError, GoogleTasksConfigError
@@ -259,6 +260,20 @@ class TaskService:
         Bypasses action-item extraction — the user explicitly asked to create this task."""
         return self.create_task_with_metadata(title=title, user_id=user_id)
 
+    # US-055: Stop words to ignore in token-based fuzzy matching
+    _STOP_WORDS = frozenset([
+        "i", "me", "my", "we", "our", "a", "an", "the", "is", "am", "are",
+        "was", "were", "be", "been", "being", "do", "does", "did", "will",
+        "would", "shall", "should", "can", "could", "may", "might", "must",
+        "to", "of", "in", "for", "on", "at", "by", "with", "from", "up",
+        "out", "off", "into", "onto", "and", "or", "but", "not", "no", "nor",
+        "so", "yet", "if", "then", "than", "that", "this", "it",
+        # French
+        "je", "me", "ma", "mon", "mes", "nous", "notre", "un", "une", "le",
+        "la", "les", "est", "suis", "de", "du", "des", "en", "pour", "sur",
+        "par", "avec", "dans",
+    ])
+
     def _normalize_title_for_duplicate_check(self, title: str) -> str:
         """US-055: Normalize task title for duplicate detection (case-insensitive, strip punctuation)."""
         if not title:
@@ -267,19 +282,58 @@ class TaskService:
         s = re.sub(r"[\W_]+", "", s)
         return s
 
+    def _extract_significant_tokens(self, title: str) -> list[str]:
+        """US-055: Extract significant words (no stop words, lowered, min length 3)."""
+        words = re.findall(r"[a-zA-ZÀ-ÿ]{3,}", title.lower())
+        return [w for w in words if w not in self._STOP_WORDS]
+
+    def _fuzzy_match_score(self, proposed: str, existing: str) -> float:
+        """US-055: Compute fuzzy similarity between two task titles.
+
+        Uses two complementary approaches and returns the higher score:
+        1. SequenceMatcher ratio on full normalized strings
+        2. Token overlap (Jaccard-like) on significant words with partial matching
+        """
+        # SequenceMatcher on full normalized strings
+        norm_a = re.sub(r"\s+", " ", proposed.strip().lower())
+        norm_b = re.sub(r"\s+", " ", existing.strip().lower())
+        seq_ratio = SequenceMatcher(None, norm_a, norm_b).ratio()
+
+        # Token overlap on significant words (handles word reordering)
+        tokens_a = set(self._extract_significant_tokens(proposed))
+        tokens_b = set(self._extract_significant_tokens(existing))
+        if not tokens_a or not tokens_b:
+            return seq_ratio
+
+        # Count matches including partial stem matches (e.g. "sponsor" matches "sponsorship")
+        matched = 0
+        for ta in tokens_a:
+            for tb in tokens_b:
+                if ta == tb or ta.startswith(tb) or tb.startswith(ta):
+                    matched += 1
+                    break
+        token_score = matched / max(len(tokens_a), 1)
+
+        return max(seq_ratio, token_score)
+
     async def detect_duplicate_task(
         self,
         title: str,
         user_id: str,
         note_index: NoteIndex | None = None,
         *,
-        semantic_threshold: float = 0.90,
+        semantic_threshold: float = 0.65,
+        fuzzy_threshold: float = 0.50,
     ) -> dict[str, Any] | None:
         """
         US-055: Check if a task with the same or similar title already exists.
-        When note_index is provided, uses semantic similarity (Gemini embeddings).
-        Otherwise falls back to exact match after normalization (case-insensitive, strip punctuation).
-        Returns the first matching task dict or None.
+
+        Detection layers (in order):
+        1. Semantic similarity via Gemini embeddings (threshold 0.65)
+        2. Fuzzy token/sequence matching (threshold 0.50)
+        3. Exact normalized string match
+
+        Returns the best matching task dict or None.
         """
         if not title or not (title or "").strip():
             return None
@@ -300,25 +354,47 @@ class TaskService:
         if not tasks:
             return None
 
-        # Semantic duplicate check when embedding is available
+        # Layer 1: Semantic duplicate check via embeddings
         if note_index is not None:
             candidates = [(t.get("title") or "").strip() for t in tasks]
-            result = await note_index.find_most_similar_title(
-                title, candidates, threshold=semantic_threshold
-            )
-            if result is not None:
-                idx, _score = result
-                return tasks[idx]
-            return None
+            try:
+                result = await note_index.find_most_similar_title(
+                    title, candidates, threshold=semantic_threshold
+                )
+                if result is not None:
+                    idx, score = result
+                    logger.info("US-055: Semantic duplicate found (score=%.3f): '%s' ≈ '%s'",
+                                score, title, candidates[idx])
+                    return tasks[idx]
+            except Exception as exc:
+                logger.debug("US-055: Semantic check failed, falling through to fuzzy: %s", exc)
 
-        # Fallback: normalized string match (no Gemini / or semantic disabled)
-        normalized_proposed = self._normalize_title_for_duplicate_check(title)
-        if not normalized_proposed:
-            return None
+        # Layer 2: Fuzzy token/sequence matching
+        best_score = 0.0
+        best_task = None
         for task in tasks:
             existing_title = (task.get("title") or "").strip()
-            if self._normalize_title_for_duplicate_check(existing_title) == normalized_proposed:
-                return task
+            if not existing_title:
+                continue
+            score = self._fuzzy_match_score(title, existing_title)
+            if score > best_score:
+                best_score = score
+                best_task = task
+
+        if best_task and best_score >= fuzzy_threshold:
+            logger.info("US-055: Fuzzy duplicate found (score=%.3f): '%s' ≈ '%s'",
+                        best_score, title, (best_task.get("title") or ""))
+            return best_task
+
+        # Layer 3: Exact normalized match (catches identical titles with different punctuation)
+        normalized_proposed = self._normalize_title_for_duplicate_check(title)
+        if normalized_proposed:
+            for task in tasks:
+                existing_title = (task.get("title") or "").strip()
+                if self._normalize_title_for_duplicate_check(existing_title) == normalized_proposed:
+                    logger.info("US-055: Exact normalized duplicate: '%s' == '%s'", title, existing_title)
+                    return task
+
         return None
 
     def get_or_create_project_parent_task(

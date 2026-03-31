@@ -9,7 +9,7 @@ requires: [markdown-support]
 
 This is the main product backlog tracking all feature requests and bug fixes for the Telegram-Joplin Bot project.
 
-**Last Updated**: 2026-03-29 (Sprint 17 ✅, Sprint 18 ✅, Sprint 19 ✅, Sprint 20 ⏳)
+**Last Updated**: 2026-03-31 (Sprint 17 ✅, Sprint 18 ✅, Sprint 19 ✅, Sprint 20 ⏳)
 
 ## Project Overview
 
@@ -112,6 +112,7 @@ The Telegram-Joplin Bot is a productivity tool that bridges note-taking (Joplin)
 
 | ID | Title | Priority | Points | Status | Sprint | Created | Updated |
 |----|-------|----------|--------|--------|--------|---------|---------|
+| [DEF-036](defects/DEF-036-task-duplicate-detection-too-strict-semantic-thres.md) | Task duplicate detection too strict — semantic thr | 🟠 High | 3 | ✅ | - | 2026-03-31 | 2026-03-31 |
 | [DEF-035](defects/DEF-035-stoic-journal-morningevening-prompts-use-wrong-tim.md) | Bot uses UTC instead of configurable user timezone | 🟠 High | 5 | ✅ | - | 2026-03-29 | 2026-03-30 |
 | [DEF-034](defects/DEF-034-stoic-morning-saved-to-areas-instead-of-numbered.md) | /stoic morning saved to Areas instead of numbered | 🟠 High | 2 | ✅ | - | 2026-03-17 | 2026-03-24 |
 | [DEF-033](defects/DEF-033-joplin-agent-fails-to-take-screenshot-of-youtube-v.md) | Joplin agent fails to take screenshot of YouTube v | 🟠 High | 3 | ✅ | Sprint 19 | 2026-03-10 | 2026-03-10 |

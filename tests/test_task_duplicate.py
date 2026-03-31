@@ -173,6 +173,94 @@ class TestDetectDuplicateTaskFetchError:
         assert await service.detect_duplicate_task("Call John", "123") is None
 
 
+class TestFuzzyMatchScore:
+    """US-055: Fuzzy token/sequence matching for semantically similar tasks."""
+
+    @pytest.fixture
+    def service(self):
+        from src.task_service import TaskService
+        return TaskService(MagicMock(), MagicMock())
+
+    def test_identical_titles_score_one(self, service):
+        assert service._fuzzy_match_score("Call John", "Call John") >= 0.99
+
+    def test_similar_sponsor_tasks(self, service):
+        score = service._fuzzy_match_score(
+            "fill out sponsor form",
+            "I will try to fill out the sponsorship for my daughter",
+        )
+        assert score >= 0.50, f"Expected >= 0.50, got {score:.3f}"
+
+    def test_partial_stem_match(self, service):
+        score = service._fuzzy_match_score(
+            "fill out sponsor form",
+            "Send the sponsorship for Leanne",
+        )
+        assert score >= 0.30, f"Expected >= 0.30, got {score:.3f}"
+
+    def test_unrelated_tasks_low_score(self, service):
+        score = service._fuzzy_match_score(
+            "fill out sponsor form",
+            "Setup aquarium equipment and cycle water",
+        )
+        assert score < 0.40, f"Expected < 0.40, got {score:.3f}"
+
+    def test_unrelated_scan_notes(self, service):
+        score = service._fuzzy_match_score(
+            "fill out sponsor form",
+            "scan notes de Lilianne",
+        )
+        assert score < 0.40, f"Expected < 0.40, got {score:.3f}"
+
+
+class TestDetectDuplicateTaskFuzzy:
+    """detect_duplicate_task catches semantically similar tasks via fuzzy matching."""
+
+    @pytest.fixture
+    def service(self):
+        from src.task_service import TaskService
+        logging_service = MagicMock()
+        tasks_client = MagicMock()
+        svc = TaskService(tasks_client, logging_service)
+        svc.logging_service = logging_service
+        svc.tasks_client = tasks_client
+        return svc
+
+    @pytest.mark.asyncio
+    async def test_fuzzy_catches_sponsorship_duplicate(self, service):
+        """The exact scenario from the user's bug report."""
+        service.logging_service.load_google_token.return_value = {"access_token": "x"}
+        service.get_task_list_id_for_user = MagicMock(return_value="tl1")
+        sponsorship_task = _make_task(
+            "I will try to fill out the sponsorship for my daughter", "t3"
+        )
+        service.tasks_client.get_tasks.return_value = [
+            _make_task("scan notes de Lilianne", "t1"),
+            _make_task("write a bravo for lucas", "t2"),
+            sponsorship_task,
+            _make_task("Setup aquarium equipment and cycle water", "t4"),
+        ]
+        result = await service.detect_duplicate_task(
+            "fill out sponsor form", "123"
+        )
+        assert result is not None
+        assert result["id"] == "t3"
+
+    @pytest.mark.asyncio
+    async def test_fuzzy_no_false_positive_unrelated(self, service):
+        service.logging_service.load_google_token.return_value = {"access_token": "x"}
+        service.get_task_list_id_for_user = MagicMock(return_value="tl1")
+        service.tasks_client.get_tasks.return_value = [
+            _make_task("Buy groceries", "t1"),
+            _make_task("Email Sarah about meeting", "t2"),
+            _make_task("Research thermostat Sinope", "t3"),
+        ]
+        result = await service.detect_duplicate_task(
+            "fill out sponsor form", "123"
+        )
+        assert result is None
+
+
 class TestDetectDuplicateTaskSemantic:
     """detect_duplicate_task with note_index uses semantic similarity (Gemini embeddings)."""
 

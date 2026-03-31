@@ -177,7 +177,7 @@ class NoteIndex:
         self,
         query: str,
         candidates: list[str],
-        threshold: float = 0.90,
+        threshold: float = 0.65,
     ) -> tuple[int, float] | None:
         """
         Find the candidate most semantically similar to the query (for duplicate task check).
