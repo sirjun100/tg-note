@@ -73,13 +73,13 @@ def _daily_report(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
-            await update.message.reply_text("❌ You're not authorized to use this command.")
+            await update.message.reply_text("❌ 您没有使用此命令的权限。")
             return
 
         try:
             _cleanup_completed_tasks_before_report(orch, user.id)
             logger.info("Generating on-demand daily report for user %d", user.id)
-            progress_msg = await update.message.reply_text("📊 Fetching notes and tasks…")
+            progress_msg = await update.message.reply_text("📊 正在获取笔记和任务…")
 
             state = orch.state_manager.get_state(user.id)
             pending = state.get("pending_clarifications", []) if state else []
@@ -109,7 +109,7 @@ def _daily_report(orch: TelegramOrchestrator):
             )
             logger.info("Daily report sent to user %d: %d items", user.id, report.total_items)
         except Exception as exc:
-            await update.message.reply_text("❌ Error generating daily report. Please try again later.")
+            await update.message.reply_text("❌ 生成每日报告时出错，请稍后重试。")
             logger.error("Error in handle_daily_report: %s", exc, exc_info=True)
 
     return handler
@@ -178,13 +178,13 @@ def _weekly_report(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
-            await update.message.reply_text("❌ You're not authorized to use this command.")
+            await update.message.reply_text("❌ 您没有使用此命令的权限。")
             return
 
         try:
             _cleanup_completed_tasks_before_report(orch, user.id)
             logger.info("Generating on-demand weekly report for user %d", user.id)
-            progress_msg = await update.message.reply_text("📊 Building weekly report…")
+            progress_msg = await update.message.reply_text("📊 正在生成周报…")
 
             ref_date: datetime | None = None
             if context.args:
@@ -219,7 +219,7 @@ def _weekly_report(orch: TelegramOrchestrator):
             )
             logger.info("Weekly report sent to user %d", user.id)
         except Exception as exc:
-            await update.message.reply_text("❌ Error generating weekly report. Please try again later.")
+            await update.message.reply_text("❌ 生成周报时出错，请稍后重试。")
             logger.error("Error in weekly_report handler: %s", exc, exc_info=True)
 
     return handler
@@ -229,7 +229,7 @@ def _monthly_report(orch: TelegramOrchestrator):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
         if not user or not check_whitelist(user.id):
-            await update.message.reply_text("❌ You're not authorized to use this command.")
+            await update.message.reply_text("❌ 您没有使用此命令的权限。")
             return
 
         try:
@@ -252,20 +252,20 @@ def _monthly_report(orch: TelegramOrchestrator):
                         year, month = int(parts[0]), int(parts[1])
                         if not (1 <= month <= 12):
                             await update.message.reply_text(
-                                "Usage: `/report_monthly` or `/report_monthly 2026-02` or `/report_monthly last`",
+                                "用法：`/report_monthly` 或 `/report_monthly 2026-02` 或 `/report_monthly last`",
                                 parse_mode="Markdown",
                             )
                             return
                     else:
                         await update.message.reply_text(
-                            "Usage: `/monthly_report` or `/monthly_report 2026-02` or `/monthly_report last`",
+                            "用法：`/monthly_report` 或 `/monthly_report 2026-02` 或 `/monthly_report last`",
                             parse_mode="Markdown",
                         )
                         return
 
             logger.info("Generating monthly report for user %d: %d-%02d", user.id, year, month)
             progress_msg = await update.message.reply_text(
-                f"📊 Building monthly report for {year}-{month:02d}…"
+                f"📊 正在生成 {year}-{month:02d} 的月报…"
             )
 
             generator = MonthlyReportGenerator(
@@ -292,7 +292,7 @@ def _monthly_report(orch: TelegramOrchestrator):
             )
             logger.info("Monthly report sent to user %d: %d-%02d", user.id, year, month)
         except Exception as exc:
-            await update.message.reply_text("❌ Error generating monthly report. Please try again later.")
+            await update.message.reply_text("❌ 生成月报时出错，请稍后重试。")
             logger.error("Error in monthly_report handler: %s", exc, exc_info=True)
 
     return handler
@@ -348,7 +348,7 @@ def _configure_time(orch: TelegramOrchestrator):
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "❌ Usage: /report_set_time HH:MM\nExample: /report_set_time 08:00"
+                    "❌ 用法：/report_set_time HH:MM\n示例：/report_set_time 08:00"
                 )
                 return
 
@@ -359,7 +359,7 @@ def _configure_time(orch: TelegramOrchestrator):
                     raise ValueError()
             except Exception:
                 await update.message.reply_text(
-                    f"❌ Invalid time format: {time_str}\nUse 24-hour format: HH:MM (e.g., 08:00, 14:30)"
+                    f"❌ 无效的时间格式：{time_str}\n使用24小时格式：HH:MM（例如：08:00, 14:30）"
                 )
                 return
 
@@ -375,15 +375,15 @@ def _configure_time(orch: TelegramOrchestrator):
                     timezone_str=tz,
                     report_callback=lambda uid: send_scheduled_report(orch, uid),
                 )
-                sched_line = "✓ Scheduled" if scheduled else "⚠️ Failed to schedule job"
-                await update.message.reply_text(f"✅ Report delivery time set to {time_str}\nTimezone: {tz}\n{sched_line}")
+                sched_line = "✓ 已安排" if scheduled else "⚠️ 安排任务失败"
+                await update.message.reply_text(f"✅ 报告发送时间已设置为 {time_str}\n时区：{tz}\n{sched_line}")
             else:
                 await update.message.reply_text(
-                    f"✅ Report delivery time set to {time_str}\nTimezone: {cfg.get('timezone', 'UTC')}\n(Reports currently disabled)"
+                    f"✅ 报告发送时间已设置为 {time_str}\n时区：{cfg.get('timezone', 'UTC')}\n（报告当前已禁用）"
                 )
             logger.info("User %d set report time to %s", user.id, time_str)
         except Exception as exc:
-            await update.message.reply_text("❌ Error setting report time.")
+            await update.message.reply_text("❌ 设置报告时间出错。")
             logger.error("Error in configure_report_time: %s", exc)
 
     return handler
@@ -398,8 +398,8 @@ def _configure_tz(orch: TelegramOrchestrator):
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "❌ Usage: /report_set_timezone TIMEZONE\n"
-                    "Examples: US/Eastern, Europe/London, Asia/Tokyo, UTC"
+                    "❌ 用法：/report_set_timezone 时区\n"
+                    "示例：US/Eastern, Europe/London, Asia/Tokyo, UTC"
                 )
                 return
 
@@ -409,7 +409,7 @@ def _configure_tz(orch: TelegramOrchestrator):
                 pytz.timezone(tz_str)
             except Exception:
                 await update.message.reply_text(
-                    f"❌ Unknown timezone: {tz_str}\nExamples: US/Eastern, Europe/London, Asia/Tokyo, UTC"
+                    f"❌ 未知时区：{tz_str}\n示例：US/Eastern, Europe/London, Asia/Tokyo, UTC"
                 )
                 return
 
@@ -425,15 +425,15 @@ def _configure_tz(orch: TelegramOrchestrator):
                     timezone_str=tz_str,
                     report_callback=lambda uid: send_scheduled_report(orch, uid),
                 )
-                sched_line = "✓ Scheduled" if scheduled else "⚠️ Failed to schedule job"
-                await update.message.reply_text(f"✅ Timezone set to {tz_str}\nReport time: {delivery}\n{sched_line}")
+                sched_line = "✓ 已安排" if scheduled else "⚠️ 安排任务失败"
+                await update.message.reply_text(f"✅ 时区已设置为 {tz_str}\n报告时间：{delivery}\n{sched_line}")
             else:
                 await update.message.reply_text(
-                    f"✅ Timezone set to {tz_str}\nReport time: {cfg.get('delivery_time', '08:00')}\n(Reports currently disabled)"
+                    f"✅ 时区已设置为 {tz_str}\n报告时间：{cfg.get('delivery_time', '08:00')}\n（报告当前已禁用）"
                 )
             logger.info("User %d set timezone to %s", user.id, tz_str)
         except Exception as exc:
-            await update.message.reply_text("❌ Error setting timezone.")
+            await update.message.reply_text("❌ 设置时区出错。")
             logger.error("Error in configure_report_timezone: %s", exc)
 
     return handler
@@ -447,12 +447,12 @@ def _toggle(orch: TelegramOrchestrator):
 
         try:
             if not context.args:
-                await update.message.reply_text("❌ Usage: /report_toggle_schedule on|off")
+                await update.message.reply_text("❌ 用法：/report_toggle_schedule on|off")
                 return
 
             action = context.args[0].lower()
             if action not in ("on", "off", "yes", "no", "true", "false", "1", "0"):
-                await update.message.reply_text("❌ Invalid option. Use: on, off, yes, no, true, or false")
+                await update.message.reply_text("❌ 无效选项。使用：on, off, yes, no, true 或 false")
                 return
 
             enabled = action in ("on", "yes", "true", "1")
@@ -469,18 +469,18 @@ def _toggle(orch: TelegramOrchestrator):
                     timezone_str=tz,
                     report_callback=lambda uid: send_scheduled_report(orch, uid),
                 )
-                sched_line = "✓ Job scheduled" if scheduled else "scheduling failed"
+                sched_line = "✓ 任务已安排" if scheduled else "安排失败"
                 await update.message.reply_text(
-                    f"✅ Daily reports enabled\nScheduled for: {delivery} {tz}\n{sched_line}"
+                    f"✅ 每日报告已启用\n安排时间：{delivery} {tz}\n{sched_line}"
                 )
             else:
                 cancelled = await orch.scheduler.cancel_daily_report(user.id)
-                cancel_line = "✓ Job cancelled" if cancelled else "(No scheduled job found)"
-                await update.message.reply_text(f"❌ Daily reports disabled\n{cancel_line}")
+                cancel_line = "✓ 任务已取消" if cancelled else "(未找到已安排的任务)"
+                await update.message.reply_text(f"❌ 每日报告已禁用\n{cancel_line}")
 
             logger.info("User %d %s daily reports", user.id, "enabled" if enabled else "disabled")
         except Exception as exc:
-            await update.message.reply_text("❌ Error toggling daily reports.")
+            await update.message.reply_text("❌ 切换每日报告时出错。")
             logger.error("Error in toggle_daily_report: %s", exc)
 
     return handler
@@ -496,26 +496,26 @@ def _show_config(orch: TelegramOrchestrator):
             cfg = orch.logging_service.get_report_configuration(user.id)
             if not cfg:
                 msg = (
-                    "⚙️ Your Report Configuration (Defaults)\n\n"
-                    "Status: ✅ Enabled\n"
-                    "Delivery Time: 08:00\n"
-                    "Timezone: UTC\n\n"
-                    "Content Included:\n"
-                    "  • Critical: Yes\n"
-                    "  • High Priority: Yes\n"
-                    "  • Medium Priority: No\n"
-                    "  • Google Tasks: Yes\n"
-                    "  • Clarifications: Yes\n"
-                    "  • Project portfolio in weekly: No\n\n"
-                    "Detail Level: detailed\n\n"
-                    "No custom configuration set yet.\nUse commands to customize."
+                    "⚙️ 您的报告配置（默认）\n\n"
+                    "状态：✅ 已启用\n"
+                    "发送时间：08:00\n"
+                    "时区：UTC\n\n"
+                    "包含内容：\n"
+                    "  • 紧急：是\n"
+                    "  • 高优先级：是\n"
+                    "  • 中优先级：否\n"
+                    "  • Google Tasks：是\n"
+                    "  • 待澄清：是\n"
+                    "  • 周报中的项目组合：否\n\n"
+                    "详细级别：详细\n\n"
+                    "尚未设置自定义配置。\n使用命令进行自定义。"
                 )
             else:
                 msg = orch.report_generator.format_configuration_display(cfg)
             await update.message.reply_text(msg)
             logger.info("User %d viewed report configuration", user.id)
         except Exception as exc:
-            await update.message.reply_text("❌ Error retrieving configuration.")
+            await update.message.reply_text("❌ 获取配置时出错。")
             logger.error("Error in show_report_config: %s", exc)
 
     return handler
@@ -530,18 +530,18 @@ def _configure_content(orch: TelegramOrchestrator):
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "❌ Usage: /report_set_content LEVEL\n"
-                    "Options: critical, high, medium, all\n"
-                    "  • critical: Only critical items\n"
-                    "  • high: Critical and high priority\n"
-                    "  • medium: Critical, high, and medium\n"
-                    "  • all: All priority levels"
+                    "❌ 用法：/report_set_content 级别\n"
+                    "选项：critical, high, medium, all\n"
+                    "  • critical：仅紧急项目\n"
+                    "  • high：紧急和高优先级\n"
+                    "  • medium：紧急、高和中优先级\n"
+                    "  • all：所有优先级"
                 )
                 return
 
             level = context.args[0].lower()
             if level not in ("critical", "high", "medium", "all"):
-                await update.message.reply_text("❌ Invalid level. Use: critical, high, medium, or all")
+                await update.message.reply_text("❌ 无效级别。使用：critical, high, medium 或 all")
                 return
 
             cfg = orch.logging_service.get_report_configuration(user.id) or {**_DEFAULT_CONFIG}
@@ -552,16 +552,16 @@ def _configure_content(orch: TelegramOrchestrator):
             orch.logging_service.save_report_configuration(user.id, cfg)
 
             await update.message.reply_text(
-                f"✅ Report content set to: {level.upper()}\n"
-                "Including:\n"
-                f"  • Critical: Yes\n"
-                f"  • High Priority: {'Yes' if cfg['include_high'] else 'No'}\n"
-                f"  • Medium Priority: {'Yes' if cfg['include_medium'] else 'No'}\n"
-                f"  • Low Priority: {'Yes' if cfg.get('include_low') else 'No'}"
+                f"✅ 报告内容已设置为：{level.upper()}\n"
+                "包含：\n"
+                f"  • 紧急：是\n"
+                f"  • 高优先级：{'是' if cfg['include_high'] else '否'}\n"
+                f"  • 中优先级：{'是' if cfg['include_medium'] else '否'}\n"
+                f"  • 低优先级：{'是' if cfg.get('include_low') else '否'}"
             )
             logger.info("User %d set report content level to %s", user.id, level)
         except Exception as exc:
-            await update.message.reply_text("❌ Error setting report content.")
+            await update.message.reply_text("❌ 设置报告内容时出错。")
             logger.error("Error in configure_report_content: %s", exc)
 
     return handler
@@ -577,9 +577,9 @@ def _toggle_portfolio(orch: TelegramOrchestrator):
         try:
             if not context.args or context.args[0].lower() not in ("on", "off"):
                 await update.message.reply_text(
-                    "❌ Usage: /report_toggle_portfolio on|off\n"
-                    "  on  – Include project portfolio in weekly report\n"
-                    "  off – Omit project portfolio (default)"
+                    "❌ 用法：/report_toggle_portfolio on|off\n"
+                    "  on  – 在周报中包含项目组合\n"
+                    "  off – 不包含项目组合（默认）"
                 )
                 return
 
@@ -588,14 +588,14 @@ def _toggle_portfolio(orch: TelegramOrchestrator):
             cfg["include_project_portfolio"] = enabled
             orch.logging_service.save_report_configuration(user.id, cfg)
 
-            status = "Yes" if enabled else "No"
+            status = "是" if enabled else "否"
             await update.message.reply_text(
-                f"✅ Project portfolio in weekly report: {status}\n"
-                "Use /report_config to view all settings."
+                f"✅ 周报中的项目组合：{status}\n"
+                "使用 /report_config 查看所有设置。"
             )
             logger.info("User %d set report include_project_portfolio to %s", user.id, enabled)
         except Exception as exc:
-            await update.message.reply_text("❌ Error updating setting.")
+            await update.message.reply_text("❌ 更新设置时出错。")
             logger.error("Error in report_toggle_portfolio: %s", exc)
 
     return handler
@@ -608,43 +608,43 @@ def _help(orch: TelegramOrchestrator):
             return
 
         await update.message.reply_text(
-            "📊 Report Commands\n\n"
-            "Generate Reports:\n"
-            "  /report_daily - Generate daily priority report\n"
-            "  /report_weekly - Generate weekly review\n"
-            "  /report_weekly last - Review last week\n"
-            "  /report_monthly - Generate monthly review\n"
-            "  /report_monthly 2026-02 - Specific month\n"
-            "  /report_monthly last - Previous month\n\n"
-            "Configure Delivery:\n"
-            "  /report_set_time <HH:MM> - Set daily delivery time\n"
-            "    Example: /report_set_time 08:00\n\n"
-            "  /report_set_timezone <timezone> - Set your timezone\n"
-            "    Example: /report_set_timezone US/Eastern\n"
-            "    Common: US/Eastern, US/Central, US/Pacific, Europe/London, Asia/Tokyo\n\n"
-            "  /report_toggle_schedule on|off - Enable/disable automatic reports\n"
-            "    Example: /report_toggle_schedule on\n\n"
-            "Customize Content:\n"
-            "  /report_set_content <level> - Set minimum priority level\n"
-            "    Options: critical, high, medium, all\n"
-            "    Example: /report_set_content high\n\n"
-            "  /report_toggle_portfolio on|off - Include project portfolio in weekly report\n"
-            "    Example: /report_toggle_portfolio on\n\n"
-            "View Settings:\n"
-            "  /report_config - View your current configuration\n\n"
-            "Help:\n"
-            "  /report_help - Show this help message\n\n"
-            "Daily Report Includes:\n"
-            "• High-priority Joplin notes (tagged: #urgent, #critical, #important)\n"
-            "• Incomplete Google Tasks\n"
-            "• Notes pending clarification\n"
-            "• Smart priority ranking across all sources\n\n"
-            "Weekly Report Includes:\n"
-            "• Notes created & modified during the week\n"
-            "• Google Tasks completed, pending, and overdue\n"
-            "• Productivity metrics & velocity trends\n"
-            "• Breakdown by folder and day of week\n"
-            "• Actionable recommendations"
+            "📊 报告命令\n\n"
+            "生成报告：\n"
+            "  /report_daily - 生成每日优先级报告\n"
+            "  /report_weekly - 生成周报回顾\n"
+            "  /report_weekly last - 回顾上周\n"
+            "  /report_monthly - 生成月报回顾\n"
+            "  /report_monthly 2026-02 - 特定月份\n"
+            "  /report_monthly last - 上月\n\n"
+            "配置发送：\n"
+            "  /report_set_time <HH:MM> - 设置每日发送时间\n"
+            "    示例：/report_set_time 08:00\n\n"
+            "  /report_set_timezone <时区> - 设置您的时区\n"
+            "    示例：/report_set_timezone US/Eastern\n"
+            "    常用：US/Eastern, US/Central, US/Pacific, Europe/London, Asia/Tokyo\n\n"
+            "  /report_toggle_schedule on|off - 启用/禁用自动报告\n"
+            "    示例：/report_toggle_schedule on\n\n"
+            "自定义内容：\n"
+            "  /report_set_content <级别> - 设置最低优先级级别\n"
+            "    选项：critical, high, medium, all\n"
+            "    示例：/report_set_content high\n\n"
+            "  /report_toggle_portfolio on|off - 在周报中包含项目组合\n"
+            "    示例：/report_toggle_portfolio on\n\n"
+            "查看设置：\n"
+            "  /report_config - 查看您当前的配置\n\n"
+            "帮助：\n"
+            "  /report_help - 显示此帮助消息\n\n"
+            "每日报告包含：\n"
+            "• 高优先级 Joplin 笔记（标记：#urgent, #critical, #important）\n"
+            "• 未完成的 Google Tasks\n"
+            "• 待澄清的笔记\n"
+            "• 跨所有来源的智能优先级排序\n\n"
+            "周报包含：\n"
+            "• 本周创建和修改的笔记\n"
+            "• 已完成、待处理和逾期的 Google Tasks\n"
+            "• 生产力指标和速度趋势\n"
+            "• 按文件夹和星期几的细分\n"
+            "• 可操作的建议"
         )
         logger.info("User %d viewed report help", user.id)
 

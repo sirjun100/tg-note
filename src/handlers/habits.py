@@ -57,7 +57,7 @@ def _build_habit_keyboard(
             status = "✅" if entry.get("completed") else "❌"
             keyboard.append([
                 InlineKeyboardButton(
-                    f"{status} {name} (logged)",
+                    f"{status} {name} (已记录)",
                     callback_data=f"habit_undo_{hid}",
                 )
             ])
@@ -71,7 +71,7 @@ def _build_habit_keyboard(
                 ),
                 InlineKeyboardButton("❌", callback_data=f"habit_no_{hid}"),
             ])
-    keyboard.append([InlineKeyboardButton("📊 View Stats", callback_data="habit_stats")])
+    keyboard.append([InlineKeyboardButton("📊 查看统计", callback_data="habit_stats")])
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -85,7 +85,7 @@ def _format_checkin_message(
     completed = sum(1 for e in today_entries.values() if e.get("completed"))
     total = len(habits)
     date_str = today.strftime("%B %d")
-    lines = [f"🌟 **Daily Habits - {date_str}**", ""]
+    lines = [f"🌟 **每日习惯 - {date_str}**", ""]
     stats_by_id = {s["habit_id"]: s for s in stats}
     for habit in habits:
         hid = habit["id"]
@@ -98,19 +98,19 @@ def _format_checkin_message(
             lines.append(f"{status} **{name}**")
         else:
             if streak > 0:
-                lines.append(f"**{name}** — 🔥 {streak} day streak")
+                lines.append(f"**{name}** — 🔥 {streak} 天连续")
             else:
-                lines.append(f"**{name}** — ⚡ Start streak!")
+                lines.append(f"**{name}** — ⚡ 开始连续！")
         lines.append("")
-    lines.append(f"✅ {completed}/{total} completed today")
+    lines.append(f"✅ 今天已完成 {completed}/{total}")
     return "\n".join(lines)
 
 
 def _format_stats(stats: list[dict[str, Any]]) -> str:
     """Format stats for display."""
     if not stats:
-        return "No habits yet. Use `/habits add <name>` to add one."
-    lines = ["📊 **Habit Stats - Last 30 Days**", ""]
+        return "还没有习惯。使用 `/habits add <名称>` 来添加一个。"
+    lines = ["📊 **习惯统计 - 过去 30 天**", ""]
     total_completed = 0
     total_possible = 0
     for s in stats:
@@ -124,14 +124,14 @@ def _format_stats(stats: list[dict[str, Any]]) -> str:
         total_completed += c30
         total_possible += t30
         lines.append(f"**{name}**")
-        lines.append(f"├ Current streak: {cs} days {'🔥' if cs > 0 else ''}")
-        lines.append(f"├ Longest streak: {ls} days")
-        lines.append(f"├ Last 7 days: {c7}/{t7} ({r7:.0f}%)")
-        lines.append(f"└ Last 30 days: {c30}/{t30} ({r30:.0f}%)")
+        lines.append(f"├ 当前连续：{cs} 天 {'🔥' if cs > 0 else ''}")
+        lines.append(f"├ 最长连续：{ls} 天")
+        lines.append(f"├ 过去 7 天：{c7}/{t7} ({r7:.0f}%)")
+        lines.append(f"└ 过去 30 天：{c30}/{t30} ({r30:.0f}%)")
         lines.append("")
     if total_possible > 0:
         overall = total_completed / total_possible * 100
-        lines.append(f"**Overall completion rate: {overall:.0f}%**")
+        lines.append(f"**总体完成率：{overall:.0f}%**")
     return "\n".join(lines)
 
 
@@ -144,7 +144,7 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         args = (context.args or [])
@@ -154,8 +154,8 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             habits = get_habits(user.id)
             if not habits:
                 await msg.reply_text(
-                    "🌟 No habits yet. Use `/habits add <name>` to add one.\n"
-                    "Example: `/habits add Exercise`",
+                    "🌟 还没有习惯。使用 `/habits add <名称>` 来添加一个。\n"
+                    "示例：`/habits add 锻炼`",
                     parse_mode="Markdown",
                 )
                 return
@@ -171,10 +171,10 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             name = " ".join(args[1:]).strip()
             habit = add_habit(user.id, name)
             if habit:
-                await msg.reply_text(format_success_message(f"Added habit: {habit['name']}"))
+                await msg.reply_text(format_success_message(f"已添加习惯：{habit['name']}"))
             else:
                 await msg.reply_text(
-                    format_error_message(f"Habit '{name}' already exists.")
+                    format_error_message(f"习惯 '{name}' 已存在。")
                 )
             return
 
@@ -182,30 +182,30 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             name = " ".join(args[1:]).strip()
             ok = remove_habit(user.id, name)
             if ok:
-                await msg.reply_text(format_success_message(f"Removed habit: {name}"))
+                await msg.reply_text(format_success_message(f"已删除习惯：{name}"))
             else:
-                await msg.reply_text(format_error_message(f"Habit '{name}' not found."))
+                await msg.reply_text(format_error_message(f"未找到习惯 '{name}'。"))
             return
 
         if sub == "list":
             habits = get_habits(user.id)
             if not habits:
-                await msg.reply_text("No habits yet. Use `/habits add <name>` to add one.")
+                await msg.reply_text("还没有习惯。使用 `/habits add <名称>` 来添加一个。")
                 return
             stats = get_stats(user.id, today)
             stats_by_id = {s["habit_id"]: s for s in stats}
-            lines = ["🌟 **Your Habits**", ""]
+            lines = ["🌟 **您的习惯**", ""]
             for h in habits:
                 st = stats_by_id.get(h["id"], {})
                 cs = st.get("current_streak", 0)
-                lines.append(f"• **{h['name']}** — 🔥 {cs} day streak")
+                lines.append(f"• **{h['name']}** — 🔥 {cs} 天连续")
             await msg.reply_text("\n".join(lines), parse_mode="Markdown")
             return
 
         if sub == "stats":
             habits = get_habits(user.id)
             if not habits:
-                await msg.reply_text("No habits yet. Use `/habits add <name>` to add one.")
+                await msg.reply_text("还没有习惯。使用 `/habits add <名称>` 来添加一个。")
                 return
             stats = get_stats(user.id, today)
             if len(args) >= 2:
@@ -217,12 +217,12 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             return
 
         await msg.reply_text(
-            "🌟 **Habits**\n\n"
-            "• `/habits` — Daily check-in with buttons\n"
-            "• `/habits add <name>` — Add a habit\n"
-            "• `/habits remove <name>` — Remove a habit\n"
-            "• `/habits list` — List habits with streaks\n"
-            "• `/habits stats` — Detailed statistics",
+            "🌟 **习惯**\n\n"
+            "• `/habits` — 带按钮的每日打卡\n"
+            "• `/habits add <名称>` — 添加习惯\n"
+            "• `/habits remove <名称>` — 删除习惯\n"
+            "• `/habits list` — 列出习惯及其连续天数\n"
+            "• `/habits stats` — 详细统计",
             parse_mode="Markdown",
         )
 
@@ -232,7 +232,7 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             return
         user = update.effective_user
         if not user or not check_whitelist(user.id):
-            await query.answer("Unauthorized.")
+            await query.answer("未授权。")
             return
 
         await query.answer()
@@ -245,7 +245,7 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
                 stats = get_stats(user.id, today)
                 await query.message.reply_text(_format_stats(stats), parse_mode="Markdown")  # type: ignore[attr-defined]
             else:
-                await query.message.reply_text("No habits yet.")  # type: ignore[attr-defined]
+                await query.message.reply_text("还没有习惯。")  # type: ignore[attr-defined]
             return
 
         if data.startswith("habit_yes_"):
@@ -266,7 +266,7 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
 
         habits = get_habits(user.id)
         if not habits:
-            await query.edit_message_text("No habits. Use /habits add <name> to add one.")
+            await query.edit_message_text("没有习惯。使用 /habits add <名称> 来添加一个。")
             return
         today_entries = get_today_entries(user.id, today)
         stats = get_stats(user.id, today)
@@ -275,7 +275,7 @@ def register_habit_handlers(application: Any, orch: TelegramOrchestrator) -> Non
         try:
             await query.edit_message_text(text, parse_mode="Markdown", reply_markup=keyboard)
         except Exception as exc:
-            logger.warning("Failed to edit habit message: %s", exc)
+            logger.warning("编辑习惯消息失败：%s", exc)
 
     application.add_handler(CommandHandler("habits", habits_cmd))
     application.add_handler(CallbackQueryHandler(habit_callback, pattern="^habit_"))

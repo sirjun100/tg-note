@@ -67,16 +67,16 @@ def _ask(orch: TelegramOrchestrator):
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         question = " ".join(context.args) if context.args else ""
         if not question:
             await msg.reply_text(
-                "🔍 **Ask a question about your notes**\n\n"
-                "Usage: `/ask <question>`\n"
-                "Example: `/ask How did I solve the caching issue?`\n\n"
-                "Uses semantic search to find relevant notes and answer with AI.",
+                "🔍 **询问有关您笔记的问题**\n\n"
+                "用法：`/ask <问题>`\n"
+                "示例：`/ask 我是如何解决缓存问题的？`\n\n"
+                "使用语义搜索查找相关笔记并用 AI 回答。",
                 parse_mode="Markdown",
             )
             return
@@ -96,7 +96,7 @@ def _ask(orch: TelegramOrchestrator):
             q_esc = html.escape(question)
             lines = [f"🔍 <b>{q_esc}</b>\n", html.escape(answer)]
             if sources:
-                lines.append("\n📚 <b>Sources:</b>")
+                lines.append("\n📚 <b>来源：</b>")
                 for s in sources[:5]:
                     lines.append(f"• \"{html.escape(s['title'])}\"")
             response = "\n".join(lines)
@@ -106,7 +106,7 @@ def _ask(orch: TelegramOrchestrator):
             await msg.reply_text(format_error_message(str(exc)))
         except Exception as exc:
             logger.error("Ask failed for user %d: %s", user.id, exc, exc_info=True)
-            await msg.reply_text(format_error_message("Could not answer. Please try again or run /reindex."))
+            await msg.reply_text(format_error_message("无法回答。请重试或运行 /reindex。"))
 
     return handler
 
@@ -118,11 +118,11 @@ def _reindex(orch: TelegramOrchestrator):
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         try:
-            status = await msg.reply_text("🔄 Rebuilding search index... This may take a minute.")
+            status = await msg.reply_text("🔄 正在重建搜索索引...这可能需要一分钟。")
             await msg.chat.send_action("typing")
 
             orch.note_index.clear()
@@ -130,7 +130,7 @@ def _reindex(orch: TelegramOrchestrator):
             indexed = 0
             for note in notes:
                 note_id = note.get("id")
-                title = note.get("title") or "(Untitled)"
+                title = note.get("title") or "(无标题)"
                 body = note.get("body") or ""
                 if note_id:
                     chunks = await orch.note_index.index_note_async(note_id, title, body)
@@ -138,17 +138,17 @@ def _reindex(orch: TelegramOrchestrator):
 
             stats = orch.note_index.get_stats()
             await status.edit_text(
-                f"✅ Index rebuilt.\n"
-                f"• {stats['notes']} notes indexed\n"
-                f"• {stats['chunks']} chunks total\n\n"
-                f"Try /ask with a question."
+                f"✅ 索引已重建。\n"
+                f"• 已索引 {stats['notes']} 个笔记\n"
+                f"• 共 {stats['chunks']} 个块\n\n"
+                f"使用 /ask 询问问题。"
             )
             logger.info("Reindex complete for user %d: %d notes, %d chunks", user.id, stats["notes"], stats["chunks"])
         except RuntimeError as exc:
             await msg.reply_text(format_error_message(str(exc)))
         except Exception as exc:
             logger.error("Reindex failed for user %d: %s", user.id, exc, exc_info=True)
-            await msg.reply_text(format_error_message("Reindex failed. Please try again."))
+            await msg.reply_text(format_error_message("重建索引失败。请重试。"))
 
     return handler
 
@@ -160,28 +160,28 @@ def _search_status(orch: TelegramOrchestrator):
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         try:
             stats = orch.note_index.get_stats()
             if stats["chunks"] == 0:
                 await msg.reply_text(
-                    "📊 **Search index is empty.**\n\n"
-                    "Run /reindex to build the index from your Joplin notes.",
+                    "📊 **搜索索引为空。**\n\n"
+                    "运行 /reindex 从您的 Joplin 笔记构建索引。",
                     parse_mode="Markdown",
                 )
             else:
                 await msg.reply_text(
-                    f"📊 **Search index**\n"
-                    f"• Notes: {stats['notes']}\n"
-                    f"• Chunks: {stats['chunks']}\n"
-                    f"• Last updated: {stats['last_updated'] or 'N/A'}\n\n"
-                    f"Use /ask to query your notes.",
+                    f"📊 **搜索索引**\n"
+                    f"• 笔记：{stats['notes']}\n"
+                    f"• 块：{stats['chunks']}\n"
+                    f"• 最后更新：{stats['last_updated'] or '无'}\n\n"
+                    f"使用 /ask 查询您的笔记。",
                     parse_mode="Markdown",
                 )
         except Exception as exc:
             logger.error("Search status failed for user %d: %s", user.id, exc)
-            await msg.reply_text(format_error_message("Could not get status."))
+            await msg.reply_text(format_error_message("无法获取状态。"))
 
     return handler

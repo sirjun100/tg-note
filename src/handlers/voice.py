@@ -59,10 +59,10 @@ async def _handle_voice(
 
     user_id = user.id
     if not check_whitelist(user_id):
-        await message.reply_text("❌ Sorry, you're not authorized to use this bot.")
+        await message.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
         return
 
-    # Support both voice notes and audio files
+    # 支持语音笔记和音频文件
     audio = message.voice or message.audio
     if not audio:
         return
@@ -72,7 +72,7 @@ async def _handle_voice(
         size_mb = file_size / (1024 * 1024)
         await message.reply_text(
             format_error_message(
-                f"Audio file is too large ({size_mb:.1f} MB). Maximum is 25 MB."
+                f"音频文件太大（{size_mb:.1f} MB）。最大为 25 MB。"
             )
         )
         return
@@ -81,7 +81,7 @@ async def _handle_voice(
     with contextlib.suppress(Exception):
         await context.bot.send_chat_action(chat_id=message.chat_id, action=ChatAction.TYPING)
 
-    status_msg = await message.reply_text("🎙️ Transcribing voice message...")
+    status_msg = await message.reply_text("🎙️ 正在转录语音消息…")
 
     try:
         voice_file = await audio.get_file()
@@ -89,7 +89,7 @@ async def _handle_voice(
     except Exception as exc:
         logger.warning("Failed to download voice file: %s", exc)
         await status_msg.edit_text(
-            format_error_message("Could not download the voice message. Please try again.")
+            format_error_message("无法下载语音消息。请重试。")
         )
         return
 
@@ -97,16 +97,16 @@ async def _handle_voice(
     if not transcript:
         await status_msg.edit_text(
             format_error_message(
-                "Could not transcribe the voice message. "
-                "Please ensure the audio is clear and try again."
+                "无法转录语音消息。"
+                "请确保音频清晰，然后重试。"
             )
         )
         return
 
     logger.info("Voice transcription: user=%d length=%d chars", user_id, len(transcript))
-    await status_msg.edit_text(f"🎙️ *Transcribed:*\n_{transcript}_", parse_mode="Markdown")
+    await status_msg.edit_text(f"🎙️ *已转录：*\n_{transcript}_", parse_mode="Markdown")
 
-    # Route transcribed text through the same pipeline as plain text messages
+    # 将转录文本通过与纯文本消息相同的管道进行路由
     from src.handlers.core import _route_plain_message
 
     handled = await _route_plain_message(
@@ -121,8 +121,8 @@ async def _handle_voice(
     if not handled:
         await message.reply_text(
             format_error_message(
-                "Could not process the transcribed message. "
-                "Joplin may be unavailable — try again in a moment."
+                "无法处理转录的消息。"
+                "Joplin 可能不可用 — 请稍候重试。"
             )
         )
 

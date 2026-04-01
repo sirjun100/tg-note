@@ -463,7 +463,7 @@ def _note(orch: TelegramOrchestrator):
             return
         validated = validate_message_text(payload)
         if not validated:
-            await update.message.reply_text(format_error_message("Content too long or empty."))
+            await update.message.reply_text(format_error_message("内容太长或为空。"))
             return
         telegram_msg = TelegramMessage(user_id=user.id, message_text=validated)
         telegram_message_id = orch.logging_service.log_telegram_message(telegram_msg)
@@ -495,7 +495,7 @@ def _recipe(orch: TelegramOrchestrator):
             return
         validated = validate_message_text(payload)
         if not validated:
-            await update.message.reply_text(format_error_message("Content too long or empty."))
+            await update.message.reply_text(format_error_message("内容太长或为空。"))
             return
         telegram_msg = TelegramMessage(user_id=user.id, message_text=validated)
         telegram_message_id = orch.logging_service.log_telegram_message(telegram_msg)
@@ -528,7 +528,7 @@ def _task(orch: TelegramOrchestrator):
             return
         validated = validate_message_text(payload)
         if not validated:
-            await update.message.reply_text(format_error_message("Content too long or empty."))
+            await update.message.reply_text(format_error_message("内容太长或为空。"))
             return
         telegram_msg = TelegramMessage(user_id=user.id, message_text=validated)
         telegram_message_id = orch.logging_service.log_telegram_message(telegram_msg)
@@ -666,7 +666,7 @@ def _project_status(orch: TelegramOrchestrator):
                     break
 
             if not project_root_id:
-                await update.message.reply_text("❌ I couldn't find folder `Projects`.")
+                await update.message.reply_text("❌ 我找不到 `Projects` 文件夹。")
                 return
 
             def in_projects(folder_id: str) -> bool:
@@ -1162,12 +1162,12 @@ def _message(orch: TelegramOrchestrator):
         text = message.text.strip()
 
         if not check_whitelist(user_id):
-            await message.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await message.reply_text("❌ 抱歉，您没有授权使用这个机器人。")
             return
 
         validated = validate_message_text(text)
         if not validated:
-            await message.reply_text("❌ Please send a valid message.")
+            await message.reply_text("❌ 请发送有效的消息。")
             return
 
         try:
@@ -1374,12 +1374,12 @@ async def _route_plain_message(
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:
                 await message.reply_text(
-                    format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status.")
+                    format_error_message(f"创建任务失败： {exc}\n\nCheck /tasks_status.")
                 )
             else:
                 await message.reply_text(
                     format_error_message(
-                        f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /tasks_connect first."
+                        f"创建任务失败： {exc}\n\nGoogle Tasks not connected. Use /tasks_connect first."
                     )
                 )
             return True
@@ -1491,12 +1491,12 @@ async def _route_plain_message(
                 has_token = orch.logging_service.load_google_token(str(user_id)) is not None
                 if has_token:
                     await message.reply_text(
-                        format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status.")
+                        format_error_message(f"创建任务失败： {exc}\n\nCheck /tasks_status.")
                     )
                 else:
                     await message.reply_text(
                         format_error_message(
-                            f"Failed to create task: {exc}\n\nGoogle Tasks not connected. Use /tasks_connect first."
+                            f"创建任务失败： {exc}\n\nGoogle Tasks not connected. Use /tasks_connect first."
                         )
                     )
                 return True
@@ -1602,14 +1602,14 @@ async def _handle_new_request(
             if created:
                 status_line = _task_sync_status_line(orch, user_id)
                 await message.reply_text(format_success_message(
-                    f"✅ Created Google Task: '{text[:80]}{'…' if len(text) > 80 else ''}'{status_line}"
+                    f"✅ 已创建 Google 任务：'{text[:80]}{'…' if len(text) > 80 else ''}'{status_line}"
                 ))
             else:
                 has_token = orch.logging_service.load_google_token(str(user_id)) is not None
                 if has_token:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Check /tasks_status for details."))
+                    await message.reply_text(format_error_message("创建 Google 任务失败。请查看 /tasks_status 了解详情。"))
                 else:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Use /tasks_connect to connect your Google account first."))
+                    await message.reply_text(format_error_message("创建 Google 任务失败。请先使用 /tasks_connect 连接您的 Google 账户。"))
         except AppError as exc:
             logger.warning("Task creation failed (config/auth): %s", exc)
             await message.reply_text(format_error_message(getattr(exc, "user_message", str(exc))))
@@ -1617,10 +1617,10 @@ async def _handle_new_request(
             logger.error("Error creating Google Task: %s", exc, exc_info=True)
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:
-                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status for details."))
+                await message.reply_text(format_error_message(f"创建任务失败： {exc}\n\n请查看 /tasks_status 了解详情。"))
             else:
                 await message.reply_text(format_error_message(
-                    f"Failed to create task: {exc}\n\nUse /tasks_connect to connect your Google account first."
+                    f"创建任务失败： {exc}\n\n请先使用 /tasks_connect 连接您的 Google 账户。"
                 ))
         return
 
@@ -1733,14 +1733,14 @@ async def _handle_project_selection_reply(
     """FR-034: Handle user reply to 'Is this task for a project?' (number or 'no')."""
     state = orch.state_manager.get_state(user_id)
     if not state or not state.get("awaiting_project_selection"):
-        await message.reply_text("❌ No pending task. Use /task <item> to create a task.")
+        await message.reply_text("❌ 没有待处理的任务。使用 /task <内容> 创建任务。")
         return
 
     task_text = state.get("task_text", "")
     projects = state.get("projects", [])
     if not task_text or not orch.task_service:
         orch.state_manager.clear_state(user_id)
-        await message.reply_text(format_error_message("Could not create task."))
+        await message.reply_text(format_error_message("无法创建任务。"))
         return
 
     text_lower = text.strip().lower()
@@ -1795,7 +1795,7 @@ async def _handle_project_selection_reply(
         has_token = orch.logging_service.load_google_token(str(user_id)) is not None
         if has_token:
             await message.reply_text(format_error_message(
-                f"Failed to create Google Task: {exc}\n\nCheck /tasks_status for details."
+                f"Failed to create Google Task: {exc}\n\n请查看 /tasks_status 了解详情。"
             ))
         else:
             await message.reply_text(format_error_message(
@@ -1811,9 +1811,9 @@ async def _handle_project_selection_reply(
     else:
         has_token = orch.logging_service.load_google_token(str(user_id)) is not None
         if has_token:
-            await message.reply_text(format_error_message("Failed to create Google Task. Check /tasks_status for details."))
+            await message.reply_text(format_error_message("创建 Google 任务失败。 请查看 /tasks_status 了解详情。"))
         else:
-            await message.reply_text(format_error_message("Failed to create Google Task. Use /tasks_connect first."))
+            await message.reply_text(format_error_message("创建 Google 任务失败。请先使用 /tasks_connect。"))
 
 
 async def _handle_projects_folder_reply(
@@ -1934,7 +1934,7 @@ def _project_selection_callback(orch: TelegramOrchestrator):
             ))
         else:
             has_token = orch.logging_service.load_google_token(str(user.id)) is not None
-            msg = "Failed to create Google Task. Check /tasks_status." if has_token else "Failed to create Google Task. Use /tasks_connect first."
+            msg = "创建 Google 任务失败。 Check /tasks_status." if has_token else "创建 Google 任务失败。 Use /tasks_connect first."
             await query.edit_message_text(format_error_message(msg))
 
     return handler
@@ -2099,7 +2099,7 @@ def _duplicate_task_callback(orch: TelegramOrchestrator):
                 ))
             else:
                 await query.edit_message_text(
-                    format_error_message("Failed to create Google Task. Check /tasks_status.")
+                    format_error_message("创建 Google 任务失败。 Check /tasks_status.")
                 )
     return handler
 
@@ -2138,9 +2138,9 @@ async def _handle_clarification_reply(
             else:
                 has_token = orch.logging_service.load_google_token(str(user_id)) is not None
                 if has_token:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Check /tasks_status for details."))
+                    await message.reply_text(format_error_message("创建 Google 任务失败。 请查看 /tasks_status 了解详情。"))
                 else:
-                    await message.reply_text(format_error_message("Failed to create Google Task. Use /tasks_connect to connect your Google account first."))
+                    await message.reply_text(format_error_message("创建 Google 任务失败。 请先使用 /tasks_connect 连接您的 Google 账户。"))
         except GoogleAuthError:
             await message.reply_text(format_error_message(
                 "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
@@ -2148,10 +2148,10 @@ async def _handle_clarification_reply(
         except Exception as exc:
             has_token = orch.logging_service.load_google_token(str(user_id)) is not None
             if has_token:
-                await message.reply_text(format_error_message(f"Failed to create task: {exc}\n\nCheck /tasks_status for details."))
+                await message.reply_text(format_error_message(f"创建任务失败： {exc}\n\n请查看 /tasks_status 了解详情。"))
             else:
                 await message.reply_text(format_error_message(
-                    f"Failed to create task: {exc}\n\nUse /tasks_connect to connect your Google account first."
+                    f"创建任务失败： {exc}\n\n请先使用 /tasks_connect 连接您的 Google 账户。"
                 ))
         return
 
@@ -2277,7 +2277,7 @@ async def _process_llm_response(
             await message.reply_text(format_success_message(success_msg))
             return note_result
         else:
-            await message.reply_text(format_error_message("Failed to create note in Joplin. Please try again."))
+            await message.reply_text(format_error_message("在 Joplin 中创建笔记失败。请重试。"))
             return None
 
     elif llm_response.status == "NEED_INFO" and llm_response.question:
@@ -2288,13 +2288,13 @@ async def _process_llm_response(
         }
         orch.state_manager.update_state(user_id, state)
         await message.reply_text(
-            "🧠 Second Brain folders: Inbox, Projects, Areas, Resources, Archive.\n\n"
+            "🧠 第二大脑文件夹：收件箱、项目、领域、资源、归档。\n\n"
             f"🤔 {llm_response.question}"
         )
         return None
     else:
         logger.error("Unexpected LLM response: %s", llm_response)
-        await message.reply_text(format_error_message("I had trouble understanding. Please try rephrasing."))
+        await message.reply_text(format_error_message("我难以理解。请重新措辞。"))
         return None
 
 
@@ -2403,7 +2403,7 @@ async def create_note_in_joplin(
                         gemini_reason,
                     )
                     if message:
-                        await message.reply_text("⚠️ Couldn't generate image for this link.")
+                        await message.reply_text("⚠️ 无法为这个链接生成图片。")
             if final_image_data_url is None and url_context and url_context.get("content_type") in ("recipe", "media") and url_context.get("image_url"):
                 final_image_data_url = await _fetch_image_as_data_url(url_context["image_url"])
                 if final_image_data_url is None:

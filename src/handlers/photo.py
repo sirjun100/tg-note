@@ -78,7 +78,7 @@ def _is_photo_ocr_state_expired(orch: TelegramOrchestrator, user_id: int) -> boo
 def _build_photo_note_body(
     ocr_result: dict, user_id: int, orch: TelegramOrchestrator, resource_id: str | None = None
 ) -> str:
-    """Build note body from OCR result. Optionally append ## Original Image with embedded resource."""
+    """从 OCR 结果构建笔记正文。可选地附加带有嵌入式资源的 ## 原始图像。"""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     date_str = now.strftime("%Y-%m-%d")
     text = (ocr_result.get("text") or "").strip()
@@ -87,32 +87,32 @@ def _build_photo_note_body(
     structured = ocr_result.get("structured_data")
 
     lines = [
-        "📷 *Captured from photo*",
+        "📷 *从照片捕获*",
         "",
-        f"**Type:** {img_type}",
+        f"**类型：** {img_type}",
         "",
     ]
     if summary:
-        lines.extend(["**Summary:**", summary, ""])
-    lines.extend(["## Extracted Text", ""])
+        lines.extend(["**摘要：**", summary, ""])
+    lines.extend(["## 提取的文本", ""])
     if text:
         lines.append(text)
     else:
-        lines.append("*No text detected*")
+        lines.append("*未检测到文本*")
     lines.append("")
     if structured and isinstance(structured, dict):
-        lines.append("## Structured Data")
+        lines.append("## 结构化数据")
         for k, v in structured.items():
             if v is not None and str(v).strip():
-                lines.append(f"- **{k}:** {v}")
+                lines.append(f"- **{k}：** {v}")
         lines.append("")
     if resource_id:
-        lines.append("## Original Image")
+        lines.append("## 原始图像")
         lines.append("")
-        lines.append(f"![Captured image](:/{resource_id})")
+        lines.append(f"![捕获的图像](:/{resource_id})")
         lines.append("")
     lines.append("---")
-    lines.append(f"*Captured via photo on {date_str}*")
+    lines.append(f"*于 {date_str} 通过照片捕获*")
     return "\n".join(lines)
 
 
@@ -135,7 +135,7 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
 
     user_id = user.id
     if not check_whitelist(user_id):
-        await message.reply_text("❌ Sorry, you're not authorized to use this bot.")
+        await message.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
         return
 
     caption = (message.caption or "").strip()
@@ -148,7 +148,7 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
     if len(image_data) < _MIN_IMAGE_SIZE_BYTES:
         await message.reply_text(
             format_error_message(
-                "Image is too small or empty. Please send a valid photo (JPEG, PNG, or WebP)."
+                "图像太小或为空。请发送有效的照片（JPEG、PNG 或 WebP）。"
             )
         )
         return
@@ -157,18 +157,18 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
         size_mb = len(image_data) / (1024 * 1024)
         await message.reply_text(
             format_error_message(
-                f"Image is too large ({size_mb:.1f} MB). Maximum size is 20 MB. "
-                "Try a smaller or compressed photo."
+                f"图像太大（{size_mb:.1f} MB）。最大大小为 20 MB。"
+                "尝试更小或压缩的照片。"
             )
         )
         return
 
     logger.info("Photo capture: image_size_bytes=%d", len(image_data))
 
-    status_msg = await message.reply_text("🔍 Processing image... (/photo_cancel to cancel)")
+    status_msg = await message.reply_text("🔍 正在处理图像…（/photo_cancel 取消）")
     t0 = time.monotonic()
     try:
-        await status_msg.edit_text("🔍 Extracting text... (/photo_cancel to cancel)")
+        await status_msg.edit_text("🔍 正在提取文本…（/photo_cancel 取消）")
 
         async def _status_cb(msg: str) -> None:
             await status_msg.edit_text(msg)
@@ -191,30 +191,30 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
 
         if not ocr_result:
             await status_msg.edit_text(
-                "❌ OCR failed. Set GEMINI_API_KEY in .env to enable photo capture. "
-                "If already set, try a clearer photo (JPEG or PNG)."
+                "❌ OCR 失败。在 .env 中设置 GEMINI_API_KEY 以启用照片捕获。"
+                "如果已设置，请尝试更清晰的照片（JPEG 或 PNG）。"
             )
             return
 
-        await status_msg.edit_text("🧠 Classifying content...")
+        await status_msg.edit_text("🧠 正在分类内容…")
         synthetic_message = (
-            f"[Photo capture - {ocr_result.get('type', 'image')}]\n\n"
-            f"Summary: {ocr_result.get('summary', '')}\n\n"
-            f"Extracted text:\n{ocr_result.get('text', '')}"
+            f"[照片捕获 - {ocr_result.get('type', 'image')}]\n\n"
+            f"摘要：{ocr_result.get('summary', '')}\n\n"
+            f"提取的文本：\n{ocr_result.get('text', '')}"
         )
         if caption:
-            synthetic_message = f"User caption: {caption}\n\n{synthetic_message}"
+            synthetic_message = f"用户标题：{caption}\n\n{synthetic_message}"
 
         llm_response = await orch.llm_orchestrator.process_message(synthetic_message)
         if not llm_response or llm_response.status == "ERROR":
             await status_msg.edit_text(
-                format_error_message("Could not classify the image content. Please try again.")
+                format_error_message("无法对图像内容进行分类。请重试。")
             )
             return
         if llm_response.status == "NEED_INFO" and llm_response.question:
             image_data_url = _image_bytes_to_data_url(image_data, mime_type)
 
-            # US-045: fetch top folders for quick-reply keyboard
+            # US-045: 获取快速回复键盘的顶级文件夹
             folder_choices: list[dict] = []
             try:
                 all_folders = await orch.joplin_client.get_folders()
@@ -248,12 +248,12 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
 
         note_data = llm_response.note
         if not note_data:
-            await status_msg.edit_text(format_error_message("No note data from classifier."))
+            await status_msg.edit_text(format_error_message("分类器没有笔记数据。"))
             return
 
-        title = (note_data.get("title") or ocr_result.get("suggested_title") or "Photo capture").strip()
+        title = (note_data.get("title") or ocr_result.get("suggested_title") or "照片捕获").strip()
 
-        await status_msg.edit_text("📝 Creating note...")
+        await status_msg.edit_text("📝 正在创建笔记…")
         t1 = time.monotonic()
         resource_id: str | None = None
         try:
@@ -301,21 +301,21 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
                 except Exception:
                     pass
             img_type = (ocr_result.get("type") or "image").replace("_", " ").title()
-            success_text = f"Saved: {title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} captured"
+            success_text = f"已保存：{title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} 已捕获"
             if resource_id:
-                success_text += "\n\nIf the image doesn't show, run /sync then sync in Joplin."
+                success_text += "\n\n如果图像没有显示，请运行 /sync 然后在 Joplin 中同步。"
             await status_msg.edit_text(format_success_message(success_text))
         elif result and result.get("error") == "folder_not_found":
             await status_msg.edit_text(
                 format_error_message(
-                    "Could not find folder. Try specifying a folder name in the caption."
+                    "找不到文件夹。请尝试在标题中指定文件夹名称。"
                 )
             )
         else:
-            await status_msg.edit_text(format_error_message("Failed to create note in Joplin."))
+            await status_msg.edit_text(format_error_message("无法在 Joplin 中创建笔记。"))
     except asyncio.CancelledError:
         _pending_photo_ocr_tasks.pop(user_id, None)
-        await status_msg.edit_text("❌ Photo capture cancelled.")
+        await status_msg.edit_text("❌ 照片捕获已取消。")
     except Exception as exc:
         _pending_photo_ocr_tasks.pop(user_id, None)
         from src.ocr_service import OCRUnprocessableImageError
@@ -323,18 +323,18 @@ async def _handle_photo(orch: TelegramOrchestrator, update: Update, context: Con
         if isinstance(exc, OCRUnprocessableImageError):
             await status_msg.edit_text(
                 format_error_message(
-                    "Unable to process this image. Please try a different photo (JPEG or PNG)."
+                    "无法处理此图像。请尝试其他照片（JPEG 或 PNG）。"
                 )
             )
         else:
             logger.error("Photo capture failed: %s", exc, exc_info=True)
-            await status_msg.edit_text(format_error_message(handle_api_error(exc, "photo capture")))
+            await status_msg.edit_text(format_error_message(handle_api_error(exc, "照片捕获")))
 
 
 async def handle_photo_message(
     orch: TelegramOrchestrator, user_id: int, text: str, message: Any
 ) -> None:
-    """Handle user reply when photo capture is in NEED_INFO state."""
+    """当照片捕获处于 NEED_INFO 状态时处理用户回复。"""
     state = orch.state_manager.get_state(user_id)
     if not state or state.get("active_persona") != PHOTO_OCR_PERSONA:
         orch.state_manager.clear_state(user_id)
@@ -344,7 +344,7 @@ async def handle_photo_message(
         orch.state_manager.clear_state(user_id)
         await message.reply_text(
             format_error_message(
-                "Photo capture session expired (24h limit). Please send the photo again."
+                "照片捕获会话已过期（24小时限制）。请重新发送照片。"
             )
         )
         return
@@ -356,7 +356,7 @@ async def handle_photo_message(
 
     if not ocr_result or not image_data_url:
         orch.state_manager.clear_state(user_id)
-        await message.reply_text(format_error_message("Photo capture session expired. Please send the photo again."))
+        await message.reply_text(format_error_message("照片捕获会话已过期。请重新发送照片。"))
         return
 
     image_data = b""
@@ -367,12 +367,12 @@ async def handle_photo_message(
         except Exception:
             pass
 
-    combined = f"{synthetic_message}\n\nUser reply: {text.strip()}"
+    combined = f"{synthetic_message}\n\n用户回复：{text.strip()}"
     llm_response = await orch.llm_orchestrator.process_message(combined)
 
     if not llm_response or llm_response.status == "ERROR":
         await message.reply_text(
-            format_error_message("Could not classify the image content. Please try again.")
+            format_error_message("无法对图像内容进行分类。请重试。")
         )
         return
 
@@ -384,13 +384,13 @@ async def handle_photo_message(
     note_data = llm_response.note
     if not note_data:
         orch.state_manager.clear_state(user_id)
-        await message.reply_text(format_error_message("No note data from classifier."))
+        await message.reply_text(format_error_message("分类器没有笔记数据。"))
         return
 
     orch.state_manager.clear_state(user_id)
-    status_msg = await message.reply_text("📝 Creating note...")
+    status_msg = await message.reply_text("📝 正在创建笔记…")
 
-    title = (note_data.get("title") or ocr_result.get("suggested_title") or "Photo capture").strip()
+    title = (note_data.get("title") or ocr_result.get("suggested_title") or "照片捕获").strip()
     resource_id: str | None = None
     if image_data:
         try:
@@ -427,22 +427,22 @@ async def handle_photo_message(
             except Exception:
                 pass
         img_type = (ocr_result.get("type") or "image").replace("_", " ").title()
-        success_text = f"Saved: {title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} captured"
+        success_text = f"已保存：{title}\n📁 {folder_name or 'Joplin'}\n📷 {img_type} 已捕获"
         if resource_id:
-            success_text += "\n\nIf the image doesn't show, run /sync then sync in Joplin."
+            success_text += "\n\n如果图像没有显示，请运行 /sync 然后在 Joplin 中同步。"
         await status_msg.edit_text(format_success_message(success_text))
     elif result and result.get("error") == "folder_not_found":
         await status_msg.edit_text(
             format_error_message(
-                "Could not find folder. Try specifying a folder name in your reply."
+                "找不到文件夹。请尝试在您的回复中指定文件夹名称。"
             )
         )
     else:
-        await status_msg.edit_text(format_error_message("Failed to create note in Joplin."))
+        await status_msg.edit_text(format_error_message("无法在 Joplin 中创建笔记。"))
 
 
 def _photo_folder_callback(orch: TelegramOrchestrator):
-    """US-045: Handle inline folder selection for photo OCR NEED_INFO."""
+    """US-045：处理照片 OCR NEED_INFO 的内联文件夹选择。"""
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         query = update.callback_query
         if not query or not query.data:
@@ -454,7 +454,7 @@ def _photo_folder_callback(orch: TelegramOrchestrator):
 
         state = orch.state_manager.get_state(user.id)
         if not state or state.get("active_persona") != PHOTO_OCR_PERSONA:
-            await query.edit_message_text("❌ Session expired. Send the photo again.")
+            await query.edit_message_text("❌ 会话已过期。请重新发送照片。")
             return
 
         folder_choices = state.get("folder_choices", [])
@@ -462,18 +462,18 @@ def _photo_folder_callback(orch: TelegramOrchestrator):
             idx = int(query.data.split("_")[-1])
             folder = folder_choices[idx]
         except (ValueError, IndexError):
-            await query.edit_message_text("❌ Invalid selection. Send the photo again.")
+            await query.edit_message_text("❌ 无效选择。请重新发送照片。")
             return
 
         folder_name = folder.get("title", "")
-        await query.edit_message_text(f"📁 Saving to {folder_name}...")
-        await handle_photo_message(orch, user.id, f"Save to {folder_name}", query.message)
+        await query.edit_message_text(f"📁 正在保存到 {folder_name}…")
+        await handle_photo_message(orch, user.id, f"保存到 {folder_name}", query.message)
 
     return handler
 
 
 def register_photo_handlers(application: Any, orch: TelegramOrchestrator) -> None:
-    """Register photo message handler and /photo_cancel."""
+    """注册照片消息处理程序和 /photo_cancel。"""
     from src.ocr_service import check_gemini_api_key_available
 
     available, masked_repr = check_gemini_api_key_available()
@@ -489,27 +489,27 @@ def register_photo_handlers(application: Any, orch: TelegramOrchestrator) -> Non
         await _handle_photo(orch, update, context)
 
     async def photo_cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Cancel in-progress photo OCR."""
+        """取消进行中的照片 OCR。"""
         user = update.effective_user
         msg = update.message
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         task = _pending_photo_ocr_tasks.pop(user.id, None)
         if task and not task.done():
             task.cancel()
-            await msg.reply_text("❌ Photo capture cancelled.")
+            await msg.reply_text("❌ 照片捕获已取消。")
         else:
             # Also clear NEED_INFO state if user was waiting to reply
             state = orch.state_manager.get_state(user.id)
             if state and state.get("active_persona") == PHOTO_OCR_PERSONA:
                 orch.state_manager.clear_state(user.id)
-                await msg.reply_text("Photo capture session cancelled. Send a new photo to start fresh.")
+                await msg.reply_text("照片捕获会话已取消。发送新照片重新开始。")
             else:
-                await msg.reply_text("No active photo capture to cancel.")
+                await msg.reply_text("没有活动的照片捕获可以取消。")
 
     application.add_handler(MessageHandler(filters.PHOTO, handler))
     application.add_handler(CommandHandler("photo_cancel", photo_cancel_cmd))

@@ -36,22 +36,22 @@ READING_STATE_KEY = "reading_queue_items"
 def _format_relative_time(saved_at: datetime | None) -> str:
     """Format saved_at as relative time (e.g. '2 days ago')."""
     if not saved_at:
-        return "Unknown"
+        return "未知"
     now = datetime.now(timezone.utc)  # noqa: UP017
     dt = saved_at.replace(tzinfo=timezone.utc) if saved_at.tzinfo is None else saved_at  # noqa: UP017
     delta = now - dt
     days = delta.days
     if days == 0:
-        return "Today"
+        return "今天"
     if days == 1:
-        return "1 day ago"
+        return "1天前"
     if days < 7:
-        return f"{days} days ago"
+        return f"{days}天前"
     if days < 14:
-        return "1 week ago"
+        return "1周前"
     if days < 30:
-        return f"{days // 7} weeks ago"
-    return f"{days // 30} months ago"
+        return f"{days // 7}周前"
+    return f"{days // 30}个月前"
 
 
 def register_reading_handlers(application: Any, orch: TelegramOrchestrator) -> None:
@@ -69,35 +69,35 @@ def _readlater_cmd(orch: TelegramOrchestrator):
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         text = " ".join(context.args) if context.args else ""
         urls = URL_PATTERN.findall(text)
         if not urls:
             await msg.reply_text(
-                "📚 **Read Later**\n\n"
-                "Usage: `/readlater <url>` or `/rl <url>`\n"
-                "Example: `/rl https://example.com/article`",
+                "📚 **稍后阅读**\n\n"
+                "用法：`/readlater <链接>` 或 `/rl <链接>`\n"
+                "示例：`/rl https://example.com/article`",
                 parse_mode="Markdown",
             )
             return
 
         url = urls[0]
-        await msg.reply_text("📚 Fetching article...")
+        await msg.reply_text("📚 正在获取文章…")
         try:
             result = await add_to_queue(orch.joplin_client, url, get_now_in_default_tz())
             if result.get("duplicate"):
                 await msg.reply_text(
-                    format_success_message(f"Already in queue: {result.get('title', 'Untitled')}")
+                    format_success_message(f"已在队列中：{result.get('title', '无标题')}")
                 )
             else:
                 await msg.reply_text(
-                    format_success_message(f"Added: {result.get('title', 'Untitled')}")
+                    format_success_message(f"已添加：{result.get('title', '无标题')}")
                 )
         except Exception as exc:
             logger.error("Read later failed for %s: %s", url, exc)
-            await msg.reply_text(format_error_message("Failed to add to reading queue. Please try again."))
+            await msg.reply_text(format_error_message("添加到阅读队列失败，请重试。"))
 
     return handler
 
@@ -109,7 +109,7 @@ def _reading_cmd(orch: TelegramOrchestrator):
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         args = (context.args or [])
@@ -130,15 +130,15 @@ def _reading_cmd(orch: TelegramOrchestrator):
                     if note_id:
                         ok = await mark_as_read(orch.joplin_client, note_id)
                         if ok:
-                            await msg.reply_text(format_success_message("Marked as read ✓"))
+                            await msg.reply_text(format_success_message("标记为已读 ✓"))
                         else:
-                            await msg.reply_text(format_error_message("Could not mark as read."))
+                            await msg.reply_text(format_error_message("无法标记为已读。"))
                     else:
-                        await msg.reply_text(format_error_message("Invalid item."))
+                        await msg.reply_text(format_error_message("无效的项目。"))
                 else:
-                    await msg.reply_text(format_error_message("Invalid number. Use /reading to see the queue."))
+                    await msg.reply_text(format_error_message("无效的编号。使用 /reading 查看队列。"))
             else:
-                await msg.reply_text("Usage: `/reading done <number>`", parse_mode="Markdown")
+                await msg.reply_text("用法：`/reading done <编号>`", parse_mode="Markdown")
             return
 
         if sub == "delete" and len(args) >= 2:
@@ -153,29 +153,29 @@ def _reading_cmd(orch: TelegramOrchestrator):
                     if note_id:
                         ok = await delete_from_queue(orch.joplin_client, note_id)
                         if ok:
-                            await msg.reply_text(format_success_message("Removed from queue."))
+                            await msg.reply_text(format_success_message("已从队列中移除。"))
                         else:
-                            await msg.reply_text(format_error_message("Could not delete."))
+                            await msg.reply_text(format_error_message("无法删除。"))
                     else:
-                        await msg.reply_text(format_error_message("Invalid item."))
+                        await msg.reply_text(format_error_message("无效的项目。"))
                 else:
-                    await msg.reply_text(format_error_message("Invalid number."))
+                    await msg.reply_text(format_error_message("无效的编号。"))
             else:
-                await msg.reply_text("Usage: `/reading delete <number>`", parse_mode="Markdown")
+                await msg.reply_text("用法：`/reading delete <编号>`", parse_mode="Markdown")
             return
 
         if sub == "random":
             item = await get_random_unread(orch.joplin_client)
             if not item:
-                await msg.reply_text("📚 Your reading queue is empty. Add articles with /readlater <url>")
+                await msg.reply_text("📚 您的阅读队列为空。使用 /readlater <链接> 添加文章")
                 return
-            title = item.get("title") or "Untitled"
+            title = item.get("title") or "无标题"
             domain = item.get("domain") or ""
             await msg.reply_text(
-                f"📚 **Random pick**\n\n"
+                f"📚 **随机推荐**\n\n"
                 f"**{title}**\n"
                 f"_{domain}_\n\n"
-                f"Use /reading to see the full queue.",
+                f"使用 /reading 查看完整队列。",
                 parse_mode="Markdown",
             )
             return
@@ -183,10 +183,10 @@ def _reading_cmd(orch: TelegramOrchestrator):
         if sub == "stats":
             stats = await get_stats(orch.joplin_client)
             await msg.reply_text(
-                f"📚 **Reading Queue Stats**\n\n"
-                f"• Unread: {stats['unread']}\n"
-                f"• Read: {stats['read']}\n"
-                f"• Total: {stats['total']}",
+                f"📚 **阅读队列统计**\n\n"
+                f"• 未读：{stats['unread']}\n"
+                f"• 已读：{stats['read']}\n"
+                f"• 总计：{stats['total']}",
                 parse_mode="Markdown",
             )
             return
@@ -200,27 +200,27 @@ def _reading_cmd(orch: TelegramOrchestrator):
 
         if not items:
             await msg.reply_text(
-                "📚 Your reading queue is empty. Add articles with /readlater <url>"
+                "📚 您的阅读队列为空。使用 /readlater <链接> 添加文章"
             )
             return
 
-        label = "unread" if unread_only else "total"
-        lines = [f"📚 **Reading Queue** ({total} {label})\n"]
+        label = "未读" if unread_only else "全部"
+        lines = [f"📚 **阅读队列** ({total} {label})\n"]
         for i, it in enumerate(items, 1):
-            title = it.get("title") or "Untitled"
+            title = it.get("title") or "无标题"
             domain = it.get("domain") or ""
             summary = (it.get("summary") or "")[:100]
             if len(it.get("summary") or "") > 100:
                 summary += "..."
             saved = _format_relative_time(it.get("saved_at"))
             lines.append(f"{i}️⃣ **{title}**")
-            lines.append(f"   _{domain} • Saved {saved}_")
+            lines.append(f"   _{domain} • 保存于 {saved}_")
             if summary:
                 lines.append(f"   {summary}")
             lines.append("")
-        lines.append("Reply with number to open, or `/reading done <number>` to mark as read.")
+        lines.append("回复编号打开，或 `/reading done <编号>` 标记为已读。")
         if total > 5:
-            lines.append(f"Page {page}. Use `/reading {'all' if unread_only else ''} {page + 1}` for more.")
+            lines.append(f"第 {page} 页。使用 `/reading {'all' if unread_only else ''} {page + 1}` 查看更多。")
         await msg.reply_text("\n".join(lines), parse_mode="Markdown")
 
     return handler

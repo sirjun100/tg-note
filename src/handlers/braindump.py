@@ -23,9 +23,9 @@ from src.timezone_utils import get_current_date_str, get_user_timezone_aware_now
 # ---------------------------------------------------------------------------
 
 _MODES: dict[str, dict[str, Any]] = {
-    "quick":    {"label": "Quick",    "target_minutes": 5,  "emoji": "⚡"},
-    "standard": {"label": "Standard", "target_minutes": 15, "emoji": "🧠"},
-    "thorough": {"label": "Thorough", "target_minutes": 25, "emoji": "🔍"},
+    "quick":    {"label": "快速",    "target_minutes": 5,  "emoji": "⚡"},
+    "standard": {"label": "标准", "target_minutes": 15, "emoji": "🧠"},
+    "thorough": {"label": "深入", "target_minutes": 25, "emoji": "🔍"},
 }
 _DEFAULT_MODE = "standard"
 _IDLE_TIMEOUT_MINUTES = 30
@@ -78,8 +78,8 @@ def _braindump(orch: TelegramOrchestrator):
             mode = state.get("session_mode", "standard")
             target = state.get("target_minutes", 15)
             await update.message.reply_text(
-                f"💡 You already have an active {mode} brain dump session ({target} min). "
-                "Just keep typing, or use /braindump_stop to finish."
+                f"💡 您已经有一个进行中的 {mode} 大脑清空会话（{target} 分钟）。"
+                "请继续输入，或使用 /braindump_stop 结束会话。"
             )
             return
 
@@ -107,9 +107,9 @@ def _braindump(orch: TelegramOrchestrator):
         }
 
         first_question = (
-            "Ready to dump your brain? Let's do 15 minutes. "
-            "First—what is the thing that has been poking at you the most lately? "
-            "The one that keeps coming back."
+            "准备好清空你的大脑了吗？让我们用 15 分钟。"
+            "首先——最近最让你惦记的是什么事？"
+            "那个一直萦绕在你心头的事情。"
         )
 
         prompt_path = Path(__file__).parent.parent / "prompts" / "gtd_expert.txt"
@@ -123,7 +123,7 @@ def _braindump(orch: TelegramOrchestrator):
 
         orch.state_manager.update_state(user_id, new_state)
         await update.message.reply_text(
-            f"{emoji} *{label.upper()} MIND SWEEP ({target_minutes} min)*\n\n{first_question}",
+            f"{emoji} *{label.upper()} 大脑清空（{target_minutes} 分钟）*\n\n{first_question}",
             parse_mode="Markdown",
         )
 
@@ -140,7 +140,7 @@ def _braindump_stop(orch: TelegramOrchestrator):
         state = orch.state_manager.get_state(user_id)
         if not state or state.get("active_persona") != "GTD_EXPERT":
             await update.message.reply_text(
-                "❌ You don't have an active brain dump session. Use /braindump to start one."
+                "❌ 您没有进行中的大脑清空会话。使用 /braindump 开始一个。"
             )
             return
 
@@ -178,7 +178,7 @@ async def handle_braindump_message(
             idle_minutes = (now_aware - updated_dt).total_seconds() / 60
             if idle_minutes >= _IDLE_TIMEOUT_MINUTES:
                 await message.reply_text(
-                    "⏸️ Your session was paused after inactivity. Resuming where we left off..."
+                    "⏸️ 您的会话因长时间不活动而暂停。让我们从上次中断的地方继续..."
                 )
         except Exception:
             pass
@@ -221,7 +221,7 @@ async def handle_braindump_message(
             orch.state_manager.update_state(user_id, state)
             await _finish_session(orch, user_id, message, llm_response.note)
         else:
-            next_q = llm_response.question or "Any other thoughts?"
+            next_q = llm_response.question or "还有其他想法吗？"
             history.append({"role": "assistant", "content": next_q})
             state["conversation_history"] = history[-15:]
             orch.state_manager.update_state(user_id, state)
@@ -229,8 +229,8 @@ async def handle_braindump_message(
     except Exception as exc:
         logger.error("Error in GTD brain dump for user %d: %s", user_id, exc)
         await message.reply_text(
-            "❌ Sorry, I had some trouble processing that. "
-            "You can continue or use /braindump_stop to finish."
+            "❌ 抱歉，处理时遇到了一些问题。"
+            "您可以继续输入，或使用 /braindump_stop 结束会话。"
         )
 
 
@@ -253,7 +253,7 @@ async def _finish_session(
     mode = state.get("session_mode", _DEFAULT_MODE)
     orch.state_manager.set_user_pref(user_id, _PREF_KEY_MODE, mode)
 
-    await message.reply_text("🏁 *FINISHING BRAIN DUMP SESSION...*", parse_mode="Markdown")
+    await message.reply_text("🏁 *正在结束大脑清空会话...*", parse_mode="Markdown")
 
     try:
         final_note = note_data or state.get("final_note")
@@ -261,9 +261,9 @@ async def _finish_session(
         if not final_note:
             history = state.get("conversation_history", [])
             if history:
-                await message.reply_text("📊 Generating summary of your session...")
+                await message.reply_text("📊 正在生成您的会话摘要...")
                 llm_response = await orch.llm_orchestrator.process_message(
-                    user_message="Please summarize everything we've talked about so far into an organized list.",
+                    user_message="请将我们到目前为止讨论的所有内容总结成一个有条理的列表。",
                     persona="gtd_expert",
                     history=history,
                 )
@@ -271,11 +271,11 @@ async def _finish_session(
                     final_note = llm_response.note
                 else:
                     await message.reply_text(
-                        "⚠️ Couldn't generate a structured summary. I'll save our conversation as-is."
+                        "⚠️ 无法生成结构化摘要。我将按原样保存我们的对话。"
                     )
                     date_str = get_current_date_str(user_id, orch.logging_service)
                     final_note = {
-                        "title": f"Brain Dump Session - {date_str}",
+                        "title": f"大脑清空会话 - {date_str}",
                         "body": "\n".join(f"{h['role']}: {h['content']}" for h in history),
                         "parent_id": "00 - Inbox",
                         "tags": ["brain-dump", "mindsweep"],
@@ -300,7 +300,7 @@ async def _finish_session(
 
             if note_result:
                 await message.reply_text(
-                    f"✅ *BRAIN DUMP SAVED TO JOPLIN*\n\nNote: {final_note['title']}",
+                    f"✅ *大脑清空已保存到 JOPLIN*\n\n笔记：{final_note['title']}",
                     parse_mode="Markdown",
                 )
                 decision = Decision(
@@ -315,7 +315,7 @@ async def _finish_session(
                 orch.logging_service.log_decision(decision)
 
                 if GOOGLE_TASKS_AVAILABLE and orch.task_service:
-                    await message.reply_text("🚀 Extracting action items to Google Tasks...")
+                    await message.reply_text("🚀 正在将行动项提取到 Google Tasks...")
                     parent_folder_id, parent_folder_title = None, None
                     if decision.folder_chosen:
                         cfg = orch.logging_service.get_google_tasks_config(user_id)
@@ -335,33 +335,33 @@ async def _finish_session(
                         )
                     except GoogleAuthError:
                         await message.reply_text(
-                            "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+                            "🔑 Google 令牌已过期或被撤销。使用 /tasks_connect 重新认证。"
                         )
                         created = []
                     if created:
                         try:
                             status = orch.task_service.get_task_sync_status(user_id)
                             s, f = status.get("success_count", 0), status.get("failed_count", 0)
-                            status_line = f"\n\n📊 Sync: ✅ {s} successful, ❌ {f} failed — /tasks_status"
+                            status_line = f"\n\n📊 同步：✅ {s} 成功，❌ {f} 失败 — /tasks_status"
                         except Exception:
                             status_line = ""
-                        await message.reply_text(f"✅ Created {len(created)} task(s) in Google Tasks.{status_line}")
+                        await message.reply_text(f"✅ 在 Google Tasks 中创建了 {len(created)} 个任务。{status_line}")
                     else:
                         has_token = orch.logging_service.load_google_token(str(user_id)) is not None
                         if has_token:
-                            await message.reply_text("❌ Could not create Google Tasks. Check /tasks_status for details.")
+                            await message.reply_text("❌ 无法创建 Google Tasks。查看 /tasks_status 了解详情。")
                         else:
                             await message.reply_text(
-                                "❌ Could not create Google Tasks. Use /tasks_connect to connect your Google account first."
+                                "❌ 无法创建 Google Tasks。首先使用 /tasks_connect 连接您的 Google 账户。"
                             )
             else:
-                await message.reply_text("❌ Failed to save note to Joplin.")
+                await message.reply_text("❌ 无法保存笔记到 Joplin。")
 
         orch.state_manager.clear_state(user_id)
-        await message.reply_text("✨ Brain dump session closed. Your head should feel lighter now!")
+        await message.reply_text("✨ 大脑清空会话已关闭。现在你的头脑应该感觉轻松多了！")
     except Exception as exc:
         logger.error("Error finishing brain dump for user %d: %s", user_id, exc, exc_info=True)
         await message.reply_text(
-            "❌ An error occurred while finishing your session. I've cleared the session state."
+            "❌ 结束会话时发生错误。我已清除会话状态。"
         )
         orch.state_manager.clear_state(user_id)

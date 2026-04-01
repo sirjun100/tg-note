@@ -46,21 +46,21 @@ def _get_friday_rfc3339(now: datetime) -> str:
 
 
 def _gather_review_context(orch: TelegramOrchestrator, user_id: int) -> str:
-    """Gather pending tasks for review. Returns formatted string."""
+    """收集待处理任务以供审查。返回格式化字符串。"""
     if not orch.task_service:
         return ""
     try:
         task_lists = orch.task_service.get_available_task_lists(str(user_id))
         if not task_lists:
             return ""
-        lines = ["**Pending tasks:**"]
+        lines = ["**待处理任务：**"]
         count = 0
         for tl in task_lists:
             tasks = orch.task_service.get_user_tasks(str(user_id), tl.get("id")) or []
             for t in tasks:
                 if t.get("status") == "completed":
                     continue
-                title = t.get("title", "(Untitled)")
+                title = t.get("title", "(无标题)")
                 lines.append(f"• {title}")
                 count += 1
                 if count >= 10:
@@ -68,7 +68,7 @@ def _gather_review_context(orch: TelegramOrchestrator, user_id: int) -> str:
             if count >= 10:
                 break
         if count == 0:
-            return "No pending tasks."
+            return "没有待处理任务。"
         return "\n".join(lines)
     except Exception as exc:
         logger.warning("Failed to gather tasks for planning: %s", exc)
@@ -80,7 +80,7 @@ def _build_planning_note(
     user_id: int,
     orch: TelegramOrchestrator,
 ) -> str:
-    """Build the weekly planning note body."""
+    """构建每周计划笔记正文。"""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     week_start = _get_week_start(now)
     date_str = week_start.strftime("%B %d, %Y")
@@ -91,27 +91,27 @@ def _build_planning_note(
     top_priority = state.get("top_priority", "").strip()
 
     lines = [
-        f"# Weekly Plan - Week of {date_str}",
+        f"# 每周计划 - {date_str} 这周",
         "",
-        "## Last Week Reflection",
+        "## 上周反思",
         reflection or "-",
         "",
-        "## This Week's Priorities",
+        "## 这周的优先事项",
         "",
     ]
     if top_priority:
-        lines.append("### 🎯 #1 Priority")
+        lines.append("### 🎯 第一优先事项")
         lines.append(top_priority)
         lines.append("")
     if priorities:
-        lines.append("### Other Priorities")
+        lines.append("### 其他优先事项")
         for i, p in enumerate(priorities[:5], 1):
             if p != top_priority:
                 lines.append(f"{i}. {p}")
         lines.append("")
 
     if obstacles:
-        lines.append("## Potential Obstacles")
+        lines.append("## 潜在障碍")
         lines.append("")
         for o in obstacles:
             if isinstance(o, dict):
@@ -123,15 +123,15 @@ def _build_planning_note(
         lines.append("")
 
     lines.append("---")
-    lines.append(f"*Generated via /plan on {now.strftime('%Y-%m-%d %H:%M')}*")
+    lines.append(f"*通过 /plan 在 {now.strftime('%Y-%m-%d %H:%M')} 生成*")
     return "\n".join(lines)
 
 
 async def _save_planning_note(orch: TelegramOrchestrator, user_id: int, state: dict) -> bool:
-    """Save planning note to Joplin."""
+    """将计划笔记保存到 Joplin。"""
     now = get_user_timezone_aware_now(user_id, orch.logging_service)
     week_start = _get_week_start(now)
-    title = f"Weekly Plan - {week_start.strftime('%Y-%m-%d')}"
+    title = f"每周计划 - {week_start.strftime('%Y-%m-%d')}"
     body = _build_planning_note(state, user_id, orch)
     folder_id = await orch.joplin_client.get_or_create_folder_by_path(PLANNING_PATH)
     note_id = await orch.joplin_client.create_note(folder_id, title, body)
@@ -140,7 +140,7 @@ async def _save_planning_note(orch: TelegramOrchestrator, user_id: int, state: d
 
 
 def _create_priority_tasks(orch: TelegramOrchestrator, user_id: int, state: dict) -> int:
-    """Create Google Tasks for priorities. Returns count created."""
+    """为优先事项创建 Google Tasks。返回创建的数量。"""
     if not orch.task_service:
         return 0
     priorities = state.get("priorities", [])
@@ -161,7 +161,7 @@ def _create_priority_tasks(orch: TelegramOrchestrator, user_id: int, state: dict
             result = orch.task_service.create_task_with_metadata(
                 title=title,
                 user_id=str(user_id),
-                notes="Weekly priority from /plan session",
+                notes="来自 /plan 会话的每周优先事项",
                 due_date=due,
             )
         except GoogleAuthError:
@@ -180,7 +180,7 @@ async def handle_planning_message(
     text: str,
     message: Any,
 ) -> None:
-    """Handle incoming message when user is in PLANNING_COACH session."""
+    """当用户处于 PLANNING_COACH 会话时处理传入消息。"""
     state = orch.state_manager.get_state(user_id)
     if not state or state.get("active_persona") != "PLANNING_COACH":
         return
@@ -192,9 +192,9 @@ async def handle_planning_message(
         state["phase"] = "priorities"
         orch.state_manager.update_state(user_id, state)
         await message.reply_text(
-            "🎯 **Priorities**\n\n"
-            "What are the 3-5 most important things to accomplish this week? "
-            "List them (one per line or comma-separated)."
+            "🎯 **优先事项**\n\n"
+            "这周要完成的 3-5 件最重要的事是什么？"
+            "列出来（每行一个或用逗号分隔）。"
         )
         return
 
@@ -209,9 +209,9 @@ async def handle_planning_message(
         state["phase"] = "obstacles"
         orch.state_manager.update_state(user_id, state)
         await message.reply_text(
-            "⚠️ **Obstacles**\n\n"
-            "What might get in the way? For each, how will you handle it? "
-            "(e.g. 'Meetings → Block focus time in calendar')"
+            "⚠️ **障碍**\n\n"
+            "可能会遇到什么阻碍？对于每个障碍，您将如何处理？"
+            "（例如：'会议 → 在日历中屏蔽专注时间'）"
         )
         return
 
@@ -231,8 +231,8 @@ async def handle_planning_message(
         state["phase"] = "commit"
         orch.state_manager.update_state(user_id, state)
         await message.reply_text(
-            "🎯 **Commit**\n\n"
-            "Looking at your priorities, what's your #1 focus for this week?"
+            "🎯 **承诺**\n\n"
+            "看看您的优先事项，这周您的第一重点是什么？"
         )
         return
 
@@ -245,27 +245,27 @@ async def handle_planning_message(
 
 
 async def _finish_planning(orch: TelegramOrchestrator, user_id: int, state: dict, message: Any) -> None:
-    """Save note, create tasks, clear state."""
+    """保存笔记、创建任务、清除状态。"""
     try:
         await _save_planning_note(orch, user_id, state)
         task_count = _create_priority_tasks(orch, user_id, state)
         orch.state_manager.clear_state(user_id)
-        msg = format_success_message("Weekly plan saved to Joplin.")
+        msg = format_success_message("每周计划已保存到 Joplin。")
         if task_count > 0:
-            msg += f"\n✅ {task_count} priority task(s) added to Google Tasks."
+            msg += f"\n✅ {task_count} 个优先任务已添加到 Google Tasks。"
         await message.reply_text(msg)
     except GoogleAuthError:
         orch.state_manager.clear_state(user_id)
         await message.reply_text(format_error_message(
-            "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+            "🔑 Google 令牌已过期或被撤销。使用 /tasks_connect 重新认证。"
         ))
     except Exception as exc:
         logger.error("Planning save failed: %s", exc)
-        await message.reply_text(format_error_message("Failed to save plan. Please try again."))
+        await message.reply_text(format_error_message("无法保存计划。请重试。"))
 
 
 def register_planning_handlers(application: Any, orch: TelegramOrchestrator) -> None:
-    """Register planning session handlers."""
+    """注册计划会话处理程序。"""
 
     async def plan_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user
@@ -273,14 +273,14 @@ def register_planning_handlers(application: Any, orch: TelegramOrchestrator) -> 
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         state = orch.state_manager.get_state(user.id)
         if state and state.get("active_persona") == "PLANNING_COACH":
             await msg.reply_text(
-                "📅 You already have an active planning session. "
-                "Keep answering, or use /plan_done to finish."
+                "📅 您已经有一个活动的计划会话。"
+                "继续回答，或使用 /plan_done 完成。"
             )
             return
 
@@ -299,14 +299,14 @@ def register_planning_handlers(application: Any, orch: TelegramOrchestrator) -> 
         orch.state_manager.update_state(user.id, new_state)
         review_ctx = _gather_review_context(orch, user.id)
         intro = (
-            f"📅 **Weekly Planning Session**\n\n"
-            f"Week of {week_start.strftime('%B %d')}\n\n"
+            f"📅 **每周计划会话**\n\n"
+            f"{week_start.strftime('%B %d')} 这周\n\n"
         )
         if review_ctx:
             intro += f"📋 {review_ctx}\n\n"
         intro += (
-            "How did last week go? What worked, what didn't?\n\n"
-            "Type /plan_done to finish early, /plan_cancel to exit without saving."
+            "上周怎么样？哪些做得好，哪些不好？\n\n"
+            "输入 /plan_done 提前完成，/plan_cancel 退出不保存。"
         )
         await msg.reply_text(intro, parse_mode="Markdown")
         logger.info("Planning session started for user %d", user.id)
@@ -317,18 +317,18 @@ def register_planning_handlers(application: Any, orch: TelegramOrchestrator) -> 
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         state = orch.state_manager.get_state(user.id)
         if not state or state.get("active_persona") != "PLANNING_COACH":
-            await msg.reply_text("No active planning session. Use /plan to start one.")
+            await msg.reply_text("没有活动的计划会话。使用 /plan 开始一个。")
             return
 
         phase = state.get("phase", "")
         if phase == "review":
             orch.state_manager.clear_state(user.id)
-            await msg.reply_text("Planning session cancelled.")
+            await msg.reply_text("计划会话已取消。")
             return
 
         await _finish_planning(orch, user.id, state, msg)
@@ -339,15 +339,15 @@ def register_planning_handlers(application: Any, orch: TelegramOrchestrator) -> 
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         state = orch.state_manager.get_state(user.id)
         if state and state.get("active_persona") == "PLANNING_COACH":
             orch.state_manager.clear_state(user.id)
-            await msg.reply_text("Planning session cancelled. Nothing was saved.")
+            await msg.reply_text("计划会话已取消。没有保存任何内容。")
         else:
-            await msg.reply_text("No active planning session to cancel.")
+            await msg.reply_text("没有活动的计划会话可以取消。")
 
     application.add_handler(CommandHandler("plan", plan_cmd))
     application.add_handler(CommandHandler("plan_done", plan_done_cmd))

@@ -33,17 +33,17 @@ FLASHCARD_PERSONA = "FLASHCARD"
 
 def _build_question_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("👀 Show answer", callback_data="fc_show")],
+        [InlineKeyboardButton("👀 显示答案", callback_data="fc_show")],
     ])
 
 
 def _build_rating_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("🔄 Again", callback_data="fc_again"),
-            InlineKeyboardButton("😓 Hard", callback_data="fc_hard"),
-            InlineKeyboardButton("👍 Good", callback_data="fc_good"),
-            InlineKeyboardButton("😊 Easy", callback_data="fc_easy"),
+            InlineKeyboardButton("🔄 再一次", callback_data="fc_again"),
+            InlineKeyboardButton("😓 困难", callback_data="fc_hard"),
+            InlineKeyboardButton("👍 良好", callback_data="fc_good"),
+            InlineKeyboardButton("😊 简单", callback_data="fc_easy"),
         ],
     ])
 
@@ -71,7 +71,7 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         args = context.args or []
@@ -87,43 +87,43 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
                 notes = await orch.joplin_client.search_notes(title_query, limit=5)
                 if not notes:
                     await msg.reply_text(
-                        format_error_message(f"No notes found matching '{title_query}'.")
+                        format_error_message(f"没有找到匹配 '{title_query}' 的笔记。")
                     )
                     return
                 note = notes[0]
                 note_id = note.get("id")
-                note_title = note.get("title", "Untitled")
+                note_title = note.get("title", "无标题")
                 body = note.get("body", "")
                 if not body:
                     await msg.reply_text(
-                        format_error_message(f"Note '{note_title}' has no content to extract from.")
+                        format_error_message(f"笔记 '{note_title}' 没有内容可提取。")
                     )
                     return
                 pairs = await orch.llm_orchestrator.extract_flashcards_from_note(note_title, body)
                 if not pairs:
                     await msg.reply_text(
-                        f"No flashcard-worthy content found in '{note_title}'. "
-                        "Try a note with definitions, facts, or concepts."
+                        f"在 '{note_title}' 中没有找到适合制作闪卡的内容。"
+                        "尝试使用包含定义、事实或概念的笔记。"
                     )
                     return
                 cards = add_cards_from_note(user.id, note_id, note_title, pairs)
                 await msg.reply_text(
-                    f"🧠 Extracted {len(cards)} card(s) from '{note_title}'. "
-                    f"Use /flashcard to practice!"
+                    f"🧠 从 '{note_title}' 中提取了 {len(cards)} 张卡片。"
+                    f"使用 /flashcard 进行练习！"
                 )
             except Exception as exc:
                 logger.exception("Flashcard from-note failed: %s", exc)
-                await msg.reply_text(format_error_message("Failed to extract flashcards."))
+                await msg.reply_text(format_error_message("提取闪卡失败。"))
             return
 
         # /flashcard stats
         if args and args[0].lower() == "stats":
             stats = get_stats(user.id)
             await msg.reply_text(
-                f"📊 **Flashcard Stats**\n\n"
-                f"• Total cards: {stats['total']}\n"
-                f"• Due today: {stats['due']}\n\n"
-                f"Use /flashcard to practice!",
+                f"📊 **闪卡统计**\n\n"
+                f"• 总卡片数：{stats['total']}\n"
+                f"• 今日到期：{stats['due']}\n\n"
+                f"使用 /flashcard 进行练习！",
                 parse_mode="Markdown",
             )
             return
@@ -131,16 +131,16 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
         # /flashcard help
         if args and args[0].lower() == "help":
             await msg.reply_text(
-                "🧠 **Flashcard Practice**\n\n"
-                "• `/flashcard` — Start session (up to 10 cards)\n"
-                "• `/flashcard N` — Session with up to N cards\n"
-                "• `/flashcard from <title>` — Extract cards from a note\n"
-                "• `/flashcard tag <tag>` — Practice only cards from notes with that tag\n"
-                "• `/flashcard folder <path>` — Practice only cards from notes in that folder\n"
-                "• `/flashcard stats` — Due count, total cards\n"
-                "• `/flashcard help` — This message\n"
-                "• `/flashcard_done` — End session early\n\n"
-                "Tag notes with #flashcard or #practice to include them.",
+                "🧠 **闪卡练习**\n\n"
+                "• `/flashcard` — 开始会话（最多 10 张卡片）\n"
+                "• `/flashcard N` — 最多 N 张卡片的会话\n"
+                "• `/flashcard from <标题>` — 从笔记中提取卡片\n"
+                "• `/flashcard tag <标签>` — 仅练习带有该标签笔记中的卡片\n"
+                "• `/flashcard folder <路径>` — 仅练习该文件夹中笔记的卡片\n"
+                "• `/flashcard stats` — 到期数、总卡片数\n"
+                "• `/flashcard help` — 此消息\n"
+                "• `/flashcard_done` — 提前结束会话\n\n"
+                "使用 #flashcard 或 #practice 标签笔记以包含它们。",
                 parse_mode="Markdown",
             )
             return
@@ -153,36 +153,36 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
             tag_id = await orch.joplin_client.get_tag_id_by_name(tag_name)
             if not tag_id:
                 await msg.reply_text(
-                    format_error_message(f"Tag '{tag_name}' not found.")
+                    format_error_message(f"标签 '{tag_name}' 未找到。")
                 )
                 return
             notes = await orch.joplin_client.get_notes_with_tag(tag_id)
             note_ids = [n["id"] for n in notes if n.get("id")]
-            filter_hint = f"tag '{tag_name}'"
+            filter_hint = f"标签 '{tag_name}'"
             args = []  # consumed
         elif args and args[0].lower() == "folder" and len(args) >= 2:
             path_str = " ".join(args[1:]).strip()
             path_parts = [p.strip() for p in path_str.split("/") if p.strip()]
             if not path_parts:
                 await msg.reply_text(
-                    format_error_message("Folder path cannot be empty.")
+                    format_error_message("文件夹路径不能为空。")
                 )
                 return
             folder_id = await orch.joplin_client.get_folder_id_by_path(path_parts)
             if not folder_id:
                 await msg.reply_text(
-                    format_error_message(f"Folder '{path_str}' not found.")
+                    format_error_message(f"文件夹 '{path_str}' 未找到。")
                 )
                 return
             notes = await orch.joplin_client.get_notes_in_folder(folder_id)
             note_ids = [n["id"] for n in notes if n.get("id")]
-            filter_hint = f"folder '{path_str}'"
+            filter_hint = f"文件夹 '{path_str}'"
             args = []  # consumed
 
         # Start session
         state = orch.state_manager.get_state(user.id)
         if state and state.get("active_persona") == FLASHCARD_PERSONA:
-            await msg.reply_text("You already have an active session. Use /flashcard_done to end it.")
+            await msg.reply_text("您已经有一个进行中的会话。使用 /flashcard_done 结束它。")
             return
 
         try:
@@ -191,25 +191,25 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
             cards = get_due_cards(user.id, note_ids=note_ids if note_ids else None, limit=limit)
         except Exception as exc:
             logger.exception("get_due_cards failed: %s", exc)
-            await msg.reply_text(format_error_message("Failed to load flashcards."))
+            await msg.reply_text(format_error_message("加载闪卡失败。"))
             return
 
         if not cards:
             stats = get_stats(user.id)
             if filter_hint and (not note_ids or len(note_ids) == 0):
                 await msg.reply_text(
-                    f"No notes found with {filter_hint}. "
-                    "Add notes with that tag/folder and extract cards with /flashcard from <note>."
+                    f"没有找到带有 {filter_hint} 的笔记。"
+                    "添加带有该标签/文件夹的笔记，并使用 /flashcard from <笔记> 提取卡片。"
                 )
             elif stats["total"] == 0:
                 await msg.reply_text(
-                    "🧠 No flashcards yet. Tag notes with #flashcard or #practice, "
-                    "or use /flashcard from <note title> to extract cards."
+                    "🧠 还没有闪卡。使用 #flashcard 或 #practice 标签笔记，"
+                    "或使用 /flashcard from <笔记标题> 提取卡片。"
                 )
             else:
                 await msg.reply_text(
-                    f"🎯 All caught up! No cards due today. "
-                    f"Total cards: {stats['total']}."
+                    f"🎯 全都赶上了！今天没有到期的卡片。"
+                    f"总卡片数：{stats['total']}。"
                 )
             return
 
@@ -229,10 +229,10 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
         card = get_card_by_id(queue[0], user.id)
         if not card:
             orch.state_manager.clear_state(user.id)
-            await msg.reply_text(format_error_message("Card not found."))
+            await msg.reply_text(format_error_message("卡片未找到。"))
             return
 
-        text = f"🧠 Flashcard time! You have {len(queue)} card(s) due.\n\n📌 Card 1/{len(queue)}\n\nQ: {card['question']}"
+        text = f"🧠 闪卡时间！您有 {len(queue)} 张卡片到期。\n\n📌 卡片 1/{len(queue)}\n\n问：{card['question']}"
         await msg.reply_text(text, reply_markup=_build_question_keyboard())
 
     async def flashcard_done_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -241,12 +241,12 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         state = orch.state_manager.get_state(user.id)
         if not state or state.get("active_persona") != FLASHCARD_PERSONA:
-            await msg.reply_text("No active flashcard session. Use /flashcard to start one.")
+            await msg.reply_text("没有进行中的闪卡会话。使用 /flashcard 开始一个。")
             return
 
         session_id = state.get("session_id")
@@ -257,7 +257,7 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
         orch.state_manager.clear_state(user.id)
 
         await msg.reply_text(
-            f"✅ Session ended. 🎯 {cards_correct}/{cards_shown} correct. Nice work!"
+            f"✅ 会话结束。🎯 {cards_correct}/{cards_shown} 正确。干得好！"
         )
 
     async def flashcard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -266,14 +266,14 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
             return
         user = update.effective_user
         if not user or not check_whitelist(user.id):
-            await query.answer("Unauthorized.")
+            await query.answer("未授权。")
             return
 
         await query.answer()
         data = query.data
         state = orch.state_manager.get_state(user.id)
         if not state or state.get("active_persona") != FLASHCARD_PERSONA:
-            await query.edit_message_text("Session ended. Use /flashcard to start a new one.")
+            await query.edit_message_text("会话已结束。使用 /flashcard 开始新的会话。")
             return
 
         queue = state.get("queue", [])
@@ -287,22 +287,22 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
             if session_id:
                 update_session(session_id, cards_shown, cards_correct)
             await query.edit_message_text(
-                f"🎯 Session complete! {cards_correct}/{cards_shown} correct. Well done!"
+                f"🎯 会话完成！{cards_correct}/{cards_shown} 正确。做得好！"
             )
             return
 
         card_id = queue[idx]
         card = get_card_by_id(card_id, user.id)
         if not card:
-            await query.edit_message_text(format_error_message("Card not found."))
+            await query.edit_message_text(format_error_message("卡片未找到。"))
             return
 
         if data == "fc_show":
             # Show answer, show rating buttons
             text = (
-                f"📌 Card {idx + 1}/{len(queue)}\n\n"
-                f"Q: {card['question']}\n\n"
-                f"A: {card['answer']}"
+                f"📌 卡片 {idx + 1}/{len(queue)}\n\n"
+                f"问：{card['question']}\n\n"
+                f"答：{card['answer']}"
             )
             state["phase"] = "answer"
             orch.state_manager.update_state(user.id, state)
@@ -327,7 +327,7 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
                 if session_id:
                     update_session(session_id, cards_shown, cards_correct)
                 await query.edit_message_text(
-                    f"🎯 Session complete! {cards_correct}/{cards_shown} correct. Well done!"
+                    f"🎯 会话完成！{cards_correct}/{cards_shown} 正确。做得好！"
                 )
                 return
 
@@ -335,10 +335,10 @@ def register_flashcard_handlers(application: Any, orch: TelegramOrchestrator) ->
             next_card = get_card_by_id(next_card_id, user.id)
             if not next_card:
                 orch.state_manager.clear_state(user.id)
-                await query.edit_message_text(format_error_message("Card not found."))
+                await query.edit_message_text(format_error_message("卡片未找到。"))
                 return
 
-            text = f"📌 Card {idx + 2}/{len(queue)}\n\nQ: {next_card['question']}"
+            text = f"📌 卡片 {idx + 2}/{len(queue)}\n\n问：{next_card['question']}"
             await query.edit_message_text(text, reply_markup=_build_question_keyboard())
             return
 

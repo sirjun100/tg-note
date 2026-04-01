@@ -181,10 +181,10 @@ def _get_answer(answers: list[dict[str, str]], index: int) -> str:
 # ---------------------------------------------------------------------------
 
 _MOOD_QUESTION = (
-    "How are you feeling right now? "
-    "(e.g. energized, anxious, hopeful, frustrated, calm, scattered, clear)"
+    "你现在感觉如何？"
+    "（例如：精力充沛、焦虑、充满希望、沮丧、平静、分散、清晰）"
 )
-_ENERGY_QUESTION = "Energy level: 1 (exhausted) → 5 (peak). Just type the number."
+_ENERGY_QUESTION = "能量水平：1（疲惫）→ 5（巅峰）。只需输入数字。"
 
 _CHECKIN_STEP_MOOD = 0
 _CHECKIN_STEP_ENERGY = 1
@@ -206,18 +206,18 @@ def _quick_replies_for_question(question: str) -> ReplyKeyboardMarkup | None:
     # Mood / how are you feeling
     if "mood" in q or "feeling" in q or "emotion" in q or "how are you" in q:
         rows = [
-            [KeyboardButton("Good 😊"), KeyboardButton("Okay 😐"), KeyboardButton("Low 😔")],
-            [KeyboardButton("Energized ⚡"), KeyboardButton("Stressed 😤"), KeyboardButton("Grateful 🙏")],
+            [KeyboardButton("很好 😊"), KeyboardButton("一般 😐"), KeyboardButton("低落 😔")],
+            [KeyboardButton("精力充沛 ⚡"), KeyboardButton("有压力 😤"), KeyboardButton("感恩 🙏")],
         ]
         return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
     # Yes / No / Skip questions
     if any(kw in q for kw in ("did you", "were you", "have you", "did your", "skip")):
-        rows = [[KeyboardButton("Yes"), KeyboardButton("No"), KeyboardButton("Skip")]]
+        rows = [[KeyboardButton("是"), KeyboardButton("否"), KeyboardButton("跳过")]]
         return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
     # All other questions get a Skip button only
-    rows = [[KeyboardButton("Skip")]]
+    rows = [[KeyboardButton("跳过")]]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
 
@@ -227,11 +227,11 @@ def _remove_keyboard() -> ReplyKeyboardRemove:
 
 def _format_checkin_section(mood: str, energy: str) -> str:
     """Format check-in as a note section."""
-    lines = ["## 🔎 Check-in", ""]
+    lines = ["## 🔎 签到", ""]
     if mood:
-        lines.append(f"- **Mood**: {mood}")
+        lines.append(f"- **心情**：{mood}")
     if energy:
-        lines.append(f"- **Energy**: {energy}/5")
+        lines.append(f"- **能量**：{energy}/5")
     return "\n".join(lines)
 
 
@@ -252,21 +252,21 @@ def _format_morning_content(answers: list[dict[str, str]], user_id: int, orch: T
     p3 = _get_answer(answers, 6)
 
     lines = [
-        f"### 🌞 Morning ({ts})",
+        f"### 🌞 早晨 ({ts})",
         "",
-        "- **Professional Objective:**",
+        "- **职业目标：**",
         f"  {professional}" if professional else "  -",
         "",
-        "- **Personal Objective:**",
+        "- **个人目标：**",
         f"  {personal}" if personal else "  -",
         "",
-        "- **Obstacle & Response:**",
+        "- **障碍与应对：**",
         f"  {obstacle}" if obstacle else "  -",
         "",
-        "- **Greater Goals:**",
+        "- **更宏大的目标：**",
         f"  {greater_goals}" if greater_goals else "  -",
         "",
-        "- **Top 3 Priorities:**",
+        "- **三大优先事项：**",
         f"  1. {p1}" if p1 else "  1. -",
         f"  2. {p2}" if p2 else "  2. -",
         f"  3. {p3}" if p3 else "  3. -",
@@ -303,44 +303,44 @@ def _format_evening_content(answers: list[dict[str, str]], user_id: int, orch: T
     tomorrow = _get_answer(answers, 9)
 
     lines = [
-        f"### 🌙 Evening ({ts})",
+        f"### 🌙 晚上 ({ts})",
         "",
-        "- **Morning Priorities Completed?**",
+        "- **早晨的优先事项完成了吗？**",
         f"  {priorities_completed}" if priorities_completed else "  -",
         "",
-        "- **What Went Well (Professional):**",
+        "- **进展顺利的事（职业）：**",
         f"  {prof_wins}" if prof_wins else "  -",
         "",
-        "- **What Went Well (Personal):**",
+        "- **进展顺利的事（个人）：**",
         f"  {personal_wins}" if personal_wins else "  -",
         "",
-        "- **What Went Wrong / Will Correct:**",
+        "- **出错的事/将纠正：**",
         f"  {went_wrong}" if went_wrong else "  -",
         "",
-        "- **Self-Compassion:**",
+        "- **自我关怀：**",
         f"  {self_compassion}" if self_compassion else "  -",
         "",
-        "- **Within My Control / Not:**",
+        "- **在我控制之内/之外：**",
         f"  {control}" if control else "  -",
         "",
-        "- **Progress Toward Greater Goals:**",
+        "- **朝更宏大目标的进展：**",
         f"  {progress}" if progress else "  -",
         "",
-        "- **Grateful For:**",
+        "- **感恩的事：**",
         f"  {gratitude}" if gratitude else "  -",
     ]
 
     if learned and learned.lower() not in ("-", "skip", ""):
         lines += [
             "",
-            "### 📚 What I Learned Today",
+            "### 📚 我今天学到了什么",
             "",
             f"  {learned}",
         ]
 
     lines += [
         "",
-        "- **Tomorrow:**",
+        "- **明天：**",
         f"  {tomorrow}" if tomorrow else "  -",
     ]
     return "\n".join(lines)
@@ -362,12 +362,12 @@ def _format_quick_morning(answers: list[dict[str, str]], user_id: int, orch: Tel
     intention = _get_answer(answers, 0)
     priority = _get_answer(answers, 1)
     lines = [
-        f"### 🌞 Morning — Quick ({ts})",
+        f"### 🌞 早晨 — 快速 ({ts})",
         "",
-        "- **Intention:**",
+        "- **意图：**",
         f"  {intention}" if intention else "  -",
         "",
-        "- **#1 Priority:**",
+        "- **#1 优先事项：**",
         f"  {priority}" if priority else "  -",
     ]
     return "\n".join(lines)
@@ -379,12 +379,12 @@ def _format_quick_evening(answers: list[dict[str, str]], user_id: int, orch: Tel
     win = _get_answer(answers, 0)
     gratitude = _get_answer(answers, 1)
     lines = [
-        f"### 🌙 Evening — Quick ({ts})",
+        f"### 🌙 晚上 — 快速 ({ts})",
         "",
-        "- **One Win:**",
+        "- **一件胜利：**",
         f"  {win}" if win else "  -",
         "",
-        "- **Grateful For:**",
+        "- **感恩的事：**",
         f"  {gratitude}" if gratitude else "  -",
     ]
     return "\n".join(lines)
@@ -411,27 +411,27 @@ def _extract_morning_priorities(note_body: str) -> list[str]:
 
 def _empty_morning_placeholder() -> str:
     return (
-        "### 🌞 Morning\n\n"
-        "- **Professional Objective:**\n  -\n\n"
-        "- **Personal Objective:**\n  -\n\n"
-        "- **Obstacle & Response:**\n  -\n\n"
-        "- **Greater Goals:**\n  -\n\n"
-        "- **Top 3 Priorities:**\n  1. -\n  2. -\n  3. -"
+        "### 🌞 早晨\n\n"
+        "- **职业目标：**\n  -\n\n"
+        "- **个人目标：**\n  -\n\n"
+        "- **障碍与应对：**\n  -\n\n"
+        "- **更宏大的目标：**\n  -\n\n"
+        "- **三大优先事项：**\n  1. -\n  2. -\n  3. -"
     )
 
 
 def _empty_evening_placeholder() -> str:
     return (
-        "### 🌙 Evening\n\n"
-        "- **Morning Priorities Completed?**\n  -\n\n"
-        "- **What Went Well (Professional):**\n  -\n\n"
-        "- **What Went Well (Personal):**\n  -\n\n"
-        "- **What Went Wrong / Will Correct:**\n  -\n\n"
-        "- **Self-Compassion:**\n  -\n\n"
-        "- **Within My Control / Not:**\n  -\n\n"
-        "- **Progress Toward Greater Goals:**\n  -\n\n"
-        "- **Grateful For:**\n  -\n\n"
-        "- **Tomorrow:**\n  -"
+        "### 🌙 晚上\n\n"
+        "- **早晨的优先事项完成了吗？**\n  -\n\n"
+        "- **进展顺利的事（职业）：**\n  -\n\n"
+        "- **进展顺利的事（个人）：**\n  -\n\n"
+        "- **出错的事/将纠正：**\n  -\n\n"
+        "- **自我关怀：**\n  -\n\n"
+        "- **在我控制之内/之外：**\n  -\n\n"
+        "- **朝更宏大目标的进展：**\n  -\n\n"
+        "- **感恩的事：**\n  -\n\n"
+        "- **明天：**\n  -"
     )
 
 
@@ -469,15 +469,15 @@ def _update_streak(orch: TelegramOrchestrator, user_id: int) -> int:
 
 
 def _streak_message(streak: int, mode: str, is_quick: bool = False) -> str:
-    prefix = "⚡ Quick entry" if is_quick else "📓 Stoic reflection"
+    prefix = "⚡ 快速记录" if is_quick else "📓 斯多葛反思"
     if streak == 1:
-        return f"{prefix} saved. Day 1 — every journey begins here."
+        return f"{prefix}已保存。第 1 天 — 每段旅程都从这里开始。"
     elif streak < 7:
-        return f"{prefix} saved. 🔥 Day {streak} streak! You're building the habit."
+        return f"{prefix}已保存。🔥 连续 {streak} 天！您正在建立习惯。"
     elif streak < 30:
-        return f"{prefix} saved. 🔥 Day {streak} streak! Consistency is the foundation of growth."
+        return f"{prefix}已保存。🔥 连续 {streak} 天！坚持是成长的基础。"
     else:
-        return f"{prefix} saved. 🔥 Day {streak} streak! You are the 1% who actually shows up."
+        return f"{prefix}已保存。🔥 连续 {streak} 天！您是真正坚持的 1%。"
 
 
 # ---------------------------------------------------------------------------
@@ -512,15 +512,15 @@ async def _create_tomorrow_task_from_stoic(
         created = orch.task_service.create_task_with_metadata(
             title=tomorrow_text,
             user_id=str(user_id),
-            notes="From Stoic Journal evening reflection",
+            notes="来自斯多葛日记晚上反思",
             due_date=due,
         )
         if created:
-            await message.reply_text("📋 Task created for tomorrow in Google Tasks.")
+            await message.reply_text("📋 已在 Google Tasks 中为明天创建任务。")
             return True
     except GoogleAuthError:
         await message.reply_text(format_error_message(
-            "🔑 Google token expired or revoked. Use /tasks_connect to re-authenticate."
+            "🔑 Google 令牌已过期或已撤销。使用 /tasks_connect 重新验证。"
         ))
         return False
     except Exception as exc:
@@ -592,10 +592,10 @@ async def _add_stoic_image_async(
     try:
         from src.stoic_image import generate_stoic_image
 
-        img_msg = await message.reply_text("🖼️ Generating Stoic image…")
+        img_msg = await message.reply_text("🖼️ 正在生成斯多葛图像…")
         data_url, reason = await generate_stoic_image(mode, reflection_markdown)
         if not data_url or "," not in data_url:
-            await img_msg.edit_text("⚠️ Couldn't generate an image for this reflection.")
+            await img_msg.edit_text("⚠️ 无法为此反思生成图像。")
             if reason:
                 logger.info("Stoic image skipped (%s)", reason)
             return
@@ -612,7 +612,7 @@ async def _add_stoic_image_async(
         )
         resource_id = resource.get("id")
         if not resource_id:
-            await img_msg.edit_text("⚠️ Couldn't attach the image to Joplin.")
+            await img_msg.edit_text("⚠️ 无法将图像附加到 Joplin。")
             return
 
         full_note = await orch.joplin_client.get_note(note_id)
@@ -627,11 +627,11 @@ async def _add_stoic_image_async(
         except Exception as exc:
             logger.debug("Could not schedule sync after stoic image: %s", exc)
 
-        await img_msg.edit_text("✅ Added image to your Stoic note.")
+        await img_msg.edit_text("✅ 已将图像添加到您的斯多葛笔记中。")
     except Exception as exc:
         logger.warning("Stoic image generation failed: %s", exc)
         with contextlib.suppress(Exception):
-            await message.reply_text("⚠️ Couldn't generate an image for this reflection.")
+            await message.reply_text("⚠️ 无法为此反思生成图像。")
     finally:
         task = _pending_stoic_image_tasks.get(user_id)
         if task and task.done():
@@ -644,14 +644,14 @@ async def _add_stoic_image_async(
 
 async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, message: Message, state: dict[str, Any]) -> bool:
     if state.get("pending_action") != "duplicate_detected":
-        await message.reply_text("❌ No pending duplicate action. Use /stoic_done to save your reflection.")
+        await message.reply_text("❌ 没有待处理的重复操作。使用 /stoic_done 保存您的反思。")
         return False
     note_id = state.get("existing_note_id")
     existing_body = state.get("existing_body", "")
     new_section = state.get("new_section_content", "")
     mode = state.get("mode", "morning")
     if not note_id or not new_section:
-        await message.reply_text("❌ Missing required information. Please try again.")
+        await message.reply_text("❌ 缺少必要信息。请重试。")
         return False
     try:
         new_body = _replace_section(existing_body, new_section, mode)
@@ -661,7 +661,7 @@ async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, messag
         state.pop("existing_body", None)
         state.pop("new_section_content", None)
         orch.state_manager.update_state(user_id, state)
-        await message.reply_text(f"✅ Replaced {mode} reflection.")
+        await message.reply_text(f"✅ 已替换 {mode} 反思。")
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()
@@ -678,19 +678,19 @@ async def _apply_replace_action(orch: TelegramOrchestrator, user_id: int, messag
         return True
     except Exception as exc:
         logger.error("Failed to replace stoic section: %s", exc)
-        await message.reply_text("❌ Failed to replace reflection.")
+        await message.reply_text("❌ 替换反思失败。")
         return False
 
 
 async def _apply_append_action(orch: TelegramOrchestrator, user_id: int, message: Message, state: dict[str, Any]) -> bool:
     if state.get("pending_action") != "duplicate_detected":
-        await message.reply_text("❌ No pending duplicate action. Use /stoic_done to save your reflection.")
+        await message.reply_text("❌ 没有待处理的重复操作。使用 /stoic_done 保存您的反思。")
         return False
     note_id = state.get("existing_note_id")
     existing_body = state.get("existing_body", "")
     new_section = state.get("new_section_content", "")
     if not note_id or not new_section:
-        await message.reply_text("❌ Missing required information. Please try again.")
+        await message.reply_text("❌ 缺少必要信息。请重试。")
         return False
     try:
         new_body = f"{existing_body}\n\n{new_section}"
@@ -700,7 +700,7 @@ async def _apply_append_action(orch: TelegramOrchestrator, user_id: int, message
         state.pop("existing_body", None)
         state.pop("new_section_content", None)
         orch.state_manager.update_state(user_id, state)
-        await message.reply_text("✅ Appended reflection to today's note.")
+        await message.reply_text("✅ 已将反思附加到今天的笔记中。")
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()
@@ -718,7 +718,7 @@ async def _apply_append_action(orch: TelegramOrchestrator, user_id: int, message
         return True
     except Exception as exc:
         logger.error("Failed to append stoic section: %s", exc)
-        await message.reply_text("❌ Failed to append reflection.")
+        await message.reply_text("❌ 附加反思失败。")
         return False
 
 
@@ -737,13 +737,13 @@ async def _finish_stoic_session(
         _, __, body_template = _load_stoic_template()
 
     date_str = get_current_date_str(user_id, orch.logging_service)
-    title = f"{date_str} - Daily Stoic Reflection"
+    title = f"{date_str} - 每日斯多葛反思"
 
     if not answers:
-        await message.reply_text("No answers to save. Use /stoic_cancel to exit.")
+        await message.reply_text("没有要保存的答案。使用 /stoic_cancel 退出。")
         return False
 
-    await message.reply_text("📝 Formatting reflection...")
+    await message.reply_text("📝 正在格式化反思…")
     ts = get_user_timezone_aware_now(user_id, orch.logging_service).strftime("%H:%M")
     section_content: str | None = None
     try:
@@ -763,12 +763,12 @@ async def _finish_stoic_session(
     if mood or energy:
         checkin_block = _format_checkin_section(mood, energy)
 
-    await message.reply_text("📂 Finding Stoic Journal folder...")
+    await message.reply_text("📂 正在查找斯多葛日记文件夹…")
     try:
         folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
     except Exception as exc:
         logger.error("Stoic Journal folder resolution failed: %s", exc)
-        await message.reply_text("❌ Could not find or create Stoic Journal folder.")
+        await message.reply_text("❌ 无法找到或创建斯多葛日记文件夹。")
         return False
 
     notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
@@ -782,21 +782,21 @@ async def _finish_stoic_session(
             tags = tags + ["learnings", "content-ideas"]
 
     if existing:
-        await message.reply_text("📎 Updating today's note...")
+        await message.reply_text("📎 正在更新今天的笔记…")
         note_id = existing["id"]
         try:
             full_note = await orch.joplin_client.get_note(note_id)
             existing_body = (full_note.get("body") or "").strip()
         except Exception as exc:
             logger.error("Failed to fetch existing note: %s", exc)
-            await message.reply_text("❌ Could not fetch existing note. Try again.")
+            await message.reply_text("❌ 无法获取现有笔记。请重试。")
             return False
 
         if _check_section_exists(existing_body, mode):
             await message.reply_text(
-                f"⚠️ You already have a {mode.capitalize()} reflection for today.\n\n"
-                f"  /stoic_replace — Replace the existing reflection\n"
-                f"  /stoic_append — Add another reflection to the note"
+                f"⚠️ 您今天已经有一个 {mode.capitalize()} 反思。\n\n"
+                f"  /stoic_replace — 替换现有反思\n"
+                f"  /stoic_append — 向笔记添加另一个反思"
             )
             state["pending_action"] = "duplicate_detected"
             state["existing_note_id"] = note_id
@@ -815,7 +815,7 @@ async def _finish_stoic_session(
             new_body = f"{existing_body}\n\n{section_content}" if existing_body else section_content
 
         # Prepend check-in block if not already present
-        if checkin_block and "## 🔎 Check-in" not in new_body:
+        if checkin_block and "## 🔎 签到" not in new_body:
             # Insert after the title line
             lines = new_body.split("\n", 2)
             if len(lines) >= 1:
@@ -825,7 +825,7 @@ async def _finish_stoic_session(
             await orch.joplin_client.update_note(note_id, {"body": new_body})
         except Exception as exc:
             logger.error("Failed to update stoic note: %s", exc)
-            await message.reply_text("❌ Failed to update today's note.")
+            await message.reply_text("❌ 更新今天的笔记失败。")
             return False
         await orch.joplin_client.apply_tags(note_id, tags)
         logger.info("Stoic save: updated note %s (%s mode)", note_id, mode)
@@ -838,17 +838,17 @@ async def _finish_stoic_session(
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()
-            await message.reply_text("🔄 Syncing so it appears on your devices...")
+            await message.reply_text("🔄 正在同步，以便在您的设备上显示…")
         except Exception as exc:
             logger.debug("Could not schedule sync: %s", exc)
         await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
         return True
     else:
-        await message.reply_text("📄 Creating new note...")
+        await message.reply_text("📄 正在创建新笔记…")
         morning_content = section_content if mode == "morning" else ""
         evening_content = section_content if mode == "evening" else ""
         full_body = _build_full_body(body_template, date_str, morning_content, evening_content)
-        if checkin_block and "## 🔎 Check-in" not in full_body:
+        if checkin_block and "## 🔎 签到" not in full_body:
             lines = full_body.split("\n", 2)
             if len(lines) >= 1:
                 full_body = lines[0] + "\n\n" + checkin_block + "\n\n" + "\n".join(lines[1:])
@@ -857,7 +857,7 @@ async def _finish_stoic_session(
             await orch.joplin_client.apply_tags(note_id, tags)
         except Exception as exc:
             logger.error("Failed to create stoic note: %s", exc)
-            await message.reply_text("❌ Failed to create note in Stoic Journal.")
+            await message.reply_text("❌ 在斯多葛日记中创建笔记失败。")
             return False
         logger.info("Stoic save: created note %s (%s mode)", note_id, mode)
         # US-061: generate image after finalizing note content
@@ -869,7 +869,7 @@ async def _finish_stoic_session(
         try:
             from src.handlers.core import _schedule_joplin_sync
             _schedule_joplin_sync()
-            await message.reply_text("🔄 Syncing so it appears on your devices...")
+            await message.reply_text("🔄 正在同步，以便在您的设备上显示…")
         except Exception as exc:
             logger.debug("Could not schedule sync: %s", exc)
         await _create_tomorrow_task_from_stoic(orch, user_id, mode, answers, message)
@@ -898,11 +898,11 @@ def _stoic(orch: TelegramOrchestrator):
         state = orch.state_manager.get_state(user_id)
         if state and state.get("active_persona") == "STOIC_JOURNAL":
             await update.message.reply_text(
-                "📓 You already have a Stoic journal session.\n\n"
-                "Options:\n"
-                "  Keep replying with more answers\n"
-                "  /stoic_done — Save your reflection\n"
-                "  /stoic_cancel — Cancel and start over"
+                "📓 您已经有一个斯多葛日记会话。\n\n"
+                "选项：\n"
+                "  继续回复更多答案\n"
+                "  /stoic_done — 保存您的反思\n"
+                "  /stoic_cancel — 取消并重新开始"
             )
             return
 
@@ -914,7 +914,7 @@ def _stoic(orch: TelegramOrchestrator):
         if mode == "evening":
             try:
                 date_str = get_current_date_str(user_id, orch.logging_service)
-                title = f"{date_str} - Daily Stoic Reflection"
+                title = f"{date_str} - 每日斯多葛反思"
                 folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
                 notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
                 existing = next((n for n in notes_in_folder if n.get("title") == title), None)
@@ -925,7 +925,7 @@ def _stoic(orch: TelegramOrchestrator):
                     if priorities:
                         priorities_text = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(priorities))
                         first_question = (
-                            f"Your 3 morning priorities today were:\n{priorities_text}\n\n{first_question}"
+                            f"您今天的 3 个早晨优先事项是：\n{priorities_text}\n\n{first_question}"
                         )
             except Exception as exc:
                 logger.debug("Could not fetch morning priorities for evening: %s", exc)
@@ -952,7 +952,7 @@ def _stoic(orch: TelegramOrchestrator):
         quote = _daily_quote(mode)
         quote_block = f"_{quote}_\n\n" if quote else ""
         await update.message.reply_text(
-            f"📓 *Stoic Journal — {mode.capitalize()}*\n\n{quote_block}{_MOOD_QUESTION}",
+            f"📓 *斯多葛日记 — {mode.capitalize()}*\n\n{quote_block}{_MOOD_QUESTION}",
             parse_mode="Markdown",
         )
 
@@ -975,9 +975,9 @@ def _stoic_quick(orch: TelegramOrchestrator):
         state = orch.state_manager.get_state(user_id)
         if state and state.get("active_persona") == "STOIC_JOURNAL":
             await update.message.reply_text(
-                "📓 You already have a Stoic session running.\n"
-                "  /stoic_done — Save it\n"
-                "  /stoic_cancel — Discard it"
+                "📓 您已经有一个斯多葛会话在运行。\n"
+                "  /stoic_done — 保存它\n"
+                "  /stoic_cancel — 放弃它"
             )
             return
 
@@ -992,8 +992,8 @@ def _stoic_quick(orch: TelegramOrchestrator):
             mode = "evening" if hour >= 17 else "morning"
 
         _, __, body_tpl = _load_stoic_template()
-        quick_morning_q = ["What is your intention for today?", "What is your #1 priority?"]
-        quick_evening_q = ["What was one win today?", "What are you grateful for today?"]
+        quick_morning_q = ["您今天的意图是什么？", "您的 #1 优先事项是什么？"]
+        quick_evening_q = ["今天的一件胜利是什么？", "您今天感恩什么？"]
         questions = quick_morning_q if mode == "morning" else quick_evening_q
 
         session_start = get_user_timezone_aware_now(user_id, orch.logging_service)
@@ -1015,7 +1015,7 @@ def _stoic_quick(orch: TelegramOrchestrator):
         quote = _daily_quote(mode)
         quote_block = f"_{quote}_\n\n" if quote else ""
         await update.message.reply_text(
-            f"⚡ *Stoic Quick — {mode.capitalize()}* (2 questions)\n\n{quote_block}{questions[0]}",
+            f"⚡ *斯多葛快速 — {mode.capitalize()}* (2 个问题)\n\n{quote_block}{questions[0]}",
             parse_mode="Markdown",
         )
 
@@ -1034,13 +1034,13 @@ def _stoic_review(orch: TelegramOrchestrator):
         if not update.message:
             return
 
-        await update.message.reply_text("📖 Fetching last 7 days of Stoic Journal entries...")
+        await update.message.reply_text("📖 正在获取过去 7 天的斯多葛日记条目…")
         try:
             folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
             notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
         except Exception as exc:
             logger.error("Could not fetch Stoic Journal folder: %s", exc)
-            await update.message.reply_text("❌ Could not access Stoic Journal in Joplin.")
+            await update.message.reply_text("❌ 无法访问 Joplin 中的斯多葛日记。")
             return
 
         # Filter to past 7 days (exclude existing review notes)
@@ -1048,8 +1048,8 @@ def _stoic_review(orch: TelegramOrchestrator):
         cutoff = (now_local - timedelta(days=7)).date()
         daily_notes = [
             n for n in notes_in_folder
-            if "Weekly Stoic Review" not in n.get("title", "")
-            and "Daily Stoic Reflection" in n.get("title", "")
+            if "斯多葛周报" not in n.get("title", "")
+            and "每日斯多葛反思" in n.get("title", "")
         ]
 
         # Fetch bodies for recent notes
@@ -1058,7 +1058,7 @@ def _stoic_review(orch: TelegramOrchestrator):
             try:
                 full = await orch.joplin_client.get_note(note_meta["id"])
                 title = full.get("title", "")
-                # Parse date from title "YYYY-MM-DD - Daily Stoic Reflection"
+                # Parse date from title "YYYY-MM-DD - 每日斯多葛反思"
                 date_part = title.split(" - ")[0].strip()
                 try:
                     note_date = datetime.fromisoformat(date_part).date()
@@ -1071,28 +1071,28 @@ def _stoic_review(orch: TelegramOrchestrator):
 
         if len(recent) < 3:
             await update.message.reply_text(
-                f"You have {len(recent)} journal entr{'y' if len(recent) == 1 else 'ies'} this week. "
-                f"A review works best with 3+. Keep journaling and try again!"
+                f"您本周有 {len(recent)} 条日记条目。"
+                f"回顾需要至少 3 条以上。继续写日记，然后重试！"
             )
             return
 
-        await update.message.reply_text(f"🧠 Synthesising {len(recent)} entries with AI...")
+        await update.message.reply_text(f"🧠 正在用 AI 综合 {len(recent)} 条条目…")
         combined = "\n\n---\n\n".join(recent)
         try:
             synthesis = await orch.llm_orchestrator.generate_stoic_weekly_review(combined)
         except Exception as exc:
             logger.error("Stoic weekly review LLM failed: %s", exc)
-            await update.message.reply_text("❌ AI synthesis failed. Try again later.")
+            await update.message.reply_text("❌ AI 综合失败。稍后重试。")
             return
 
         if not synthesis:
-            await update.message.reply_text("❌ Could not generate a synthesis. Try again later.")
+            await update.message.reply_text("❌ 无法生成综合。稍后重试。")
             return
 
         # Save review note
         week_label = now_local.strftime("%Y-W%W")
-        review_title = f"{week_label} - Weekly Stoic Review"
-        review_body = f"# {review_title}\n\n{synthesis}\n\n---\n*Generated from {len(recent)} journal entries.*"
+        review_title = f"{week_label} - 斯多葛周报"
+        review_body = f"# {review_title}\n\n{synthesis}\n\n---\n*从 {len(recent)} 条日记条目生成。*"
         try:
             folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
             note_id = await orch.joplin_client.create_note(
@@ -1103,7 +1103,7 @@ def _stoic_review(orch: TelegramOrchestrator):
             logger.warning("Could not save stoic review note: %s", exc)
 
         # Send to Telegram (truncate if needed)
-        reply = f"📖 *Weekly Stoic Review*\n\n{synthesis}"
+        reply = f"📖 *斯多葛周报*\n\n{synthesis}"
         if len(reply) > 4000:
             reply = reply[:3990] + "…"
         await update.message.reply_text(reply, parse_mode="Markdown")
@@ -1125,12 +1125,12 @@ def _stoic_cancel(orch: TelegramOrchestrator):
         user_id = user.id
         state = orch.state_manager.get_state(user_id)
         if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            await update.message.reply_text("No active Stoic journal session. Use /stoic to start one.")
+            await update.message.reply_text("没有活动的斯多葛日记会话。使用 /stoic 开始一个。")
             return
         orch.state_manager.clear_state(user_id)
         await update.message.reply_text(
-            "❌ Stoic journal session cancelled.\n\n"
-            "Start again: /stoic, /stoic morning, /stoic evening, or /stoic_quick"
+            "❌ 斯多葛日记会话已取消。\n\n"
+            "重新开始：/stoic、/stoic morning、/stoic evening 或 /stoic_quick"
         )
     return handler
 
@@ -1145,7 +1145,7 @@ def _stoic_replace(orch: TelegramOrchestrator):
         user_id = user.id
         state = orch.state_manager.get_state(user_id)
         if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            await update.message.reply_text("❌ No active Stoic session with pending duplicate.")
+            await update.message.reply_text("❌ 没有带待处理重复项的活动斯多葛会话。")
             return
         saved = await _apply_replace_action(orch, user_id, update.message, state)
         if saved:
@@ -1153,7 +1153,7 @@ def _stoic_replace(orch: TelegramOrchestrator):
             orch.state_manager.clear_state(user_id)
             await update.message.reply_text(
                 f"{_streak_message(streak, state.get('mode', 'morning'))}\n\n"
-                f"It's in *Areas → 📓 Journaling → Stoic Journal*.\n\nMemento mori.",
+                f"它在 *领域 → 📓 日记 → 斯多葛日记* 中。\n\n记住你终将死亡。",
                 parse_mode="Markdown",
             )
     return handler
@@ -1169,7 +1169,7 @@ def _stoic_append(orch: TelegramOrchestrator):
         user_id = user.id
         state = orch.state_manager.get_state(user_id)
         if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            await update.message.reply_text("❌ No active Stoic session with pending duplicate.")
+            await update.message.reply_text("❌ 没有带待处理重复项的活动斯多葛会话。")
             return
         saved = await _apply_append_action(orch, user_id, update.message, state)
         if saved:
@@ -1177,7 +1177,7 @@ def _stoic_append(orch: TelegramOrchestrator):
             orch.state_manager.clear_state(user_id)
             await update.message.reply_text(
                 f"{_streak_message(streak, state.get('mode', 'morning'))}\n\n"
-                f"It's in *Areas → 📓 Journaling → Stoic Journal*.\n\nMemento mori.",
+                f"它在 *领域 → 📓 日记 → 斯多葛日记* 中。\n\n记住你终将死亡。",
                 parse_mode="Markdown",
             )
     return handler
@@ -1197,10 +1197,10 @@ def _stoic_done(orch: TelegramOrchestrator):
         user_id = user.id
         state = orch.state_manager.get_state(user_id)
         if not state or state.get("active_persona") != "STOIC_JOURNAL":
-            await update.message.reply_text("No active Stoic session. Use /stoic or /stoic_quick to start.")
+            await update.message.reply_text("没有活动的斯多葛会话。使用 /stoic 或 /stoic_quick 开始。")
             return
 
-        await update.message.reply_text("📓 Saving to Stoic Journal...")
+        await update.message.reply_text("📓 正在保存到斯多葛日记…")
         saved = await _finish_stoic_session(orch, user_id, update.message, state)
         if saved:
             streak = _update_streak(orch, user_id)
@@ -1209,8 +1209,8 @@ def _stoic_done(orch: TelegramOrchestrator):
             orch.state_manager.clear_state(user_id)
             await update.message.reply_text(
                 f"{_streak_message(streak, mode, is_quick=is_quick)}\n\n"
-                f"It's in *Areas → 📓 Journaling → Stoic Journal*. "
-                f"If you don't see it on your Mac, run /sync.\n\nMemento mori.",
+                f"它在 *领域 → 📓 日记 → 斯多葛日记* 中。"
+                f"如果您在 Mac 上看不到它，请运行 /sync。\n\n记住你终将死亡。",
                 parse_mode="Markdown",
             )
 
@@ -1229,8 +1229,8 @@ async def handle_stoic_message(
         return
 
     text_stripped = (text or "").strip()
-    if text_stripped.lower() in ("done", "save", "finish"):
-        await message.reply_text("Use /stoic_done to save your reflection.")
+    if text_stripped.lower() in ("done", "save", "finish", "完成", "保存"):
+        await message.reply_text("使用 /stoic_done 保存您的反思。")
         return
 
     is_quick = state.get("is_quick", False)
@@ -1264,7 +1264,7 @@ async def handle_stoic_message(
             # Try to prepend morning priorities
             try:
                 date_str = get_current_date_str(user_id, orch.logging_service)
-                title = f"{date_str} - Daily Stoic Reflection"
+                title = f"{date_str} - 每日斯多葛反思"
                 folder_id = await orch.joplin_client.get_or_create_folder_by_path(STOIC_JOURNAL_PATH)
                 notes_in_folder = await orch.joplin_client.get_notes_in_folder(folder_id)
                 existing = next((n for n in notes_in_folder if n.get("title") == title), None)
@@ -1274,7 +1274,7 @@ async def handle_stoic_message(
                     priorities = _extract_morning_priorities(body)
                     if priorities:
                         priorities_text = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(priorities))
-                        first_q = f"Your 3 morning priorities today were:\n{priorities_text}\n\n{first_q}"
+                        first_q = f"您今天的 3 个早晨优先事项是：\n{priorities_text}\n\n{first_q}"
             except Exception as exc:
                 logger.debug("Could not fetch morning priorities: %s", exc)
         await message.reply_text(
@@ -1289,16 +1289,16 @@ async def handle_stoic_message(
     questions = morning_q if mode == "morning" else evening_q
     if is_quick:
         questions = (
-            ["What is your intention for today?", "What is your #1 priority?"]
+            ["您今天的意图是什么？", "您的 #1 优先事项是什么？"]
             if mode == "morning"
-            else ["What was one win today?", "What are you grateful for today?"]
+            else ["今天的一件胜利是什么？", "您今天感恩什么？"]
         )
     state["questions"] = questions
     state["body_template"] = body_tpl
 
     answers = list(state.get("answers", []))
     current_index = len(answers)
-    question_text = questions[current_index] if current_index < len(questions) else "Additional thought"
+    question_text = questions[current_index] if current_index < len(questions) else "额外想法"
     answers.append({"q": question_text, "a": text_stripped})
     state["answers"] = answers
     orch.state_manager.update_state(user_id, state)
@@ -1312,7 +1312,7 @@ async def handle_stoic_message(
         )
     else:
         await message.reply_text(
-            "Anything else? Reply with more, or /stoic_done to save to your Stoic Journal.",
+            "还有其他吗？回复更多，或使用 /stoic_done 保存到您的斯多葛日记。",
             reply_markup=_remove_keyboard(),
         )
 

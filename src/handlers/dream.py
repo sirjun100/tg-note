@@ -33,9 +33,9 @@ _pending_dream_image_tasks: dict[int, asyncio.Task] = {}
 DREAM_JOURNAL_PATH = ["01 - Areas", "📓 Journaling", "Dream Journal"]
 DREAM_TAGS = ["dream-journal", "jungian"]
 DREAM_DISCLAIMER = (
-    "\n\n🌙 *Note: This analysis is for self-reflection and personal growth. "
-    "It is not a substitute for professional psychological support. "
-    "If your dreams are causing distress, please consult a qualified therapist.*"
+    "\n\n🌙 *注意：此分析仅用于自我反思和个人成长。"
+    "它不能替代专业的心理支持。"
+    "如果您的梦境导致困扰，请咨询合格的治疗师。*"
 )
 
 
@@ -131,9 +131,9 @@ async def handle_dream_message(
     if phase == "dream_description":
         if len(text.strip()) < 20:
             await message.reply_text(
-                "Please share more detail about your dream. "
-                "The richer your description, the more meaningful the analysis. "
-                "What happened? Who was there? What did you see, hear, feel?"
+                "请分享更多关于您梦境的细节。"
+                "您的描述越丰富，分析就越有意义。"
+                "发生了什么？有谁在场？您看到、听到、感受到了什么？"
             )
             return
 
@@ -143,17 +143,17 @@ async def handle_dream_message(
         logger.info("Dream: user=%d starting analysis (dream len=%d)", user_id, len(text.strip()))
 
         status_msg = await message.reply_text(
-            "🔮 Analyzing your dream... This may take 30–60 seconds. "
-            "I'm identifying symbols, archetypes, and themes."
+            "🔮 正在分析您的梦境...这可能需要 30-60 秒。"
+            "我正在识别符号、原型和主题。"
         )
         from src.dream_image import generate_dream_image
 
         async def _send_progress_updates() -> None:
-            """Send typing indicator and status edits while LLM runs."""
+            """在 LLM 运行时发送输入指示器和状态更新。"""
             updates = [
-                (15, "📖 Identifying symbols and themes..."),
-                (30, "🔍 Exploring archetypes and meanings..."),
-                (45, "🎨 Almost done, preparing your analysis..."),
+                (15, "📖 正在识别符号和主题..."),
+                (30, "🔍 正在探索原型和意义..."),
+                (45, "🎨 快完成了，正在准备您的分析..."),
             ]
             for delay, text in updates:
                 await asyncio.sleep(delay)
@@ -164,11 +164,11 @@ async def handle_dream_message(
                     pass
 
         analysis_prompt = (
-            f"Analyze this dream from a Jungian perspective. "
-            f"Provide: Key Symbols, Archetypes Present, Shadow Elements, Overall Theme.\n\n"
-            f"Dream:\n{text.strip()}\n\n"
-            f"At the very end of your response, add exactly one line:\n"
-            f"**Dream Title:** [a short, clever 3-7 word phrase that captures the dream's essence]"
+            f"从荣格心理学角度分析这个梦境。"
+            f"提供：关键符号、出现的原型、阴影元素、整体主题。\n\n"
+            f"梦境：\n{text.strip()}\n\n"
+            f"在您的回复的最后，准确添加一行：\n"
+            f"**梦境标题：** [一个简短、巧妙的 3-7 字短语，捕捉梦境的本质]"
         )
         analysis_response = None
         progress_task = asyncio.create_task(_send_progress_updates())
@@ -182,7 +182,7 @@ async def handle_dream_message(
             logger.error("Dream analysis LLM failed: %s", exc)
             state["phase"] = "dream_description"
             orch.state_manager.update_state(user_id, state)
-            await message.reply_text(format_error_message("Analysis failed. Please try again."))
+            await message.reply_text(format_error_message("分析失败。请重试。"))
             return
         finally:
             progress_task.cancel()
@@ -190,7 +190,7 @@ async def handle_dream_message(
                 await progress_task
 
         with contextlib.suppress(Exception):
-            await status_msg.edit_text("📖 Preparing your analysis...")
+            await status_msg.edit_text("📖 正在准备您的分析...")
 
         analysis = ""
         if analysis_response and analysis_response.question:
@@ -198,7 +198,7 @@ async def handle_dream_message(
         elif analysis_response and analysis_response.note and analysis_response.note.get("body"):
             analysis = analysis_response.note["body"]
         if not analysis:
-            analysis = "Analysis could not be generated. Please try again with more detail."
+            analysis = "无法生成分析。请提供更多细节重试。"
 
         state["interpretation"] = analysis
         symbols = _extract_symbols_from_analysis(analysis)
@@ -235,36 +235,36 @@ async def handle_dream_message(
         # BF-014/BF-016: LLM analysis contains Markdown chars (*, _, etc.) that break
         # Telegram's parser. Always send as plain text (no parse_mode) to avoid parse errors.
         # BF-019: Split long messages — Telegram limit is 4096 chars.
-        msg = f"📖 Jungian Analysis\n\n{analysis}\n\n---\n\n"
-        msg += "Would you like to explore how this dream connects to your current life? (yes/no)"
+        msg = f"📖 荣格分析\n\n{analysis}\n\n---\n\n"
+        msg += "您想探索这个梦境如何与您当前的生活联系起来吗？（是/否）"
         msg += DREAM_DISCLAIMER
         for chunk in split_message_for_telegram(msg):
             await message.reply_text(chunk)
-        await message.reply_text("🎨 Creating your symbolic image... (will arrive shortly)")
+        await message.reply_text("🎨 正在创建您的象征性图像...（很快就会到达）")
         logger.info("Dream: user=%d analysis sent, image generating in background", user_id)
         return
 
     if phase == "association_prompt":
-        if text_lower in ("yes", "y"):
+        if text_lower in ("yes", "y", "是"):
             state["phase"] = "association"
             orch.state_manager.update_state(user_id, state)
             await message.reply_text(
-                "Let's connect this dream to your waking life.\n\n"
-                "🔮 Reflection Questions:\n\n"
-                "1. What current situation in your life feels similar to something in the dream?\n"
-                "2. Which symbol or archetype resonates most with you right now?\n"
-                "3. Is there something you're avoiding or seeking that the dream might point to?\n\n"
-                "Take your time. Share what resonates. When you're done, type /dream_done to save."
+                "让我们将这个梦境与您的清醒生活联系起来。\n\n"
+                "🔮 反思问题：\n\n"
+                "1. 您生活中当前的什么情况感觉与梦境中的某些内容相似？\n"
+                "2. 哪个符号或原型最能引起您的共鸣？\n"
+                "3. 您是否在回避或寻求梦境可能指向的某些东西？\n\n"
+                "慢慢来。分享您有共鸣的内容。完成后，输入 /dream_done 保存。"
             )
-        elif text_lower in ("no", "n"):
+        elif text_lower in ("no", "n", "否"):
             state["phase"] = "ready_to_save"
             state["associations"] = ""
             orch.state_manager.update_state(user_id, state)
             await message.reply_text(
-                "No problem. Type /dream_done when you're ready to save this analysis."
+                "没问题。当您准备好保存此分析时，请输入 /dream_done。"
             )
         else:
-            await message.reply_text("Please reply with yes or no.")
+            await message.reply_text("请回复是或否。")
 
         return
 
@@ -273,7 +273,7 @@ async def handle_dream_message(
         state["phase"] = "ready_to_save"
         orch.state_manager.update_state(user_id, state)
         await message.reply_text(
-            "Thank you for sharing. Type /dream_done to save this analysis to your Dream Journal."
+            "感谢您的分享。输入 /dream_done 将此分析保存到您的梦境日记中。"
         )
 
 
@@ -345,7 +345,7 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             return
         if not check_whitelist(user.id):
             logger.info("Dream command: user %d not whitelisted", user.id)
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         state = {
@@ -361,21 +361,21 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             logger.info("Dream command: state updated for user %d", user.id)
         except Exception as exc:
             logger.error("Dream command: state update failed for user %d: %s", user.id, exc, exc_info=True)
-            await msg.reply_text(format_error_message("Could not start dream session. Please try again."))
+            await msg.reply_text(format_error_message("无法开始梦境会话。请重试。"))
             return
 
         # BF-017: Use plain text for welcome — Markdown parse_mode can cause BadRequest
         # (similar to BF-010, BF-014). Plain text avoids parse errors entirely.
         welcome = (
-            "🌙 Welcome to Dream Analysis\n\n"
-            "Take a moment to recall your dream...\n\n"
-            "When you're ready, describe everything you remember:\n"
-            "• What happened?\n"
-            "• Who was there?\n"
-            "• What did you see, hear, feel?\n"
-            "• Any symbols, colors, or unusual elements?\n\n"
-            "Take your time. The more detail, the richer the analysis.\n\n"
-            "Type /dream_cancel to cancel anytime."
+            "🌙 欢迎来到梦境分析\n\n"
+            "花一点时间回忆您的梦境...\n\n"
+            "当您准备好后，描述您记得的一切：\n"
+            "• 发生了什么？\n"
+            "• 有谁在场？\n"
+            "• 您看到、听到、感受到了什么？\n"
+            "• 有什么符号、颜色或不寻常的元素吗？\n\n"
+            "慢慢来。细节越多，分析就越丰富。\n\n"
+            "随时输入 /dream_cancel 取消。"
         )
         await msg.reply_text(welcome)
         logger.info("Dream session started for user %d", user.id)
@@ -388,36 +388,36 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             logger.warning("Dream done: missing user or message")
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         state = orch.state_manager.get_state(user.id)
         logger.debug("Dream done: user=%d state=%s", user.id, "present" if state else "none")
         if not state or state.get("active_persona") != "DREAM_ANALYST":
-            await msg.reply_text("You don't have an active dream session. Use /dream to start one.")
+            await msg.reply_text("您没有进行中的梦境会话。使用 /dream 开始一个。")
             return
 
         if state.get("phase") == "dream_description":
-            await msg.reply_text("Please describe your dream first before saving.")
+            await msg.reply_text("请先描述您的梦境，然后再保存。")
             return
 
         try:
             logger.info("Dream done: user=%d saving to Joplin", user.id)
-            await msg.reply_text("📝 Saving to your Dream Journal...")
+            await msg.reply_text("📝 正在保存到您的梦境日记...")
             ok = await _save_dream_to_joplin(orch, user.id, state)
             orch.state_manager.clear_state(user.id)
             if ok:
                 await msg.reply_text(
-                    "✅ Dream analysis saved to your Dream Journal. "
-                    "Syncing to your other devices…"
+                    "✅ 梦境分析已保存到您的梦境日记。"
+                    "正在同步到您的其他设备…"
                 )
                 logger.info("Dream done: user=%d saved successfully", user.id)
             else:
-                await msg.reply_text(format_error_message("Failed to save. Please try again."))
+                await msg.reply_text(format_error_message("保存失败。请重试。"))
                 logger.warning("Dream done: user=%d save returned False", user.id)
         except Exception as exc:
             logger.error("Dream save failed for user %d: %s", user.id, exc, exc_info=True)
-            await msg.reply_text(format_error_message("Failed to save. Please try again."))
+            await msg.reply_text(format_error_message("保存失败。请重试。"))
 
     async def dream_cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info("Dream cancel command received")
@@ -426,7 +426,7 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         state = orch.state_manager.get_state(user.id)
@@ -435,9 +435,9 @@ def register_dream_handlers(application: Any, orch: TelegramOrchestrator) -> Non
             if task and not task.done():
                 task.cancel()
             orch.state_manager.clear_state(user.id)
-            await msg.reply_text("Dream session cancelled. Nothing was saved.")
+            await msg.reply_text("梦境会话已取消。没有保存任何内容。")
         else:
-            await msg.reply_text("No active dream session to cancel.")
+            await msg.reply_text("没有进行中的梦境会话可取消。")
 
     application.add_handler(CommandHandler("dream", dream_cmd))
     application.add_handler(CommandHandler("dream_done", dream_done_cmd))

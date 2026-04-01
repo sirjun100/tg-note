@@ -85,16 +85,16 @@ def _find(orch: TelegramOrchestrator):
         from src.security_utils import check_whitelist
 
         if not check_whitelist(user.id):
-            await update.message.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await update.message.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         query = " ".join(context.args) if context.args else ""
 
         if not query:
             await update.message.reply_text(
-                "🔍 <b>Search Notes</b>\n\n"
-                "Usage: /find &lt;query&gt; or /search &lt;query&gt;\n"
-                "Example: /find meeting notes",
+                "🔍 <b>搜索笔记</b>\n\n"
+                "用法：/find &lt;查询&gt; 或 /search &lt;查询&gt;\n"
+                "示例：/find 会议笔记",
                 parse_mode="HTML",
             )
             return
@@ -103,31 +103,31 @@ def _find(orch: TelegramOrchestrator):
             results = await orch.joplin_client.search_notes(query, limit=MAX_RESULTS)
         except Exception as exc:
             logger.error("Search failed for user %d: %s", user.id, exc)
-            await update.message.reply_text("❌ Search failed. Please try again.")
+            await update.message.reply_text("❌ 搜索失败。请重试。")
             return
 
         if not results:
             await update.message.reply_text(
-                f"No notes found for '{query}'. Try different keywords or check spelling."
+                f"没有找到包含 '{query}' 的笔记。请尝试不同的关键词或检查拼写。"
             )
             return
 
         # BF-022: get_folders can fail (timeout, Joplin down); use empty map on error
         try:
             folders = await orch.joplin_client.get_folders()
-            folder_by_id = {f.get("id"): f.get("title") or "Unknown" for f in folders}
+            folder_by_id = {f.get("id"): f.get("title") or "未知" for f in folders}
         except Exception as exc:
             logger.warning("get_folders failed for search, using Unknown for folders: %s", exc)
             folder_by_id = {}
 
         # BF-022: Use HTML + escape to avoid Markdown parse errors from user content
         q_esc = html.escape(query)
-        lines = [f"🔍 <b>Search results for '{q_esc}'</b> ({len(results)} found)\n"]
+        lines = [f"🔍 <b>'{q_esc}' 的搜索结果</b>（找到 {len(results)} 个）\n"]
 
         for i, note in enumerate(results, 1):
-            title = note.get("title") or "(Untitled)"
+            title = note.get("title") or "(无标题)"
             parent_id = note.get("parent_id") or ""
-            folder_name = folder_by_id.get(parent_id, "Unknown")
+            folder_name = folder_by_id.get(parent_id, "未知")
             body = note.get("body") or ""
             snippet = _extract_snippet(body, query)
             if snippet:
@@ -141,7 +141,7 @@ def _find(orch: TelegramOrchestrator):
                 lines.append(f"   <i>{snippet_esc}</i>")
             lines.append("")
 
-        lines.append("Reply with the number to view full note, or search again.")
+        lines.append("回复数字查看完整笔记，或再次搜索。")
         msg_html = "\n".join(lines)
         await _send_search_results_safe(update.message, msg_html)
 
@@ -150,7 +150,7 @@ def _find(orch: TelegramOrchestrator):
             {
                 "active_persona": "SEARCH",
                 "search_results": [
-                    {"id": n.get("id"), "title": n.get("title") or "(Untitled)"}
+                    {"id": n.get("id"), "title": n.get("title") or "(无标题)"}
                     for n in results
                 ],
             },
@@ -166,7 +166,7 @@ async def handle_search_selection(
     text: str,
     message: Any,
 ) -> None:
-    """Handle reply with number (1–5) to view selected search result. Clears state when done."""
+    """处理带有数字（1–5）的回复以查看选定的搜索结果。完成后清除状态。"""
     state = orch.state_manager.get_state(user_id)
     if not state or state.get("active_persona") != "SEARCH":
         return
@@ -177,13 +177,13 @@ async def handle_search_selection(
 
     stripped = text.strip()
     if not stripped.isdigit():
-        await message.reply_text("Reply with a number (1–5) to view that note, or run /find again.")
+        await message.reply_text("回复数字（1–5）查看该笔记，或再次运行 /find。")
         return
 
     idx = int(stripped)
     if idx < 1 or idx > len(results):
         await message.reply_text(
-            f"Please reply with a number between 1 and {len(results)}."
+            f"请回复 1 到 {len(results)} 之间的数字。"
         )
         return
 
@@ -191,7 +191,7 @@ async def handle_search_selection(
     note_id = note_ref.get("id")
     if not note_id:
         orch.state_manager.clear_state(user_id)
-        await message.reply_text("Invalid selection.")
+        await message.reply_text("无效选择。")
         return
 
     try:
@@ -199,15 +199,15 @@ async def handle_search_selection(
     except Exception as exc:
         logger.error("Failed to fetch note %s for user %d: %s", note_id, user_id, exc)
         orch.state_manager.clear_state(user_id)
-        await message.reply_text("❌ Could not load that note.")
+        await message.reply_text("❌ 无法加载该笔记。")
         return
 
     orch.state_manager.clear_state(user_id)
 
-    title = note.get("title") or "(Untitled)"
+    title = note.get("title") or "(无标题)"
     body = (note.get("body") or "").strip()
     preview = body[:2000] + "..." if len(body) > 2000 else body
     if preview:
         await message.reply_text(f"📄 {title}\n\n{preview}")
     else:
-        await message.reply_text(f"📄 {title}\n\n(empty)")
+        await message.reply_text(f"📄 {title}\n\n(空)")
