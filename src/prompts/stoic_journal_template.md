@@ -1,58 +1,58 @@
 MORNING_QUESTIONS:
-VARIANT_0: What is your primary professional objective today? (e.g. Complete the Q3 budget review, Finish code refactor for auth module)
-VARIANT_1: What is the single most important thing you could accomplish at work today? Be specific.
-VARIANT_2: What professional outcome would make today a success? Name one concrete deliverable.
-VARIANT_0: What is your primary personal objective today? (e.g. 30 minutes of focused reading, Walk 10,000 steps, One difficult conversation)
-VARIANT_1: What personal commitment will you honour today — for yourself, not for anyone else?
-VARIANT_2: What would you do today if you knew it was the most important thing for your long-term wellbeing?
-VARIANT_0: What obstacle might arise, and how will you meet it? (e.g. Interruptions—I will block time. Fatigue—I will work in shorter intervals)
-VARIANT_1: What is the most likely thing that could derail today? Imagine it happening — how will you respond?
-VARIANT_2: What is within your control today, and what are you choosing to accept if it doesn't go as planned?
-VARIANT_0: How does today serve your greater goals? (e.g. Professional: This project moves me toward senior role. Personal: Each day of discipline builds the health I want)
-VARIANT_1: When you look back on this day in 5 years, what would make it meaningful?
-VARIANT_2: How does what you do today connect to who you want to become?
-VARIANT_0: What is your #1 priority for today?
-VARIANT_1: If you could only complete one task today, what would it be?
-VARIANT_2: What single action would move the needle most on your most important project?
-VARIANT_0: What is your #2 priority for today?
-VARIANT_1: After your #1 priority, what is next most important?
-VARIANT_2: What is your second highest-value use of time today?
-VARIANT_0: What is your #3 priority for today?
-VARIANT_1: What is your third priority — the last thing that truly matters before everything else is noise?
-VARIANT_2: What else must get done today for you to feel accomplished?
+VARIANT_0: 您今天的主要职业目标是什么？（例如：完成第三季度预算审查、完成认证模块的代码重构）
+VARIANT_1: 您今天在工作中能完成的最重要的一件事是什么？请具体说明。
+VARIANT_2: 什么职业成果会让今天成为成功的一天？说出一个具体的交付成果。
+VARIANT_0: 您今天的主要个人目标是什么？（例如：30分钟的专注阅读、走10,000步、一次艰难的对话）
+VARIANT_1: 您今天会履行什么个人承诺——为了您自己，而不是为了别人？
+VARIANT_2: 如果您知道这对您的长期健康最重要，您今天会做什么？
+VARIANT_0: 可能会出现什么障碍，您将如何应对？（例如：干扰——我会安排时间。疲劳——我会在较短的间隔内工作）
+VARIANT_1: 最有可能破坏今天的事情是什么？想象它正在发生——您将如何回应？
+VARIANT_2: 今天什么在您的控制范围内，如果事情没有按计划进行，您选择接受什么？
+VARIANT_0: 今天如何为您的更大目标服务？（例如：职业：这个项目让我迈向高级职位。个人：每天的纪律建立了我想要的健康）
+VARIANT_1: 当您在5年后回顾这一天时，什么会让它变得有意义？
+VARIANT_2: 您今天所做的事情如何与您想成为的人联系起来？
+VARIANT_0: 您今天的第一要务是什么？
+VARIANT_1: 如果您今天只能完成一项任务，那会是什么？
+VARIANT_2: 什么单一行动会对您最重要的项目产生最大影响？
+VARIANT_0: 您今天的第二要务是什么？
+VARIANT_1: 在您的第一要务之后，下一个最重要的是什么？
+VARIANT_2: 今天您时间的第二高价值用途是什么？
+VARIANT_0: 您今天的第三要务是什么？
+VARIANT_1: 您的第三要务是什么——在其他一切都是噪音之前，最后一件真正重要的事情？
+VARIANT_2: 今天还有什么必须完成才能让您感到有成就感？
 EVENING_QUESTIONS:
-VARIANT_0: Were your 3 morning priorities completed? Take a moment to reflect on each—what went well, what didn't, and what you'll do differently.
-VARIANT_1: Looking back at your 3 priorities this morning — which did you complete, which did you not, and why?
-VARIANT_2: How did you do against the commitments you made this morning? Be honest with yourself.
-VARIANT_0: What went well today? (Professional) (e.g. Delivered report on time, Solved the blocking bug, Led the meeting with clarity)
-VARIANT_1: What was a professional win today, however small? What did you do that you're genuinely proud of at work?
-VARIANT_2: Where did you show up well professionally today? What evidence shows it?
-VARIANT_0: What went well today? (Personal) (e.g. Kept commitment to exercise, Present at dinner—no phone, Read for 30 minutes)
-VARIANT_1: What personal win happened today — something you did for your health, relationships, or growth?
-VARIANT_2: Outside of work, what went right today? How did you show up for yourself or others?
-VARIANT_0: What went wrong or remains undone? What will you correct? (e.g. Lost an hour to email—tomorrow check only at 9, 12, 5)
-VARIANT_1: Where did today fall short of your intentions? What specifically will you change tomorrow?
-VARIANT_2: What is one thing you regret about today? What would Stoic wisdom have you do differently?
-VARIANT_0: If a close friend told you what went wrong today had happened to them, what would you say to comfort and encourage them?
-VARIANT_1: Speak to yourself as you would to someone you love who had a hard day. What do you want to say?
-VARIANT_2: You are not your mistakes. What compassionate truth would you tell yourself about today's shortcomings?
-VARIANT_0: What was within your control today? What was not? (e.g. My preparation was thorough (mine). The decision was delayed (not mine))
-VARIANT_1: Separate today into what was yours and what was not. What falls inside the circle of your control?
-VARIANT_2: Where did you try to control what was not yours to control? Where did you let go well?
-VARIANT_0: What progress did you make toward your greater goals? (e.g. Professional: One step closer to launch. Personal: Fourth day of exercise)
-VARIANT_1: In what way did today move you closer to the person you are trying to become?
-VARIANT_2: What small or large step did you take today toward something that truly matters to you?
-VARIANT_0: What are you grateful for today? Name something specific — who was involved, why it matters, and what life would look like without it.
-VARIANT_1: What happened today that you could easily take for granted? Pause on it. Why does it matter?
-VARIANT_2: Who or what made today better? Be specific — describe the moment and why it was meaningful.
-VARIANT_0: What did you learn today? (e.g. A new approach that worked, A mistake to avoid, An insight about yourself or others)
-VARIANT_1: What insight, skill, or lesson did today teach you — something you didn't fully know this morning?
-VARIANT_2: If you had to capture today's single biggest learning in one sentence, what would it be?
-VARIANT_0: What is one thing you will do tomorrow? (e.g. Begin the proposal draft, Schedule the medical appointment, Have the conversation)
-VARIANT_1: If tomorrow had only one non-negotiable, what would it be?
-VARIANT_2: What commitment are you making to your future self for tomorrow?
+VARIANT_0: 您的3个早上的优先事项完成了吗？花点时间反思每一个——什么进展顺利，什么没有，以及您会做什么不同。
+VARIANT_1: 回顾您今天早上的3个优先事项——您完成了哪些，哪些没有，为什么？
+VARIANT_2: 您对今天早上做出的承诺做得如何？对自己诚实。
+VARIANT_0: 今天什么进展顺利？（职业）（例如：按时交付报告、解决了阻塞性错误、清晰地主持了会议）
+VARIANT_1: 今天的职业成就是什么，无论多么小？您在工作中做了什么真正让自己感到自豪的事情？
+VARIANT_2: 您今天在职业上表现良好的地方在哪里？有什么证据表明这一点？
+VARIANT_0: 今天什么进展顺利？（个人）（例如：坚持锻炼承诺、晚餐时在场——不玩手机、阅读30分钟）
+VARIANT_1: 今天发生了什么个人成就——您为健康、人际关系或成长做了什么？
+VARIANT_2: 工作之外，今天什么进展顺利？您如何为自己或他人付出？
+VARIANT_0: 什么出错了或仍未完成？您将纠正什么？（例如：在电子邮件上浪费了一个小时——明天只在9点、12点、5点检查）
+VARIANT_1: 今天在哪里没有达到您的意图？您明天具体会改变什么？
+VARIANT_2: 您对今天有什么遗憾？斯多葛智慧会让您做什么不同？
+VARIANT_0: 如果一个亲密的朋友告诉您今天发生在他们身上的错误，您会说什么来安慰和鼓励他们？
+VARIANT_1: 像对待经历了艰难一天的您所爱的人那样对自己说话。您想说什么？
+VARIANT_2: 您不是您的错误。您会对自己今天的缺点说什么富有同情心的真相？
+VARIANT_0: 今天什么在您的控制范围内？什么不在？（例如：我的准备很充分（我的）。决定被推迟了（不是我的））
+VARIANT_1: 将今天分为属于您的和不属于您的。什么落在您的控制范围内？
+VARIANT_2: 您在哪里试图控制不属于您控制的东西？您在哪里放手得很好？
+VARIANT_0: 您朝着更大目标取得了什么进展？（例如：职业：离发布更近一步。个人：锻炼的第四天）
+VARIANT_1: 今天以什么方式让您更接近您想成为的人？
+VARIANT_2: 您今天朝着对您真正重要的事情迈出了什么小或大的一步？
+VARIANT_0: 您今天感恩什么？说出一些具体的事情——涉及谁，为什么重要，以及没有它生活会是什么样子。
+VARIANT_1: 今天发生了什么您可以轻易认为理所当然的事情？暂停一下。为什么重要？
+VARIANT_2: 谁或什么让今天变得更好？具体——描述那一刻以及为什么它有意义。
+VARIANT_0: 您今天学到了什么？（例如：一种有效的新方法、一个要避免的错误、关于您自己或他人的见解）
+VARIANT_1: 今天教会了您什么见解、技能或教训——今天早上您不完全知道的东西？
+VARIANT_2: 如果您必须用一句话捕捉今天最大的收获，那会是什么？
+VARIANT_0: 您明天会做的一件事是什么？（例如：开始提案草稿、安排医疗预约、进行对话）
+VARIANT_1: 如果明天只有一个不可协商的事情，那会是什么？
+VARIANT_2: 您为明天的未来自己做出什么承诺？
 ---
-# {{DATE}} - Daily Stoic Reflection
+# {{DATE}} - 每日斯多葛反思
 
 {{MORNING_CONTENT}}
 

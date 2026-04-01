@@ -86,32 +86,32 @@ def register_profile_handlers(application: Any, orch: TelegramOrchestrator) -> N
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         args = (context.args or []) if context else []
         if args and args[0].lower() == "set" and len(args) >= 2:
             content = " ".join(args[1:]).strip()
             if _write_user_profile(content):
-                await msg.reply_text("✅ Profile updated. The AI will use this context in future messages.")
+                await msg.reply_text("✅ 个人资料已更新。AI 将在未来的消息中使用此上下文。")
             else:
-                await msg.reply_text(format_error_message("Failed to save profile."))
+                await msg.reply_text(format_error_message("保存个人资料失败。"))
             return
 
         profile = _read_user_profile()
         if not profile:
             await msg.reply_text(
-                "📋 **User Profile** (empty)\n\n"
-                "Set your profile so the AI knows about you:\n"
-                "• `/profile set <your about me>`\n\n"
-                "Include: work context, preferences, goals, timezone, etc.",
+                "📋 **用户个人资料**（空）\n\n"
+                "设置您的个人资料，让 AI 了解您：\n"
+                "• `/profile set <您的自我介绍>`\n\n"
+                "包括：工作背景、偏好、目标、时区等。",
                 parse_mode="Markdown",
             )
         else:
             preview = profile[:500] + "…" if len(profile) > 500 else profile
             await msg.reply_text(
-                f"📋 **User Profile**\n\n{preview}\n\n"
-                "Use `/profile set <text>` to update.",
+                f"📋 **用户个人资料**\n\n{preview}\n\n"
+                "使用 `/profile set <文本>` 更新。",
                 parse_mode="Markdown",
             )
 
@@ -121,7 +121,7 @@ def register_profile_handlers(application: Any, orch: TelegramOrchestrator) -> N
         if not user or not msg:
             return
         if not check_whitelist(user.id):
-            await msg.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await msg.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         args = (context.args or []) if context else []
@@ -129,23 +129,23 @@ def register_profile_handlers(application: Any, orch: TelegramOrchestrator) -> N
             content = " ".join(args[1:]).strip()
             if _write_ai_identity(content):
                 orch.llm_orchestrator.reload_ai_identity()
-                await msg.reply_text("✅ AI identity updated.")
+                await msg.reply_text("✅ AI 身份已更新。")
             else:
-                await msg.reply_text(format_error_message("Failed to save identity."))
+                await msg.reply_text(format_error_message("保存身份失败。"))
             return
 
         identity = _read_ai_identity_from_disk() or orch.llm_orchestrator._load_ai_identity()
         if not identity:
             await msg.reply_text(
-                "🤖 **AI Identity** (using default)\n\n"
-                "No custom identity set. Use `/identity set <markdown>` to override.",
+                "🤖 **AI 身份**（使用默认）\n\n"
+                "未设置自定义身份。使用 `/identity set <markdown>` 覆盖。",
                 parse_mode="Markdown",
             )
         else:
             preview = identity[:500] + "…" if len(identity) > 500 else identity
             await msg.reply_text(
-                f"🤖 **AI Identity**\n\n{preview}\n\n"
-                "Use `/identity set <markdown>` to update.",
+                f"🤖 **AI 身份**\n\n{preview}\n\n"
+                "使用 `/identity set <markdown>` 更新。",
                 parse_mode="Markdown",
             )
 

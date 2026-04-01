@@ -133,15 +133,15 @@ async def _send_startup_message(
     )
 
     lines = [
-        "🟢 Bot started",
+        "🟢 机器人已启动",
         "",
-        f"• Mode: {mode}",
+        f"• 模式: {mode}",
     ]
     if port is not None:
-        lines.append(f"• Port: {port}")
+        lines.append(f"• 端口: {port}")
     lines.extend([
-        f"• Scheduler: {'running' if scheduler_running else 'stopped'}",
-        f"• Joplin: {'OK' if joplin_ok else '⚠️ unreachable'}",
+        f"• 调度器: {'运行中' if scheduler_running else '已停止'}",
+        f"• Joplin: {'正常' if joplin_ok else '⚠️ 无法访问'}",
     ])
     text = "\n".join(lines)
 

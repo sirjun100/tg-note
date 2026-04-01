@@ -113,46 +113,46 @@ def _build_greeting_response(user_id: int, orch: TelegramOrchestrator) -> str:
     hour = now.hour
 
     if 5 <= hour < 12:
-        time_greeting = "Good morning! ☀️"
+        time_greeting = "早上好！☀️"
     elif 12 <= hour < 17:
-        time_greeting = "Good afternoon! 👋"
+        time_greeting = "下午好！👋"
     elif 17 <= hour < 21:
-        time_greeting = "Good evening! 🌆"
+        time_greeting = "晚上好！🌆"
     else:
-        time_greeting = "Hello! 🌙"
+        time_greeting = "你好！🌙"
 
     # Use HTML: underscores in /daily_report, /weekly_report, /monthly_report break Markdown.
     # In HTML, _ is not special. Escape < > & for literal display. See BF-010.
     return (
-        f"{time_greeting} I'm your Second Brain assistant.\n\n"
-        "<b>📝 Capture</b>\n"
-        "• Send any text → Save as Joplin note\n"
-        "• Send a photo → OCR and save to Joplin (tip: send as File for best quality)\n"
-        "• /readlater &lt;url&gt; or /rl &lt;url&gt; → Save to reading queue\n"
-        "• /task &lt;text&gt; → Create Google Task\n"
-        "• /note &lt;text&gt; → Force note creation\n\n"
-        "<b>🔍 Search</b>\n"
-        "• /find &lt;query&gt; or /search &lt;query&gt; → Quick note search\n"
-        "• /ask &lt;question&gt; → AI answers from your notes (semantic search)\n\n"
-        "<b>🧠 Productivity</b>\n"
-        "• /braindump → GTD brain dump (standard 15 min); /braindump quick (5 min); /braindump thorough (25 min)\n"
-        "• /bookmark &lt;url&gt; → Save URL to Bookmarks folder\n"
-        "• /stoic → Guided morning/evening reflection\n"
-        "• /learnings → What you learned this week (from Stoic journal)\n"
-        "• /dream → Jungian dream analysis\n"
-        "• /habits → Daily habit check-in\n"
-        "• /flashcard → Spaced repetition practice from notes\n"
-        "• /plan → Weekly planning session\n"
-        "• /recipe → Save and organize recipes\n"
-        "• /project_new &lt;name&gt; or /pn &lt;name&gt; → Create project with default folders\n\n"
-        "<b>📊 Review</b>\n"
-        "• /report_daily → Today's priorities\n"
-        "• /report_weekly → Weekly productivity review\n"
-        "• /report_monthly → Monthly review with insights\n\n"
-        "<b>👤 Personalization</b>\n"
-        "• /profile → Your about-me (AI uses this for context)\n"
-        "• /identity → AI identity (bot persona)\n\n"
-        "💡 Type anything to get started, or use a command above!"
+        f"{time_greeting} 我是您的第二大脑助手。\n\n"
+        "<b>📝 记录</b>\n"
+        "• 发送任何文本 → 保存为 Joplin 笔记\n"
+        "• 发送照片 → OCR 并保存到 Joplin（提示：以文件形式发送以获得最佳质量）\n"
+        "• /readlater &lt;url&gt; 或 /rl &lt;url&gt; → 保存到阅读队列\n"
+        "• /task &lt;文本&gt; → 创建 Google 任务\n"
+        "• /note &lt;文本&gt; → 强制创建笔记\n\n"
+        "<b>🔍 搜索</b>\n"
+        "• /find &lt;查询&gt; 或 /search &lt;查询&gt; → 快速笔记搜索\n"
+        "• /ask &lt;问题&gt; → AI 从您的笔记中回答（语义搜索）\n\n"
+        "<b>🧠 生产力</b>\n"
+        "• /braindump → GTD 头脑清空（标准 15 分钟）；/braindump quick（5 分钟）；/braindump thorough（25 分钟）\n"
+        "• /bookmark &lt;url&gt; → 将 URL 保存到书签文件夹\n"
+        "• /stoic → 引导式晨间/晚间反思\n"
+        "• /learnings → 您本周学到的内容（来自斯多葛日记）\n"
+        "• /dream → 荣格式梦的解析\n"
+        "• /habits → 日常习惯打卡\n"
+        "• /flashcard → 从笔记中进行间隔重复练习\n"
+        "• /plan → 每周规划会议\n"
+        "• /recipe → 保存和整理食谱\n"
+        "• /project_new &lt;名称&gt; 或 /pn &lt;名称&gt; → 创建带有默认文件夹的项目\n\n"
+        "<b>📊 回顾</b>\n"
+        "• /report_daily → 今日优先级\n"
+        "• /report_weekly → 每周生产力回顾\n"
+        "• /report_monthly → 每月回顾及洞察\n\n"
+        "<b>👤 个性化</b>\n"
+        "• /profile → 您的个人介绍（AI 使用此作为上下文）\n"
+        "• /identity → AI 身份（机器人角色）\n\n"
+        "💡 输入任何内容开始使用，或使用上面的命令！"
     )
 
 
@@ -193,7 +193,7 @@ def _start(orch: TelegramOrchestrator):
         if not user:
             return
         if not check_whitelist(user.id):
-            await update.message.reply_text("❌ Sorry, you're not authorized to use this bot.")
+            await update.message.reply_text("❌ 抱歉，您没有使用此机器人的权限。")
             return
 
         orch.state_manager.clear_state(user.id)
@@ -224,15 +224,15 @@ def _status(orch: TelegramOrchestrator):
                 pass
 
         msg = (
-            "🤖 Bot Status:\n\n"
-            f"Joplin API: {'✅ Connected' if joplin_ok else '❌ Not accessible'}\n"
-            f"Joplin Sync (Dropbox): {'✅ Configured' if dropbox_sync_ok else '❌ Not configured'}"
+            "🤖 机器人状态：\n\n"
+            f"Joplin API: {'✅ 已连接' if joplin_ok else '❌ 无法访问'}\n"
+            f"Joplin Sync (Dropbox): {'✅ 已配置' if dropbox_sync_ok else '❌ 未配置'}"
             f"{f' ({dropbox_sync_msg})' if dropbox_sync_msg else ''}\n"
-            f"Pending clarification: {'✅ Yes' if has_pending else '❌ No'}\n"
-            f"Google Tasks: {'✅ Configured' if google_ok else '❌ Not configured'}\n"
+            f"待澄清: {'✅ 是' if has_pending else '❌ 否'}\n"
+            f"Google Tasks: {'✅ 已配置' if google_ok else '❌ 未配置'}\n"
         )
         if not joplin_ok:
-            msg += "\n⚠️ Make sure Joplin is running with Web Clipper enabled."
+            msg += "\n⚠️ 请确保 Joplin 正在运行并启用了 Web Clipper。"
         await update.message.reply_text(msg)
 
     return handler
@@ -430,12 +430,12 @@ def _learnings(orch: TelegramOrchestrator):
 
         if not learnings:
             await update.message.reply_text(
-                "No learnings found this week. Complete an evening Stoic journal session "
-                "and answer the 'What did you learn today?' question to start building your list."
+                "本周没有找到收获。完成一个晚间斯多葛日记会话，"
+                "然后回答'今天我学到了什么？'这个问题来开始构建您的列表。"
             )
             return
 
-        reply = "📚 *What You Learned This Week*\n\n" + "\n\n".join(learnings)
+        reply = "📚 *本周收获*\n\n" + "\n\n".join(learnings)
         if len(reply) > 4000:
             reply = reply[:3990] + "…"
         await update.message.reply_text(reply, parse_mode="Markdown")
